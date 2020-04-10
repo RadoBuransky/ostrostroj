@@ -1,0 +1,35 @@
+plugins {
+    id 'scala'
+    id 'application'
+}
+
+group 'com.buransky'
+version '1.0-SNAPSHOT'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.scala-lang:scala-library:2.13.1'
+    implementation 'org.slf4j:slf4j-api:1.7.30'
+    implementation 'ch.qos.logback:logback-classic:1.2.3'
+}
+application {
+    mainClassName = 'com.buransky.ostrostroj.Main'
+}
+
+task copyAndRun {
+    dependsOn distZip
+    doLast {
+        def zipFile = file("$buildDir/distributions/*.zip")
+        exec {
+            commandLine 'scp', zipFile, 'odroid:~/ostrostroj/'
+        }
+        exec {
+            commandLine 'ssh', '-t', 'odroid', 'sudo', '/home/rado/ostrostroj/unzipAndRun.sh'
+        }
+    }
+}
