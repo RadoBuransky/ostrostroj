@@ -14,13 +14,11 @@ private[driver] class MmapGpioDriver extends GpioDriver {
   import MmapGpioDriver._
 
   private val fd: RandomAccessFile = new RandomAccessFile(MEM_DEVICE, FILE_MODE)
-  private val fc: FileChannel = fd.getChannel
-  private val mem: MappedByteBuffer = fc.map(FileChannel.MapMode.READ_WRITE, GPIO_BASE_OFFSET, BLOCK_SIZE)
+  private val mem: MappedByteBuffer = fd.getChannel.map(FileChannel.MapMode.READ_WRITE, 0xC8834000L, BLOCK_SIZE)
 
   override def pins: Seq[GpioPin] = {???}
 
   override def close(): Unit = {
-    fc.close()
     fd.close()
   }
 }
