@@ -20,13 +20,24 @@ object Main {
       pin0.setShutdownOptions(false, PinState.LOW)
       pin1.setShutdownOptions(false, PinState.LOW)
       pin2.setShutdownOptions(false, PinState.LOW)
-      pin0.high()
+      pin0.high() // Blue
       Thread.sleep(1000)
       pin0.low()
-      pin1.high()
+      pin1.high() // Red
       Thread.sleep(1000)
       pin1.low()
-      pin2.high()
+      pin2.high() // Green
+      Thread.sleep(1000)
+      pin1.high() // Yellow
+      Thread.sleep(1000)
+      pin2.low()
+      pin0.high() // Cyan
+      Thread.sleep(1000)
+      pin1.low()
+      pin2.high() // Magenta
+      Thread.sleep(1000)
+      pin0.high()
+      pin1.high() // White
       Thread.sleep(1000)
     }
     catch {
