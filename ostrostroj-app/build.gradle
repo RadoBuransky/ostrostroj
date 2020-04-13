@@ -21,7 +21,33 @@ dependencies {
     implementation 'com.typesafe.akka:akka-slf4j_2.13:2.6.4'
 
     implementation 'com.pi4j:pi4j-core:1.2'
+
+    testImplementation 'org.scalatest:scalatest_2.13:3.1.1'
 }
+
 application {
     mainClassName = 'com.buransky.ostrostroj.app.Main'
+}
+
+sourceSets {
+    sysTest {
+        scala.srcDir file('src/sysTest/scala')
+        resources.srcDir file('src/sysTest/resources')
+        compileClasspath += main.output
+        runtimeClasspath += main.output
+    }
+}
+
+configurations {
+    sysTestImplementation.extendsFrom testImplementation
+    sysTestRuntimeOnly.extendsFrom runtimeOnly
+}
+
+task sysTest(dependsOn: ['sysTestClasses'], type: JavaExec) {
+    description = 'Runs system tests.'
+    group = 'verification'
+
+    main = 'org.scalatest.tools.Runner'
+    args = ['-R', 'build/classes/scala/sysTest', '-o']
+    classpath = sourceSets.sysTest.runtimeClasspath
 }
