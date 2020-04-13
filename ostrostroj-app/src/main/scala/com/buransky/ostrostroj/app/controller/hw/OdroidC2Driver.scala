@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory
 object OdroidC2Driver {
   private val logger = LoggerFactory.getLogger(OdroidC2Driver.getClass)
 
-  def apply(): Behavior[PinCommand] = Behaviors.setup(createBehavior)
+  def apply(): Behavior[PinCommand] = Behaviors.setup(ctx => new GpioBehavior(ctx))
 
   class GpioBehavior(context: ActorContext[PinCommand]) extends AbstractBehavior[PinCommand](context) {
     private val gpio: GpioController = {
@@ -46,22 +46,5 @@ object OdroidC2Driver {
         logger.info("PI4J GPIO shut down.")
         Behaviors.stopped
     }
-  }
-
-  private def createBehavior(context: ActorContext[PinCommand]): Behavior[PinCommand] = {
-    try {
-      new GpioBehavior(context)
-    }
-    catch {
-      case ex: UnsatisfiedLinkError if ex.getMessage == "com.pi4j.wiringpi.Gpio.wiringPiSetup()I" =>
-        logger.warn(s"WiringPI failed to start. Continuing with emulator.")
-        logger.debug("WiringPI failure details", ex)
-        new EmulatorBehavior(context)
-      case t: Throwable => throw t
-    }
-  }
-
-  class EmulatorBehavior(context: ActorContext[PinCommand]) extends AbstractBehavior[PinCommand](context) {
-    override def onMessage(msg: PinCommand): Behavior[PinCommand] = Behaviors.ignore
   }
 }

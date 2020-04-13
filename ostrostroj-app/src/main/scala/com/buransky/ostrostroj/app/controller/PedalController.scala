@@ -3,25 +3,39 @@ package com.buransky.ostrostroj.app.controller
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
 import com.buransky.ostrostroj.app.controller.hw.part.RgbLed
-import com.buransky.ostrostroj.app.controller.hw.part.RgbLed.Config
-import com.buransky.ostrostroj.app.controller.hw.{DigitalPinState, Gpio, OdroidC2Driver}
+import com.buransky.ostrostroj.app.controller.hw.{DigitalPinState, EmulatorDriver, Gpio, OdroidC2Driver}
+import com.typesafe.config.Config
 
 /**
  * Logical API for physical floor pedal controller (buttons, LEDs, ...).
  */
 object PedalController {
+  case class Params(useEmulator: Boolean)
+  object Params {
+    def apply(ostrostrojConfig: Config): Params = {
+      Params(ostrostrojConfig.getBoolean("emulator"))
+    }
+  }
+
   sealed trait ControllerCommand
   final case class LedControllerCommand(led: Model.Led, ledCommand: Model.LedColor) extends ControllerCommand
 
   sealed trait ControllerEvent
 
-  def apply(): Behavior[ControllerCommand] = Behaviors.setup { context =>
-    new PedalControllerBehavior(context)
+  def apply(config: Params): Behavior[ControllerCommand] = Behaviors.setup { context =>
+    new PedalControllerBehavior(config, context)
   }
 
-  class PedalControllerBehavior(context: ActorContext[ControllerCommand]) extends AbstractBehavior[ControllerCommand](context) {
-    private val driver = context.spawn(OdroidC2Driver(), "odroid")
-    private val led1 = context.spawn(RgbLed(driver, Config(Gpio.Pin0, Gpio.Pin1, Gpio.Pin2)), "led1")
+  class PedalControllerBehavior(config: Params, context: ActorContext[ControllerCommand]) extends AbstractBehavior[ControllerCommand](context) {
+    private val driver = {
+      if (config.useEmulator) {
+        context.spawn(EmulatorDriver(), "emulator")
+      }
+      else {
+        context.spawn(OdroidC2Driver(), "odroid")
+      }
+    }
+    private val led1 = context.spawn(RgbLed(driver, RgbLed.Config(Gpio.Pin0, Gpio.Pin1, Gpio.Pin2)), "led1")
 
     override def onMessage(message: ControllerCommand): Behavior[ControllerCommand] = {
       message match {

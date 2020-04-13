@@ -4,8 +4,8 @@ import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
 
 /**
- * Dummy driver.
+ * Emulator driver.
  */
-object DummyDriver {
+object EmulatorDriver {
   def apply(): Behavior[PinCommand] = Behaviors.ignore
 }
