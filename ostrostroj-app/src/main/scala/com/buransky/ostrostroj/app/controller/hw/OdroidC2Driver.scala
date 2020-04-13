@@ -13,6 +13,8 @@ import org.slf4j.LoggerFactory
 object OdroidC2Driver {
   private val logger = LoggerFactory.getLogger(OdroidC2Driver.getClass)
 
+  PlatformManager.setPlatform(Platform.ODROID)
+
   def apply(): Behavior[PinCommand] = Behaviors.setup { ctx =>
       new GpioBehavior(ctx)
     }
@@ -20,7 +22,6 @@ object OdroidC2Driver {
   class GpioBehavior(context: ActorContext[PinCommand]) extends AbstractBehavior[PinCommand](context) {
     private val gpio: GpioController = {
       logger.debug("Initializing PI4J GPIO...")
-      PlatformManager.setPlatform(Platform.ODROID)
       val result = try {
         GpioFactory.getInstance()
       }

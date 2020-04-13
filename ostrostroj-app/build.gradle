@@ -44,6 +44,10 @@ configurations {
     sysTestRuntimeOnly.extendsFrom runtimeOnly
 }
 
+/**
+ * System tests. They are supposed to be run directly on Odroid C2 under root user using JDK built for ARMHF
+ * (not ARM64!).
+ */
 task sysTest(dependsOn: ['sysTestClasses'], type: JavaExec) {
     description = 'Runs system tests.'
     group = 'verification'

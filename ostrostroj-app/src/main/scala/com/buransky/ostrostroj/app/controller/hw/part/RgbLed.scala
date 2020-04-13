@@ -9,5 +9,10 @@ object RgbLed {
   final case class Config(rPin: GpioPin, gPin: GpioPin, bPin: GpioPin)
   final case class Color(r: DigitalPinState, g: DigitalPinState, b: DigitalPinState)
 
-  def apply(pinDriver: ActorRef[PinCommand], config: Config): Behavior[Color] = Behaviors.ignore
+  def apply(pinDriver: ActorRef[PinCommand], config: Config): Behavior[Color] = Behaviors.receive{ (ctx, msg) =>
+    pinDriver ! PinCommand(config.rPin, msg.r)
+    pinDriver ! PinCommand(config.gPin, msg.g)
+    pinDriver ! PinCommand(config.bPin, msg.b)
+    Behaviors.same
+  }
 }

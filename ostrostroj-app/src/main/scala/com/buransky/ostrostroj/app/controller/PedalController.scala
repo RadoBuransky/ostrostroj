@@ -1,9 +1,10 @@
 package com.buransky.ostrostroj.app.controller
 
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
-import akka.actor.typed.{ActorRef, Behavior, SupervisorStrategy}
+import akka.actor.typed.{ActorRef, Behavior}
 import com.buransky.ostrostroj.app.controller.hw.part.RgbLed
-import com.buransky.ostrostroj.app.controller.hw.{DigitalPinState, EmulatorDriver, Gpio, OdroidC2Driver}
+import com.buransky.ostrostroj.app.controller.hw.part.RgbLed.Color
+import com.buransky.ostrostroj.app.controller.hw.{DigitalPinState, Gpio, PinCommand}
 import com.typesafe.config.Config
 
 /**
@@ -22,23 +23,22 @@ object PedalController {
 
   sealed trait ControllerEvent
 
-  def apply(config: Params): Behavior[ControllerCommand] =
-    Behaviors.supervise[ControllerCommand] {
-      Behaviors.setup { context =>
-        new PedalControllerBehavior(config, context)
-      }
-    }.onFailure(SupervisorStrategy.stop)
+  def apply(config: Params,
+            emulatorFactory: () => Behavior[PinCommand],
+            odroidFactory: () => Behavior[PinCommand],
+            ledFactory: (ActorRef[PinCommand], RgbLed.Config) => Behavior[Color]): Behavior[ControllerCommand] =
+    if (config.useEmulator) apply(emulatorFactory, ledFactory) else apply(odroidFactory, ledFactory)
 
-  class PedalControllerBehavior(config: Params, context: ActorContext[ControllerCommand]) extends AbstractBehavior[ControllerCommand](context) {
-    private val driver = {
-      if (config.useEmulator) {
-        context.spawn(EmulatorDriver(), "emulator")
-      }
-      else {
-        context.spawn(OdroidC2Driver(), "odroid")
-      }
-    }
-    private val led1 = context.spawn(RgbLed(driver, RgbLed.Config(Gpio.Pin0, Gpio.Pin1, Gpio.Pin2)), "led1")
+  def apply(driverFactory: () => Behavior[PinCommand],
+            ledFactory: (ActorRef[PinCommand], RgbLed.Config) => Behavior[Color]): Behavior[ControllerCommand] = Behaviors.setup { ctx =>
+    new PedalControllerBehavior(driverFactory, ledFactory, ctx)
+  }
+
+  class PedalControllerBehavior(driverFactory: () => Behavior[PinCommand],
+                                ledFactory: (ActorRef[PinCommand], RgbLed.Config) => Behavior[Color],
+                                context: ActorContext[ControllerCommand]) extends AbstractBehavior[ControllerCommand](context) {
+    private val driver = context.spawn(driverFactory(), "driver")
+    private val led1 = context.spawn(ledFactory(driver, RgbLed.Config(Gpio.Pin0, Gpio.Pin1, Gpio.Pin2)), "led1")
 
     override def onMessage(message: ControllerCommand): Behavior[ControllerCommand] = {
       message match {
