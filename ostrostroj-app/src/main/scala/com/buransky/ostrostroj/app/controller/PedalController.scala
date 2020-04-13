@@ -1,7 +1,7 @@
 package com.buransky.ostrostroj.app.controller
 
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
-import akka.actor.typed.{ActorRef, Behavior}
+import akka.actor.typed.{ActorRef, Behavior, SupervisorStrategy}
 import com.buransky.ostrostroj.app.controller.hw.part.RgbLed
 import com.buransky.ostrostroj.app.controller.hw.{DigitalPinState, EmulatorDriver, Gpio, OdroidC2Driver}
 import com.typesafe.config.Config
@@ -22,9 +22,12 @@ object PedalController {
 
   sealed trait ControllerEvent
 
-  def apply(config: Params): Behavior[ControllerCommand] = Behaviors.setup { context =>
-    new PedalControllerBehavior(config, context)
-  }
+  def apply(config: Params): Behavior[ControllerCommand] =
+    Behaviors.supervise[ControllerCommand] {
+      Behaviors.setup { context =>
+        new PedalControllerBehavior(config, context)
+      }
+    }.onFailure(SupervisorStrategy.stop)
 
   class PedalControllerBehavior(config: Params, context: ActorContext[ControllerCommand]) extends AbstractBehavior[ControllerCommand](context) {
     private val driver = {

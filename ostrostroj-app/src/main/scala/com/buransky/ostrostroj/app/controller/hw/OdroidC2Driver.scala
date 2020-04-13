@@ -2,6 +2,7 @@ package com.buransky.ostrostroj.app.controller.hw
 
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{Behavior, PostStop, Signal}
+import com.buransky.ostrostroj.app.util.OstrostrojException
 import com.pi4j.io.gpio._
 import com.pi4j.platform.{Platform, PlatformManager}
 import org.slf4j.LoggerFactory
@@ -12,13 +13,21 @@ import org.slf4j.LoggerFactory
 object OdroidC2Driver {
   private val logger = LoggerFactory.getLogger(OdroidC2Driver.getClass)
 
-  def apply(): Behavior[PinCommand] = Behaviors.setup(ctx => new GpioBehavior(ctx))
+  def apply(): Behavior[PinCommand] = Behaviors.setup { ctx =>
+      new GpioBehavior(ctx)
+    }
 
   class GpioBehavior(context: ActorContext[PinCommand]) extends AbstractBehavior[PinCommand](context) {
     private val gpio: GpioController = {
       logger.debug("Initializing PI4J GPIO...")
       PlatformManager.setPlatform(Platform.ODROID)
-      val result = GpioFactory.getInstance()
+      val result = try {
+        GpioFactory.getInstance()
+      }
+      catch {
+        case ex: UnsatisfiedLinkError =>
+          throw new OstrostrojException("Are you sure this is running on Odroid C2 using JDK built for ARM-HF?", ex)
+      }
       logger.info("PI4J GPIO initialized.")
       result
     }
