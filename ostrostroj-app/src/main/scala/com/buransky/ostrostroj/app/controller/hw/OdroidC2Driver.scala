@@ -34,7 +34,11 @@ object OdroidC2Driver {
     }
 
     private val digitalOutputPins: Map[Pin, GpioPinDigitalOutput] = {
-      OdroidC1Pin.allPins(PinMode.DIGITAL_OUTPUT).map { pin =>
+      List(
+        OdroidC1Pin.GPIO_00,
+        OdroidC1Pin.GPIO_01,
+        OdroidC1Pin.GPIO_02
+      ).map { pin =>
         val result = gpio.provisionDigitalOutputPin(pin, PinState.LOW)
         result.setShutdownOptions(true, PinState.LOW)
         pin -> result
