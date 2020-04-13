@@ -34,7 +34,7 @@ object Model {
   final case class LedColor(r: Boolean, g: Boolean, b: Boolean)
 
   /**
-   * Logical switch button (OFF-OFF).
+   * Logical button.
    */
   class Btn
   sealed trait BtnEvent

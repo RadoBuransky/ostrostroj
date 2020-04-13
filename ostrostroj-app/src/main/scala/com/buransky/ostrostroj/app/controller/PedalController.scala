@@ -2,10 +2,9 @@ package com.buransky.ostrostroj.app.controller
 
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
-import com.buransky.ostrostroj.app.controller.hw.OdroidC2Driver.Gpio
-import com.buransky.ostrostroj.app.controller.hw.OdroidC2Driver.Gpio.PinState
 import com.buransky.ostrostroj.app.controller.hw.part.RgbLed
 import com.buransky.ostrostroj.app.controller.hw.part.RgbLed.Config
+import com.buransky.ostrostroj.app.controller.hw.{DigitalPinState, Gpio, OdroidC2Driver}
 
 /**
  * Logical API for physical floor pedal controller (buttons, LEDs, ...).
@@ -21,7 +20,8 @@ object PedalController {
   }
 
   class PedalControllerBehavior(context: ActorContext[ControllerCommand]) extends AbstractBehavior[ControllerCommand](context) {
-    private val led1 = context.spawn(RgbLed(Config(Gpio.Pin1, Gpio.Pin2, Gpio.Pin3)), "led1")
+    private val driver = context.spawn(OdroidC2Driver(), "odroid")
+    private val led1 = context.spawn(RgbLed(driver, Config(Gpio.Pin0, Gpio.Pin1, Gpio.Pin2)), "led1")
 
     override def onMessage(message: ControllerCommand): Behavior[ControllerCommand] = {
       message match {
@@ -45,6 +45,6 @@ object PedalController {
      * Maps logical LED command to physical LED command.
      */
     private def hwLedCommand(ledColor: Model.LedColor): RgbLed.Color =
-      RgbLed.Color(PinState(ledColor.r), PinState(ledColor.g), PinState(ledColor.b))
+      RgbLed.Color(DigitalPinState(ledColor.r), DigitalPinState(ledColor.g), DigitalPinState(ledColor.b))
   }
 }

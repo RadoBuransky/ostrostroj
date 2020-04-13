@@ -8,7 +8,7 @@
 
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>ostrostroj.log</file>
-        <immediateFlush>false</immediateFlush>
+        <immediateFlush>true</immediateFlush>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <fileNamePattern>myapp_%d{yyyy-MM-dd}.log</fileNamePattern>
         </rollingPolicy>
@@ -25,5 +25,6 @@
 
     <root level="DEBUG">
         <appender-ref ref="STDOUT"/>
+        <appender-ref ref="FILE" />
     </root>
 </configuration>
