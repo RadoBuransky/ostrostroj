@@ -1,6 +1,6 @@
 package com.buransky.ostrostroj.app.common
 
-import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.config.{Config, ConfigFactory, ConfigValue, ConfigValueFactory}
 
 import scala.jdk.CollectionConverters._
 
@@ -15,24 +15,36 @@ object OstrostrojConfig {
     val configMap = Map("akka.cluster.roles" -> clusterRoles().asJava)
     val dynamicConfig = ConfigFactory.parseMap(configMap.asJava)
     val defaultConfig = ConfigFactory.load()
+    val devConfig = defaultConfig.getConfig("ostrostroj.dev")
 
-    val devConfig = if (develeoperMode) {
-      defaultConfig.getConfig("ostrostroj.dev").withFallback(dynamicConfig)
+    val mergedConfig = if (develeoperMode) {
+      val hostname = if (isDevDesktop) {
+        devConfig.getString("desktopHostname")
+      } else {
+        devConfig.getString("deviceHostname")
+      }
+
+      devConfig
+        .withValue("akka.remote.artery.canonical.hostname", ConfigValueFactory.fromAnyRef(hostname))
+        .withFallback(dynamicConfig)
     }
     else {
       dynamicConfig
     }
 
-    devConfig.withFallback(defaultConfig)
+    mergedConfig.withFallback(defaultConfig)
   }
-  val develeoperMode: Boolean = (System.getProperty(DEV_DESKTOP) != null) || (System.getProperty(DEV_DEVICE) != null)
+
+  val isDevDesktop: Boolean = System.getProperty(DEV_DESKTOP) != null
+  val isDevDevice: Boolean = System.getProperty(DEV_DESKTOP) != null
+  val develeoperMode: Boolean = isDevDesktop || isDevDevice
 
   private def clusterRoles(): List[String] = {
-    if (System.getProperty(DEV_DESKTOP) != null) {
+    if (isDevDesktop) {
       List(DEV_DESKTOP)
     }
     else {
-      if (System.getProperty(DEV_DEVICE) != null) {
+      if (isDevDevice) {
         List(DEV_DEVICE)
       }
       else {
