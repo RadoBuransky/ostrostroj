@@ -36,7 +36,7 @@ object OstrostrojConfig {
   }
 
   val isDevDesktop: Boolean = System.getProperty(DEV_DESKTOP) != null
-  val isDevDevice: Boolean = System.getProperty(DEV_DESKTOP) != null
+  val isDevDevice: Boolean = System.getProperty(DEV_DEVICE) != null
   val develeoperMode: Boolean = isDevDesktop || isDevDevice
 
   private def clusterRoles(): List[String] = {
