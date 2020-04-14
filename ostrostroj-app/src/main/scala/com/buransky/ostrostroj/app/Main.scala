@@ -8,7 +8,6 @@ import com.buransky.ostrostroj.app.audio.AudioPlayer
 import com.buransky.ostrostroj.app.common.OstrostrojConfig._
 import com.buransky.ostrostroj.app.common.{OstrostrojConfig, OstrostrojException}
 import com.buransky.ostrostroj.app.controller.PedalController
-import com.buransky.ostrostroj.app.device.OdroidC2Driver.logger
 import com.buransky.ostrostroj.app.device.{OdroidC2Driver, PinCommand}
 import com.buransky.ostrostroj.app.show.PerformanceManager
 import org.slf4j.LoggerFactory
@@ -31,19 +30,16 @@ object Main {
   }
 
   def apply(): Behavior[_] = Behaviors.setup[Receptionist.Listing] { ctx =>
-    ctx.system.receptionist ! Receptionist.Subscribe(OdroidC2Driver.odroidC2DriverKey, ctx.self)
-    Behaviors.receiveMessagePartial[Receptionist.Listing] {
-      case OdroidC2Driver.odroidC2DriverKey.Listing(listings) =>
-        logger.debug("OdroidC2Driver discovered by receptionist.")
-        listings.foreach(initDriverDependencies(_, ctx))
-        Behaviors.same
-    }
-
     initDesktopAndDeviceParts(ctx)
 
-    Behaviors.receiveSignal {
-      case (_, Terminated(_)) => Behaviors.stopped
-    }
+    ctx.system.receptionist ! Receptionist.Subscribe(OdroidC2Driver.odroidC2DriverKey, ctx.self)
+    Behaviors.receive {
+        case (ctx, OdroidC2Driver.odroidC2DriverKey.Listing(listings)) =>
+          logger.debug("OdroidC2Driver discovered by receptionist.")
+          listings.foreach(initDriverDependencies(_, ctx))
+          Behaviors.same
+        case (_, Terminated(_)) => Behaviors.stopped
+      }
   }.narrow
 
   private def initDesktopAndDeviceParts(ctx: ActorContext[_]): Unit = {
