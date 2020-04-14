@@ -1,8 +1,9 @@
-package com.buransky.ostrostroj.app.controller.hw
+package com.buransky.ostrostroj.app.device
 
+import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{Behavior, PostStop, Signal}
-import com.buransky.ostrostroj.app.util.OstrostrojException
+import com.buransky.ostrostroj.app.common.OstrostrojException
 import com.pi4j.io.gpio._
 import com.pi4j.platform.{Platform, PlatformManager}
 import org.slf4j.LoggerFactory
@@ -11,13 +12,17 @@ import org.slf4j.LoggerFactory
  * Low-level driver for Odroid C2.
  */
 object OdroidC2Driver {
-  private val logger = LoggerFactory.getLogger(OdroidC2Driver.getClass)
-
+  // Static initialization of Pi4j
   PlatformManager.setPlatform(Platform.ODROID)
 
+  private val logger = LoggerFactory.getLogger(OdroidC2Driver.getClass)
+  val odroidC2DriverKey: ServiceKey[PinCommand] = ServiceKey[PinCommand]("odroidC2Driver")
+
   def apply(): Behavior[PinCommand] = Behaviors.setup { ctx =>
-      new GpioBehavior(ctx)
-    }
+    ctx.system.receptionist ! Receptionist.Register(odroidC2DriverKey, ctx.self)
+    logger.debug("OdroidC2Driver registered to receptionist.")
+    new GpioBehavior(ctx)
+  }
 
   class GpioBehavior(context: ActorContext[PinCommand]) extends AbstractBehavior[PinCommand](context) {
     private val gpio: GpioController = {
@@ -39,8 +44,10 @@ object OdroidC2Driver {
         OdroidC1Pin.GPIO_01,
         OdroidC1Pin.GPIO_02
       ).map { pin =>
+        logger.debug(s"Provisioning digital output pin ${pin.getAddress}:${pin.getName}...")
         val result = gpio.provisionDigitalOutputPin(pin, PinState.LOW)
         result.setShutdownOptions(true, PinState.LOW)
+        logger.debug(s"Pin ${pin.getAddress}:${pin.getName} provisioned.")
         pin -> result
       }.toMap
     }

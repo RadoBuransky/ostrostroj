@@ -1,28 +1,14 @@
 plugins {
-    id 'scala'
     id 'application'
 }
 
-repositories {
-    mavenCentral()
-}
-
 dependencies {
-    implementation 'org.scala-lang:scala-library:2.13.1'
-
-    implementation 'org.slf4j:slf4j-api:1.7.30'
-    implementation 'ch.qos.logback:logback-classic:1.2.3'
-    implementation 'ch.qos.logback:logback-core:1.2.3'
-    implementation 'org.slf4j:jcl-over-slf4j:1.7.30'
-    implementation 'org.slf4j:log4j-over-slf4j:1.7.30'
-    implementation 'org.slf4j:jul-to-slf4j:1.7.30'
-
     implementation 'com.typesafe.akka:akka-actor-typed_2.13:2.6.4'
+    implementation 'com.typesafe.akka:akka-cluster-typed_2.13:2.6.4'
     implementation 'com.typesafe.akka:akka-slf4j_2.13:2.6.4'
 
     implementation 'com.pi4j:pi4j-core:1.2'
 
-    testImplementation 'org.scalatest:scalatest_2.13:3.1.1'
     testImplementation 'com.typesafe.akka:akka-actor-testkit-typed_2.13:2.6.4'
 }
 
@@ -55,4 +41,20 @@ task sysTest(dependsOn: ['sysTestClasses'], type: JavaExec) {
     main = 'org.scalatest.tools.Runner'
     args = ['-R', 'build/classes/scala/sysTest', '-o']
     classpath = sourceSets.sysTest.runtimeClasspath
+}
+
+task runDevDesktop(type: JavaExec) {
+    description = 'Runs Ostrostroj in developer mode with desktop cluster role.'
+    group = 'application'
+    classpath = sourceSets.main.runtimeClasspath
+    main = application.mainClassName
+    jvmArgs = ['-Ddev-desktop']
+}
+
+task runDevDevice(type: JavaExec) {
+    description = 'Runs Ostrostroj in developer mode with device cluster role.'
+    group = 'application'
+    classpath = sourceSets.main.runtimeClasspath
+    main = application.mainClassName
+    jvmArgs = ['-Ddev-device']
 }

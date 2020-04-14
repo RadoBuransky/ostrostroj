@@ -1,6 +1,6 @@
-package com.buransky.ostrostroj.app.controller.hw
+package com.buransky.ostrostroj.app.device
 
-import com.buransky.ostrostroj.app.controller.hw.Gpio.GpioPin
+import com.buransky.ostrostroj.app.device.Gpio.GpioPin
 import com.pi4j.io.gpio.{OdroidC1Pin, Pin}
 
 /**

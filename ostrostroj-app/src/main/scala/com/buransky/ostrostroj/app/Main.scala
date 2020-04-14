@@ -1,43 +1,81 @@
 package com.buransky.ostrostroj.app
 
-import akka.NotUsed
-import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ActorSystem, Behavior, Terminated}
+import akka.actor.typed.receptionist.Receptionist
+import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
+import akka.actor.typed.{ActorRef, ActorSystem, Behavior, Terminated}
+import akka.cluster.typed.Cluster
 import com.buransky.ostrostroj.app.audio.AudioPlayer
+import com.buransky.ostrostroj.app.common.OstrostrojConfig._
+import com.buransky.ostrostroj.app.common.{OstrostrojConfig, OstrostrojException}
 import com.buransky.ostrostroj.app.controller.PedalController
-import com.buransky.ostrostroj.app.controller.PedalController.ControllerCommand
-import com.buransky.ostrostroj.app.controller.hw.part.RgbLed
-import com.buransky.ostrostroj.app.controller.hw.{EmulatorDriver, OdroidC2Driver}
+import com.buransky.ostrostroj.app.device.OdroidC2Driver.logger
+import com.buransky.ostrostroj.app.device.{OdroidC2Driver, PinCommand}
 import com.buransky.ostrostroj.app.show.PerformanceManager
-import com.typesafe.config.ConfigFactory
 import org.slf4j.LoggerFactory
 
 /**
  * Ostrostroj App entry point.
  */
 object Main {
-  private val config = ConfigFactory.load()
-  private val ostrostrojConfig = config.getConfig("ostrostroj")
   private val logger = LoggerFactory.getLogger(this.getClass)
 
   def main(args: Array[String]): Unit = {
     initLogging()
-    ActorSystem(Main(), "ostrostroj", config)
+    if (OstrostrojConfig.develeoperMode) {
+      logger.warn("Ostrostroj running in developer mode using Akka cluster.")
+    } else {
+      logger.info(s"Ostrostroj running in production mode.")
+    }
+
+    ActorSystem(Main(), ACTOR_SYSTEM_NAME, config)
   }
 
-  def apply(): Behavior[NotUsed] = Behaviors.setup { context =>
-    val performanceManager = context.spawn(PerformanceManager(), "performanceManager")
-    val controller = context.spawn(pedalControllerBehavior(), "controller")
-    val audioPlayer = context.spawn(AudioPlayer(), "audioPlayer")
+  def apply(): Behavior[_] = Behaviors.setup[Receptionist.Listing] { ctx =>
+    ctx.system.receptionist ! Receptionist.Subscribe(OdroidC2Driver.odroidC2DriverKey, ctx.self)
+    Behaviors.receiveMessagePartial[Receptionist.Listing] {
+      case OdroidC2Driver.odroidC2DriverKey.Listing(listings) =>
+        logger.debug("OdroidC2Driver discovered by receptionist.")
+        listings.foreach(initDriverDependencies(_, ctx))
+        Behaviors.same
+    }
+
+    initDesktopAndDeviceParts(ctx)
 
     Behaviors.receiveSignal {
       case (_, Terminated(_)) => Behaviors.stopped
     }
+  }.narrow
+
+  private def initDesktopAndDeviceParts(ctx: ActorContext[_]): Unit = {
+    if (OstrostrojConfig.develeoperMode) {
+      val cluster = Cluster(ctx.system)
+      if (cluster.selfMember.hasRole(DEV_DEVICE)) {
+        initDevicePart(ctx)
+      } else {
+        if (cluster.selfMember.hasRole(DEV_DESKTOP)) {
+          initDesktopPart(ctx)
+        } else {
+          throw new OstrostrojException(s"Invalid cluster role!")
+        }
+      }
+    } else {
+      initDevicePart(ctx)
+      initDesktopPart(ctx)
+    }
   }
 
-  private def pedalControllerBehavior(): Behavior[ControllerCommand] = {
-    PedalController(PedalController.Params(ostrostrojConfig), () => EmulatorDriver(), () => OdroidC2Driver(),
-      (driver, config) => RgbLed(driver, config))
+  private def initDriverDependencies(driver: ActorRef[PinCommand],
+                                     ctx: ActorContext[_]): Unit = {
+    ctx.spawn(PedalController(driver), "controller")
+  }
+
+  private def initDevicePart(ctx: ActorContext[_]): Unit = {
+    ctx.spawn(OdroidC2Driver(), "driver")
+  }
+
+  private def initDesktopPart(ctx: ActorContext[_]): Unit = {
+    ctx.spawn(PerformanceManager(), "performanceManager")
+    ctx.spawn(AudioPlayer(), "audioPlayer")
   }
 
   private def initLogging(): Unit = {

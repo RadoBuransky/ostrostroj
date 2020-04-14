@@ -1,4 +1,3 @@
 rootProject.name = 'ostrostroj'
 include 'ostrostroj-app'
-include 'ostrostroj-sync'
 

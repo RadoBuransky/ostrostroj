@@ -6,9 +6,9 @@ import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
 import com.buransky.ostrostroj.app.controller.Model.{LedBtn1, LedColor}
 import com.buransky.ostrostroj.app.controller.PedalController.{ControllerCommand, LedControllerCommand}
-import com.buransky.ostrostroj.app.controller.hw.Gpio.{Pin0, Pin1, Pin2}
+import com.buransky.ostrostroj.app.device.Gpio.{Pin0, Pin1, Pin2}
 import com.buransky.ostrostroj.app.controller.hw._
-import com.buransky.ostrostroj.app.controller.hw.part.RgbLed
+import com.buransky.ostrostroj.app.device.{OdroidC2Driver, PinCommand, PinHigh, PinLow}
 import com.buransky.ostrostroj.app.sysTest.BaseSystemTest
 
 class RealPedalControllerSystemTest extends PedalControllerSystemTestBase(false) {
