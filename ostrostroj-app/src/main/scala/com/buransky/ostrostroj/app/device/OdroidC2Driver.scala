@@ -53,9 +53,13 @@ object OdroidC2Driver {
     }
 
     override def onMessage(message: PinCommand): Behavior[PinCommand] = {
-      message.state match {
-        case DigitalPinState(true) => digitalOutputPins(message.pin.pi4jPin).high()
-        case DigitalPinState(false) => digitalOutputPins(message.pin.pi4jPin).low()
+      digitalOutputPins.find(_._1.getAddress == message.pin.pi4jPinAddress) match {
+        case Some(_ -> gpioPinDigitalOutput) =>
+          message.state match {
+            case DigitalPinState(true) => gpioPinDigitalOutput.high()
+            case DigitalPinState(false) => gpioPinDigitalOutput.low()
+          }
+        case None => throw new OstrostrojException(s"Pin not found! [${message.pin.pi4jPinAddress}]")
       }
       Behaviors.same
     }
