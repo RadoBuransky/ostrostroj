@@ -8,13 +8,13 @@ import com.pi4j.io.gpio.{OdroidC1Pin, Pin}
  * Abstract API for physical hardware.
  */
 object Gpio {
-  sealed abstract class GpioPin(val pi4jPin: Pin)
+  sealed abstract class GpioPin(val pi4jPin: Pin) extends OstrostrojMessage
   final case object Pin0 extends GpioPin(OdroidC1Pin.GPIO_00)
   final case object Pin1 extends GpioPin(OdroidC1Pin.GPIO_01)
   final case object Pin2 extends GpioPin(OdroidC1Pin.GPIO_02)
 }
 
-sealed trait DigitalPinState
+sealed trait DigitalPinState extends OstrostrojMessage
 case object PinHigh extends DigitalPinState
 case object PinLow extends DigitalPinState
 
