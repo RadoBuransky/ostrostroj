@@ -7,10 +7,12 @@ import akka.cluster.typed.Cluster
 import com.buransky.ostrostroj.app.audio.AudioPlayer
 import com.buransky.ostrostroj.app.common.OstrostrojConfig._
 import com.buransky.ostrostroj.app.common.{OstrostrojConfig, OstrostrojException}
-import com.buransky.ostrostroj.app.controller.PedalController
+import com.buransky.ostrostroj.app.controller.{Keyboard, PedalController}
 import com.buransky.ostrostroj.app.device.{OdroidC2Driver, PinCommand}
 import com.buransky.ostrostroj.app.show.PerformanceManager
 import org.slf4j.LoggerFactory
+
+import scala.io.StdIn
 
 /**
  * Ostrostroj App entry point.
@@ -31,16 +33,19 @@ object Main {
 
   def apply(): Behavior[_] = Behaviors.setup[Receptionist.Listing] { ctx =>
     initDesktopAndDeviceParts(ctx)
+    driverDiscovery(ctx)
+  }
 
+  private def driverDiscovery(ctx: ActorContext[Receptionist.Listing]): Behavior[Receptionist.Listing] = {
     ctx.system.receptionist ! Receptionist.Subscribe(OdroidC2Driver.odroidC2DriverKey, ctx.self)
     Behaviors.receive {
-        case (ctx, OdroidC2Driver.odroidC2DriverKey.Listing(listings)) =>
-          logger.debug("OdroidC2Driver discovered by receptionist.")
-          listings.foreach(initDriverDependencies(_, ctx))
-          Behaviors.same
-        case (_, Terminated(_)) => Behaviors.stopped
-      }
-  }.narrow
+      case (ctx, OdroidC2Driver.odroidC2DriverKey.Listing(listings)) =>
+        logger.debug("OdroidC2Driver discovered by receptionist.")
+        listings.foreach(initDriverDependencies(_, ctx))
+        Behaviors.same
+      case (_, Terminated(_)) => Behaviors.stopped
+    }
+  }
 
   private def initDesktopAndDeviceParts(ctx: ActorContext[_]): Unit = {
     if (OstrostrojConfig.develeoperMode) {
@@ -63,6 +68,9 @@ object Main {
   private def initDriverDependencies(driver: ActorRef[PinCommand],
                                      ctx: ActorContext[_]): Unit = {
     ctx.spawn(PedalController(driver), "controller")
+    if (OstrostrojConfig.develeoperMode) {
+      ctx.spawn(Keyboard(driver), "keyboard")
+    }
   }
 
   private def initDevicePart(ctx: ActorContext[_]): Unit = {

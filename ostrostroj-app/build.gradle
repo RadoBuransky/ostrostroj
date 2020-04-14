@@ -6,6 +6,7 @@ dependencies {
     implementation 'com.typesafe.akka:akka-actor-typed_2.13:2.6.4'
     implementation 'com.typesafe.akka:akka-cluster-typed_2.13:2.6.4'
     implementation 'com.typesafe.akka:akka-slf4j_2.13:2.6.4'
+    implementation 'com.typesafe.akka:akka-serialization-jackson_2.13:2.6.4'
 
     implementation 'com.pi4j:pi4j-core:1.2'
 
@@ -49,6 +50,7 @@ task runDevDesktop(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     main = application.mainClassName
     jvmArgs = ['-Ddev-desktop']
+    standardInput = System.in
 }
 
 task runDevDevice(type: JavaExec) {

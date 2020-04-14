@@ -1,5 +1,6 @@
 package com.buransky.ostrostroj.app.device
 
+import com.buransky.ostrostroj.app.common.OstrostrojMessage
 import com.buransky.ostrostroj.app.device.Gpio.GpioPin
 import com.pi4j.io.gpio.{OdroidC1Pin, Pin}
 
@@ -21,4 +22,4 @@ object DigitalPinState {
   def apply(b: Boolean): DigitalPinState = if (b) PinHigh else PinLow
 }
 
-final case class PinCommand(pin: GpioPin, state: DigitalPinState)
+final case class PinCommand(pin: GpioPin, state: DigitalPinState) extends OstrostrojMessage
