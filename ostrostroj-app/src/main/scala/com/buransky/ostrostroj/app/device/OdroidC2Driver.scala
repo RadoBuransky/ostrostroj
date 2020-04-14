@@ -54,8 +54,8 @@ object OdroidC2Driver {
 
     override def onMessage(message: PinCommand): Behavior[PinCommand] = {
       message.state match {
-        case PinHigh => digitalOutputPins(message.pin.pi4jPin).high()
-        case PinLow => digitalOutputPins(message.pin.pi4jPin).low()
+        case DigitalPinState(true) => digitalOutputPins(message.pin.pi4jPin).high()
+        case DigitalPinState(false) => digitalOutputPins(message.pin.pi4jPin).low()
       }
       Behaviors.same
     }

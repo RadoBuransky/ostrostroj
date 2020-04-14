@@ -1,9 +1,9 @@
 package com.buransky.ostrostroj.app.controller
 
-import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.{ActorRef, Behavior}
 import com.buransky.ostrostroj.app.device.Gpio.{Pin0, Pin1, Pin2}
-import com.buransky.ostrostroj.app.device.{PinCommand, PinHigh, PinLow}
+import com.buransky.ostrostroj.app.device.{DigitalPinState, PinCommand}
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.Future
@@ -22,13 +22,13 @@ object Keyboard {
         ctx.pipeToSelf(futureKey) {
           case Success(key) =>
             key match {
-              case 'R' => driver ! PinCommand(Pin0, PinHigh)
-              case 'G' => driver ! PinCommand(Pin1, PinHigh)
-              case 'B' => driver ! PinCommand(Pin2, PinHigh)
+              case 'R' => driver ! PinCommand(Pin0, DigitalPinState(high = true))
+              case 'G' => driver ! PinCommand(Pin1, DigitalPinState(high = true))
+              case 'B' => driver ! PinCommand(Pin2, DigitalPinState(high = true))
 
-              case 'r' => driver ! PinCommand(Pin0, PinLow)
-              case 'g' => driver ! PinCommand(Pin1, PinLow)
-              case 'b' => driver ! PinCommand(Pin2, PinLow)
+              case 'r' => driver ! PinCommand(Pin0, DigitalPinState(high = false))
+              case 'g' => driver ! PinCommand(Pin1, DigitalPinState(high = false))
+              case 'b' => driver ! PinCommand(Pin2, DigitalPinState(high = false))
               case _ =>
             }
 
