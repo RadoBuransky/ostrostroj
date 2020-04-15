@@ -16,7 +16,4 @@ object Gpio {
   final case object Pin4 extends GpioPin(OdroidC1Pin.GPIO_04.getAddress)
   final case object Pin5 extends GpioPin(OdroidC1Pin.GPIO_05.getAddress)
 }
-
-final case class DigitalPinState(high: Boolean) extends OstrostrojMessage
-
-final case class PinCommand(pin: GpioPin, state: DigitalPinState) extends OstrostrojMessage
+final case class PinCommand(pin: GpioPin, state: Boolean) extends OstrostrojMessage

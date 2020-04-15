@@ -4,11 +4,11 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
 import com.buransky.ostrostroj.app.device
 import com.buransky.ostrostroj.app.device.Gpio.GpioPin
-import com.buransky.ostrostroj.app.device.{DigitalPinState, PinCommand}
+import com.buransky.ostrostroj.app.device.PinCommand
 
 object RgbLed {
   final case class Config(rPin: GpioPin, gPin: GpioPin, bPin: GpioPin)
-  final case class Color(r: DigitalPinState, g: DigitalPinState, b: DigitalPinState)
+  final case class Color(r: Boolean, g: Boolean, b: Boolean)
 
   def apply(pinDriver: ActorRef[PinCommand], config: Config): Behavior[Color] = Behaviors.receive{ (ctx, msg) =>
     pinDriver ! device.PinCommand(config.rPin, msg.r)

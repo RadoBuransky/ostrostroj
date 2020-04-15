@@ -3,7 +3,7 @@ package com.buransky.ostrostroj.app.controller
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors, TimerScheduler}
 import akka.actor.typed.{ActorRef, Behavior}
 import com.buransky.ostrostroj.app.device.Gpio.GpioPin
-import com.buransky.ostrostroj.app.device.{DigitalPinState, PinCommand}
+import com.buransky.ostrostroj.app.device.PinCommand
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
@@ -52,11 +52,11 @@ object Max7219 {
           if (wasEmpty) {
             if (!timers.isTimerActive(ClkTimerKey)) {
               // Init
-              driver ! PinCommand(config.csPin, DigitalPinState(true))
+              driver ! PinCommand(config.csPin, true)
               logger.debug(s"CS = true")
-              driver ! PinCommand(config.clkPin, DigitalPinState(false))
+              driver ! PinCommand(config.clkPin, false)
               logger.debug(s"CLK = false")
-              driver ! PinCommand(config.dinPin, DigitalPinState(false))
+              driver ! PinCommand(config.dinPin, false)
               logger.debug(s"DIN = false")
 
               timers.startTimerAtFixedRate(ClkTimerKey, ClkTimeout, CLK_PERIOD)
@@ -71,7 +71,7 @@ object Max7219 {
           if (!clkState) {
             if (bits.nonEmpty) {
               val bit = bits.dequeue()
-              driver ! PinCommand(config.dinPin, DigitalPinState(bit))
+              driver ! PinCommand(config.dinPin, bit)
               logger.debug(s"DIN = $bit")
 
               if (bits.isEmpty) {
@@ -83,7 +83,7 @@ object Max7219 {
                 val word = words.dequeue()
                 logger.debug(s"Word dequeued. [${word.address}, ${word.data}]")
                 enqueueWordBits(word)
-                driver ! PinCommand(config.csPin, DigitalPinState(false))
+                driver ! PinCommand(config.csPin, false)
                 logger.debug(s"CS = false")
               }
               else {
@@ -95,11 +95,11 @@ object Max7219 {
 
           // Toggle CLK state
           clkState = !clkState
-          driver ! PinCommand(config.clkPin, DigitalPinState(clkState))
+          driver ! PinCommand(config.clkPin, clkState)
           logger.debug(s"CLK = $clkState")
 
           if (lastBit) {
-            driver ! PinCommand(config.csPin, DigitalPinState(true))
+            driver ! PinCommand(config.csPin, true)
             logger.debug(s"CS = true")
           }
 

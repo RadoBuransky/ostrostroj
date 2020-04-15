@@ -3,7 +3,7 @@ package com.buransky.ostrostroj.app.controller
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
 import com.buransky.ostrostroj.app.common.OstrostrojConfig
-import com.buransky.ostrostroj.app.device.{DigitalPinState, Gpio, PinCommand}
+import com.buransky.ostrostroj.app.device.{Gpio, PinCommand}
 
 /**
  * Logical API for physical floor pedal controller (buttons, LEDs, ...).
@@ -52,6 +52,6 @@ object PedalController {
      * Maps logical LED command to physical LED command.
      */
     private def hwLedCommand(ledColor: Model.LedColor): RgbLed.Color =
-      RgbLed.Color(DigitalPinState(ledColor.r), DigitalPinState(ledColor.g), DigitalPinState(ledColor.b))
+      RgbLed.Color(ledColor.r, ledColor.g, ledColor.b)
   }
 }

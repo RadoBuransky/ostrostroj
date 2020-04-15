@@ -4,7 +4,7 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
 import com.buransky.ostrostroj.app.controller.LedMatrix.Max7219Word
 import com.buransky.ostrostroj.app.device.Gpio.{Pin0, Pin1, Pin2}
-import com.buransky.ostrostroj.app.device.{DigitalPinState, PinCommand}
+import com.buransky.ostrostroj.app.device.PinCommand
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.Future
@@ -24,13 +24,13 @@ object Keyboard {
         ctx.pipeToSelf(futureLine) {
           case Success(line) =>
             line match {
-              case "R" => driver ! PinCommand(Pin2, DigitalPinState(high = true))
-              case "G" => driver ! PinCommand(Pin1, DigitalPinState(high = true))
-              case "B" => driver ! PinCommand(Pin0, DigitalPinState(high = true))
+              case "R" => driver ! PinCommand(Pin2, true)
+              case "G" => driver ! PinCommand(Pin1, true)
+              case "B" => driver ! PinCommand(Pin0, true)
 
-              case "r" => driver ! PinCommand(Pin2, DigitalPinState(high = false))
-              case "g" => driver ! PinCommand(Pin1, DigitalPinState(high = false))
-              case "b" => driver ! PinCommand(Pin0, DigitalPinState(high = false))
+              case "r" => driver ! PinCommand(Pin2, false)
+              case "g" => driver ! PinCommand(Pin1, false)
+              case "b" => driver ! PinCommand(Pin0, false)
               case _ =>
                 try {
                   val pair = line.split('-').map(s => Integer.parseInt(s).toByte)
