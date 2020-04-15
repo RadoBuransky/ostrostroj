@@ -21,8 +21,9 @@ object Max7219 {
    * See Table 1. Serial-Data Format (16 Bits) in MAX7219 specification document.
    * @param address 4-bit address (use least-significant bits)
    * @param data 8-bit data
+   * @param chipIndex Index of MAX7219 in case of cascaded design (0-based).
    */
-  case class Word(address: Byte, data: Byte) extends Command
+  case class Word(address: Byte, data: Byte, chipIndex: Int) extends Command
   private case object ClkTimeout extends Command
 
 //  private val CLK_PERIOD = 100.nanoseconds
@@ -131,7 +132,17 @@ object Max7219 {
       enqueueBit(getBit(word.data, 1))
       enqueueBit(getBit(word.data, 0))
 
+      for (i <- 1 to word.chipIndex) {
+        enqueueNoOp()
+      }
+
       logger.debug(s"Word enqueued.")
+    }
+
+    private def enqueueNoOp(): Unit = {
+      for (i <- 0 to 15) {
+        enqueueBit(false)
+      }
     }
 
     private def enqueueBit(bit: Boolean): Unit = {
