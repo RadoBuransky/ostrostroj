@@ -42,7 +42,10 @@ object OdroidC2Driver {
       List(
         OdroidC1Pin.GPIO_00,
         OdroidC1Pin.GPIO_01,
-        OdroidC1Pin.GPIO_02
+        OdroidC1Pin.GPIO_02,
+        OdroidC1Pin.GPIO_03,
+        OdroidC1Pin.GPIO_04,
+        OdroidC1Pin.GPIO_05
       ).map { pin =>
         logger.debug(s"Provisioning digital output pin ${pin.getAddress}:${pin.getName}...")
         val result = gpio.provisionDigitalOutputPin(pin, PinState.LOW)

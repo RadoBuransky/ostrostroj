@@ -19,7 +19,11 @@ object PedalController {
 
   class PedalControllerBehavior(driver: ActorRef[PinCommand],
                                 context: ActorContext[ControllerCommand]) extends AbstractBehavior[ControllerCommand](context) {
+    private val ledMatrix = context.spawn(LedMatrix(driver, Max7219.Config(Gpio.Pin3, Gpio.Pin4, Gpio.Pin5)), "ledMatrix")
     private val led1 = context.spawn(RgbLed(driver, RgbLed.Config(Gpio.Pin0, Gpio.Pin1, Gpio.Pin2)), "led1")
+
+    ledMatrix ! LedMatrix.ClearScreen
+    ledMatrix ! LedMatrix.Test
 
     override def onMessage(message: ControllerCommand): Behavior[ControllerCommand] = {
       message match {

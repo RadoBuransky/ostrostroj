@@ -22,13 +22,13 @@ object Keyboard {
         ctx.pipeToSelf(futureKey) {
           case Success(key) =>
             key match {
-              case 'R' => driver ! PinCommand(Pin0, DigitalPinState(high = true))
+              case 'R' => driver ! PinCommand(Pin2, DigitalPinState(high = true))
               case 'G' => driver ! PinCommand(Pin1, DigitalPinState(high = true))
-              case 'B' => driver ! PinCommand(Pin2, DigitalPinState(high = true))
+              case 'B' => driver ! PinCommand(Pin0, DigitalPinState(high = true))
 
-              case 'r' => driver ! PinCommand(Pin0, DigitalPinState(high = false))
+              case 'r' => driver ! PinCommand(Pin2, DigitalPinState(high = false))
               case 'g' => driver ! PinCommand(Pin1, DigitalPinState(high = false))
-              case 'b' => driver ! PinCommand(Pin2, DigitalPinState(high = false))
+              case 'b' => driver ! PinCommand(Pin0, DigitalPinState(high = false))
               case _ =>
             }
 
