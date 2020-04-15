@@ -68,9 +68,6 @@ object Main {
   private def initDriverDependencies(driver: ActorRef[PinCommand],
                                      ctx: ActorContext[_]): Unit = {
     ctx.spawn(PedalController(driver), "controller")
-    if (OstrostrojConfig.develeoperMode) {
-      ctx.spawn(Keyboard(driver), "keyboard")
-    }
   }
 
   private def initDevicePart(ctx: ActorContext[_]): Unit = {

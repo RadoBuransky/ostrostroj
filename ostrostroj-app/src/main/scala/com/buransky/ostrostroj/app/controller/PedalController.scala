@@ -2,6 +2,7 @@ package com.buransky.ostrostroj.app.controller
 
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
+import com.buransky.ostrostroj.app.common.OstrostrojConfig
 import com.buransky.ostrostroj.app.device.{DigitalPinState, Gpio, PinCommand}
 
 /**
@@ -18,11 +19,15 @@ object PedalController {
   }
 
   class PedalControllerBehavior(driver: ActorRef[PinCommand],
-                                context: ActorContext[ControllerCommand]) extends AbstractBehavior[ControllerCommand](context) {
-    private val ledMatrix = context.spawn(LedMatrix(driver, Max7219.Config(Gpio.Pin3, Gpio.Pin4, Gpio.Pin5)), "ledMatrix")
-    private val led1 = context.spawn(RgbLed(driver, RgbLed.Config(Gpio.Pin0, Gpio.Pin1, Gpio.Pin2)), "led1")
+                                ctx: ActorContext[ControllerCommand]) extends AbstractBehavior[ControllerCommand](ctx) {
+    private val ledMatrix = ctx.spawn(LedMatrix(driver,
+      Max7219.Config(dinPin = Gpio.Pin5, csPin = Gpio.Pin4, clkPin = Gpio.Pin3)), "ledMatrix")
+    private val led1 = ctx.spawn(RgbLed(driver, RgbLed.Config(Gpio.Pin0, Gpio.Pin1, Gpio.Pin2)), "led1")
 
-    ledMatrix ! LedMatrix.ClearScreen
+    if (OstrostrojConfig.develeoperMode) {
+      ctx.spawn(Keyboard(driver, ledMatrix), "keyboard")
+    }
+
     ledMatrix ! LedMatrix.Test
 
     override def onMessage(message: ControllerCommand): Behavior[ControllerCommand] = {

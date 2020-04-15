@@ -23,8 +23,10 @@
         <appender-ref ref="FILE" />
     </appender>
 
-    <root level="DEBUG">
+    <logger name="com.buransky.ostrostroj" level="DEBUG" />
+
+    <root level="INFO">
         <appender-ref ref="STDOUT"/>
-        <appender-ref ref="FILE" />
+<!--        <appender-ref ref="FILE" />-->
     </root>
 </configuration>
