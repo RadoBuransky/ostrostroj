@@ -31,9 +31,10 @@ object Keyboard {
               case "b" => driver ! PinCommand(Pin0, false)
               case _ =>
                 try {
-                  val pair = line.split('-').map(s => Integer.parseInt(s).toByte)
-//                  ledMatrix ! Max7219Word(Word(pair(0), pair(1), pair(2)))
-                  driver ! Word(pair(0), pair(1), pair(2))
+                  val values = line.split('-').map(s => Integer.parseInt(s).toByte)
+                  if (values.length == 3) {
+                    driver ! Word(values(0), values(1), values(2))
+                  }
                 }
                 catch {
                   case ex: Exception => logger.warn("", ex)

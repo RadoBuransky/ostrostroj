@@ -65,7 +65,19 @@ object Main {
 
   private def initDriverDependencies(driver: ActorRef[DriverCommand],
                                      ctx: ActorContext[_]): Unit = {
-    ctx.spawn(PedalController(driver), "controller")
+    if (shouldSpawnController(ctx)) {
+        ctx.spawn(PedalController(driver), "controller")
+    }
+  }
+
+  private def shouldSpawnController(ctx: ActorContext[_]): Boolean = {
+    if (OstrostrojConfig.develeoperMode) {
+      val cluster = Cluster(ctx.system)
+      cluster.selfMember.hasRole(DEV_DESKTOP)
+    }
+    else {
+      true
+    }
   }
 
   private def initDevicePart(ctx: ActorContext[_]): Unit = {
