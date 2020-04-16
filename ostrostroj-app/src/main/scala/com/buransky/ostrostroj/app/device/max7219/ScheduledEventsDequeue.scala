@@ -12,8 +12,8 @@ class ScheduledEventsDequeue(eventsQueue: EventsQueue,
   import ScheduledEventsDequeue._
 
   private val scheduler = Executors.newScheduledThreadPool(1)
-  private val schedulerHandle = scheduler.scheduleAtFixedRate(this, SCHEDULER_PERIOD_MS,
-    SCHEDULER_PERIOD_MS, TimeUnit.MILLISECONDS)
+  private val schedulerHandle = scheduler.scheduleAtFixedRate(this, SCHEDULER_PERIOD_NS,
+    SCHEDULER_PERIOD_NS, TimeUnit.NANOSECONDS)
   logger.debug(s"Scheduler initialized. [$schedulerHandle]")
 
   override def close(): Unit = {
@@ -31,5 +31,5 @@ class ScheduledEventsDequeue(eventsQueue: EventsQueue,
 
 private object ScheduledEventsDequeue {
   private val logger = LoggerFactory.getLogger(classOf[ScheduledEventsDequeue])
-  private val SCHEDULER_PERIOD_MS = 100
+  private val SCHEDULER_PERIOD_NS = 100
 }
