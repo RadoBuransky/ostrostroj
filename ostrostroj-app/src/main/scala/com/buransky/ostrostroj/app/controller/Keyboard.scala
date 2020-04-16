@@ -32,12 +32,17 @@ object Keyboard {
               case "b" => driver ! PinCommand(Pin0, false)
               case _ =>
                 try {
-                  val values = line.split('-').map(s => Integer.parseInt(s).toByte)
+                  val values = line.split('.').map(s => Integer.parseInt(s).toByte)
                   if (values.length == 3) {
-                    val w = Word(values(0), values(1), values(2))
-//                    driver ! w
-                    ledMatrix ! Max7219Word(w)
-                    logger.debug(s"Word sent to driver [${values(0)}, ${values(1)}, ${values(2)}].")
+                    if (values(0) > 0) {
+                      val w = Word(values(0), values(1), values(2))
+                      ledMatrix ! Max7219Word(w)
+                      logger.debug(s"Word sent to LED matrix [${values(0)}, ${values(1)}, ${values(2)}].")
+                    } else {
+                      val w = Word((-1*values(0)).toByte, values(1), values(2))
+                      driver ! w
+                      logger.debug(s"Word sent to driver [${values(0)}, ${values(1)}, ${values(2)}].")
+                    }
                   }
                 }
                 catch {

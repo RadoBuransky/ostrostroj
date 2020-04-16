@@ -32,9 +32,7 @@ object LedMatrix {
         // Set min intensity
         sendToAllChips(oldMax7219, 0x0A, 0x00)
 
-        // Show some data
-//        drawSlash(driver, 0)
-
+        // Old way
         oldMax7219 ! OldWord(0x01, 0x01, 0)
         oldMax7219 ! OldWord(0x02, 0x02, 0)
         oldMax7219 ! OldWord(0x03, 0x04, 0)
@@ -43,6 +41,9 @@ object LedMatrix {
         oldMax7219 ! OldWord(0x06, 0x20, 0)
         oldMax7219 ! OldWord(0x07, 0x40, 0)
         oldMax7219 ! OldWord(0x08, 0x80.toByte, 0)
+
+        // Show some data
+//        drawSlash(driver, 0)
 
 //        max7219 ! Max7219.Word(0x04, 0xFF.toByte, 1)
 //

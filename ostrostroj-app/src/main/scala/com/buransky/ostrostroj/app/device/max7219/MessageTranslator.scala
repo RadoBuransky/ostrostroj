@@ -4,6 +4,9 @@ package com.buransky.ostrostroj.app.device.max7219
  * Translates single MAX7219 input message to sequence of events.
  */
 object MessageTranslator {
+  /**
+   * Most-significant bit (MSB) is first in the list (head).
+   */
   def apply(msg: Message): List[Events] =
     introEvents() ::: dontCareEvents() ::: addressEvents(msg.address) ::: dataEvents(msg.data) ::: chipEvents(msg.chip) ::: outroEvents()
 
@@ -34,7 +37,7 @@ object MessageTranslator {
 
   private def byteEvents(value: Byte, bits: Int): List[Events] = {
     val result = for {
-      i <- 0 until bits
+      i <- (bits - 1) to 0 by -1
     } yield bitEvents(getBit(value, i))
     result.flatten.toList
   }

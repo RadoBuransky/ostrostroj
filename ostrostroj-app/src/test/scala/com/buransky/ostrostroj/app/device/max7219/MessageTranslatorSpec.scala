@@ -4,13 +4,15 @@ import org.junit.runner.RunWith
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatestplus.junit.JUnitRunner
 
+import scala.annotation.tailrec
+
 @RunWith(classOf[JUnitRunner])
 class MessageTranslatorSpec extends AnyFlatSpec {
   behavior of "apply"
 
-  it should "translate shutdown message" in {
+  it should "translate simple LED command" in {
     // Prepare
-    val msg = Message(Digit3, Data(0xFF.toByte), Chip3)
+    val msg = Message(Digit0, Data(0x01), Chip0)
 
     // Execute
     val result = MessageTranslator(msg)
@@ -19,7 +21,67 @@ class MessageTranslatorSpec extends AnyFlatSpec {
     println(printTranslation(msg, result))
 
     // Assert
-    assert(result.length == 196)
+    val dataBits = extractAllDataBits(result)
+    assert(dataBits == Integer.parseInt("000000100000001", 2), "Extracted bits = " + Integer.toBinaryString(dataBits))
+    assertTotalDataBits(result)
+  }
+
+  private def assertDontCareBits(events: Seq[Events]): Unit = {
+  }
+
+  private def assertOneFallingLoadEdge(events: Seq[Events]): Unit = {
+  }
+
+  private def assertOneRisingLoadEdge(events: Seq[Events]): Unit = {
+  }
+
+  private def assertLoadEdgesOrder(events: Seq[Events]): Unit = {
+  }
+
+  /**
+   * Assert that total number of rising CLK edges between falling and rising LOAD edges is 16.
+   */
+  private def assertTotalDataBits(events: Seq[Events]): Unit = {
+    var loadLow = false
+    var count = 0
+    events.foreach { e =>
+      if (loadLow) {
+        if (e.load == RaisingEdge) {
+          loadLow = false
+        } else {
+          if (e.clk == RaisingEdge) {
+            count += 1
+          }
+        }
+      } else {
+        if (e.load == FallingEdge) {
+          loadLow = true
+        }
+      }
+    }
+
+    assert(count == 16)
+  }
+
+  private def getBits(num: Int, from: Int, to: Int): Int = (num << (31 - to)) >>> (from + (31 - to))
+  private def getBit(num: Int, i: Int): Int = if ((num & (1 << i)) != 0) 1 else 0
+
+  private def extractAllDataBits(events: List[Events]): Int = {
+    @tailrec
+    def rec(events: List[Events], lastDin: Option[Int], acc: Int): Int = {
+      events match {
+        case h :: t if h.clk == RaisingEdge =>
+          lastDin match {
+            case Some(value) => rec(t, lastDin, (acc << 1) | value)
+            case None => fail("No previous DIN!")
+          }
+        case h :: t if h.din == High => rec(t, Some(1), acc)
+        case h :: t if h.din == Low => rec(t, Some(0), acc)
+        case _ :: t => rec(t, lastDin, acc)
+        case Nil => acc
+      }
+    }
+    rec(events, None, 0)
   }
 
   private def printTranslation(msg: Message, events: List[Events]): String = {
