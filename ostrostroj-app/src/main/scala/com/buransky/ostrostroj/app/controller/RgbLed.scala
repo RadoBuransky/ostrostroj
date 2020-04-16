@@ -3,8 +3,7 @@ package com.buransky.ostrostroj.app.controller
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
 import com.buransky.ostrostroj.app.device
-import com.buransky.ostrostroj.app.device.Gpio.GpioPin
-import com.buransky.ostrostroj.app.device.PinCommand
+import com.buransky.ostrostroj.app.device.{GpioPin, PinCommand}
 
 object RgbLed {
   final case class Config(rPin: GpioPin, gPin: GpioPin, bPin: GpioPin)

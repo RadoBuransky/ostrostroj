@@ -5,15 +5,14 @@ import akka.actor.testkit.typed.scaladsl.{BehaviorTestKit, TestProbe}
 import akka.actor.typed.Behavior
 import com.buransky.ostrostroj.app.controller.Model.{LedBtn1, LedColor}
 import com.buransky.ostrostroj.app.controller.PedalController.{ControllerCommand, LedControllerCommand}
-import com.buransky.ostrostroj.app.device.Gpio.{Pin0, Pin1, Pin2}
-import com.buransky.ostrostroj.app.device.{OdroidC2Driver, PinCommand}
+import com.buransky.ostrostroj.app.device.{DriverCommand, OdroidC2Driver, Pin0, Pin1, Pin2, PinCommand}
 import com.buransky.ostrostroj.app.sysTest.BaseSystemTest
 
 class RealPedalControllerSystemTest extends PedalControllerSystemTestBase(false) {
   behavior of "An real Ostrostroj controller (not emulated)"
 
   it should "be able to start" in {
-    val driverProbe = testKit.createTestProbe[PinCommand]()
+    val driverProbe = testKit.createTestProbe[DriverCommand]()
     val behaviorTestKit = BehaviorTestKit(PedalController(driverProbe.ref))
     behaviorTestKit.expectEffect(Spawned(OdroidC2Driver(), "driver"))
   }
@@ -51,7 +50,7 @@ class RealPedalControllerSystemTest extends PedalControllerSystemTestBase(false)
    }
 
    protected def createBehavior(): Behavior[ControllerCommand] = {
-     val driverProbe = testKit.createTestProbe[PinCommand]()
+     val driverProbe = testKit.createTestProbe[DriverCommand]()
      PedalController(driverProbe.ref)
    }
  }

@@ -2,9 +2,7 @@ package com.buransky.ostrostroj.app.controller
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
-import com.buransky.ostrostroj.app.controller.LedMatrix.Max7219Word
-import com.buransky.ostrostroj.app.device.Gpio.{Pin0, Pin1, Pin2}
-import com.buransky.ostrostroj.app.device.PinCommand
+import com.buransky.ostrostroj.app.device._
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.Future
@@ -15,7 +13,7 @@ object Keyboard {
 
   final case class ListenForKey()
 
-  def apply(driver: ActorRef[PinCommand],
+  def apply(driver: ActorRef[DriverCommand],
             ledMatrix: ActorRef[LedMatrix.LedMatrixCommand]): Behavior[ListenForKey] = Behaviors.setup { ctx =>
     ctx.self ! ListenForKey()
     Behaviors.receiveMessage {
@@ -34,7 +32,8 @@ object Keyboard {
               case _ =>
                 try {
                   val pair = line.split('-').map(s => Integer.parseInt(s).toByte)
-                  ledMatrix ! Max7219Word(Max7219.Word(pair(0), pair(1), pair(2)))
+//                  ledMatrix ! Max7219Word(Word(pair(0), pair(1), pair(2)))
+                  driver ! Word(pair(0), pair(1), pair(2))
                 }
                 catch {
                   case ex: Exception => logger.warn("", ex)

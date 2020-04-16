@@ -17,6 +17,10 @@ object MessageTranslator {
 
   private def addressEvents(address: RegisterAddress): List[Events] = byteEvents(address.value, 4)
   private def dataEvents(data: RegisterData): List[Events] = byteEvents(data.value, 8)
+
+  /**
+   * Nah, don't you think we should be able to do better here?
+   */
   private def chipEvents(chip: Chip): List[Events] = {
     val result = for {
       i <- 1 to chip.index

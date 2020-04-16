@@ -2,8 +2,7 @@ package com.buransky.ostrostroj.app.controller
 
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors, TimerScheduler}
 import akka.actor.typed.{ActorRef, Behavior}
-import com.buransky.ostrostroj.app.device.Gpio.GpioPin
-import com.buransky.ostrostroj.app.device.PinCommand
+import com.buransky.ostrostroj.app.device.{GpioPin, PinCommand}
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
@@ -17,12 +16,6 @@ object Max7219 {
   private val logger = LoggerFactory.getLogger(Max7219.getClass)
   final case class Config(dinPin: GpioPin, csPin: GpioPin, clkPin: GpioPin)
   sealed trait Command
-  /**
-   * See Table 1. Serial-Data Format (16 Bits) in MAX7219 specification document.
-   * @param address 4-bit address (use least-significant bits)
-   * @param data 8-bit data
-   * @param chipIndex Index of MAX7219 in case of cascaded design (0-based).
-   */
   case class Word(address: Byte, data: Byte, chipIndex: Int) extends Command
   private case object ClkTimeout extends Command
 

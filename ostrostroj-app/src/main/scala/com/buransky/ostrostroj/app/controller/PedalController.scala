@@ -3,7 +3,7 @@ package com.buransky.ostrostroj.app.controller
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
 import com.buransky.ostrostroj.app.common.OstrostrojConfig
-import com.buransky.ostrostroj.app.device.{Gpio, PinCommand}
+import com.buransky.ostrostroj.app.device._
 
 /**
  * Logical API for physical floor pedal controller (buttons, LEDs, ...).
@@ -14,15 +14,15 @@ object PedalController {
 
   sealed trait ControllerEvent
 
-  def apply(driver: ActorRef[PinCommand]): Behavior[ControllerCommand] = Behaviors.setup { ctx =>
+  def apply(driver: ActorRef[DriverCommand]): Behavior[ControllerCommand] = Behaviors.setup { ctx =>
     new PedalControllerBehavior(driver, ctx)
   }
 
-  class PedalControllerBehavior(driver: ActorRef[PinCommand],
+  class PedalControllerBehavior(driver: ActorRef[DriverCommand],
                                 ctx: ActorContext[ControllerCommand]) extends AbstractBehavior[ControllerCommand](ctx) {
     private val ledMatrix = ctx.spawn(LedMatrix(driver,
-      Max7219.Config(dinPin = Gpio.Pin5, csPin = Gpio.Pin4, clkPin = Gpio.Pin3)), "ledMatrix")
-    private val led1 = ctx.spawn(RgbLed(driver, RgbLed.Config(Gpio.Pin0, Gpio.Pin1, Gpio.Pin2)), "led1")
+      Max7219.Config(dinPin = Pin5, csPin = Pin4, clkPin = Pin3)), "ledMatrix")
+    private val led1 = ctx.spawn(RgbLed(driver, RgbLed.Config(Pin0, Pin1, Pin2)), "led1")
 
     if (OstrostrojConfig.develeoperMode) {
       ctx.spawn(Keyboard(driver, ledMatrix), "keyboard")

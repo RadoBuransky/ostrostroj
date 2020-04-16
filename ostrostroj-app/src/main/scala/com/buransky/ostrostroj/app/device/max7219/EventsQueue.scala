@@ -5,7 +5,7 @@ import org.slf4j.LoggerFactory
 import scala.collection.mutable
 
 // Table 1. Serial-Data Format (16 Bits)
-sealed abstract class RegisterAddress(val value: Byte)
+sealed class RegisterAddress(val value: Byte)
 sealed abstract class RegisterData(val value: Byte)
 
 // Table 2. Register Address Map
@@ -47,7 +47,7 @@ case object TestNormalOperation extends RegisterData(0x00)
 case object DisplayTestMode extends RegisterData(0x01)
 
 // Cascaded MAX7219 chips from left (0) to right (3)
-sealed abstract class Chip(val index: Int)
+sealed class Chip(val index: Int)
 case object Chip0 extends Chip(0)
 case object Chip1 extends Chip(1)
 case object Chip2 extends Chip(2)
@@ -58,11 +58,9 @@ case object Chip3 extends Chip(3)
  */
 final case class Message(address: RegisterAddress, data: RegisterData, chip: Chip)
 
-/**
- * Configuration of Max7219Driver.
- *
- */
-final case class Config(loadPin: (Boolean) => Any, clkPin: (Boolean) => Any, dinPin: (Boolean) => Any)
+final case class DequeueExecutors(loadPin: (Boolean) => Any,
+                                  clkPin: (Boolean) => Any,
+                                  dinPin: (Boolean) => Any)
 
 // Internal model
 private[max7219] sealed trait Event
@@ -78,11 +76,11 @@ private[max7219] case object FallingEdge extends StateChange
 
 private[max7219] final case class Events(load: Event, clk: Event, din: Event)
 
-class Max7219Driver(config: Config) {
-  import Max7219Driver._
+class EventsQueue {
+  import EventsQueue._
   private val eventStream: mutable.Queue[Events] = new mutable.Queue[Events]()
 
-  def send(msg: Message): Unit = {
+  def queue(msg: Message): Unit = {
     eventStream.synchronized {
       val events = MessageTranslator(msg)
       if (logger.isDebugEnabled) {
@@ -92,13 +90,13 @@ class Max7219Driver(config: Config) {
     }
   }
 
-  def tick(): Unit = {
+  def dequeue(executors: DequeueExecutors): Unit = {
     eventStream.synchronized {
       if (eventStream.nonEmpty) {
         val events = eventStream.dequeue();
-        executeEvent(events.load, config.loadPin)
-        executeEvent(events.clk, config.clkPin)
-        executeEvent(events.din, config.dinPin)
+        executeEvent(events.load, executors.loadPin)
+        executeEvent(events.clk, executors.clkPin)
+        executeEvent(events.din, executors.dinPin)
       }
     }
   }
@@ -114,6 +112,6 @@ class Max7219Driver(config: Config) {
   }
 }
 
-object Max7219Driver {
-  private val logger = LoggerFactory.getLogger(classOf[Max7219Driver])
+object EventsQueue {
+  private val logger = LoggerFactory.getLogger(classOf[EventsQueue])
 }

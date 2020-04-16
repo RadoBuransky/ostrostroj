@@ -7,12 +7,10 @@ import akka.cluster.typed.Cluster
 import com.buransky.ostrostroj.app.audio.AudioPlayer
 import com.buransky.ostrostroj.app.common.OstrostrojConfig._
 import com.buransky.ostrostroj.app.common.{OstrostrojConfig, OstrostrojException}
-import com.buransky.ostrostroj.app.controller.{Keyboard, PedalController}
-import com.buransky.ostrostroj.app.device.{OdroidC2Driver, PinCommand}
+import com.buransky.ostrostroj.app.controller.PedalController
+import com.buransky.ostrostroj.app.device.{DriverCommand, OdroidC2Driver}
 import com.buransky.ostrostroj.app.show.PerformanceManager
 import org.slf4j.LoggerFactory
-
-import scala.io.StdIn
 
 /**
  * Ostrostroj App entry point.
@@ -65,7 +63,7 @@ object Main {
     }
   }
 
-  private def initDriverDependencies(driver: ActorRef[PinCommand],
+  private def initDriverDependencies(driver: ActorRef[DriverCommand],
                                      ctx: ActorContext[_]): Unit = {
     ctx.spawn(PedalController(driver), "controller")
   }
