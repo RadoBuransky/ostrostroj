@@ -2,6 +2,7 @@ package com.buransky.ostrostroj.app.controller
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
+import com.buransky.ostrostroj.app.controller.LedMatrix.Max7219Word
 import com.buransky.ostrostroj.app.device._
 import org.slf4j.LoggerFactory
 
@@ -33,7 +34,9 @@ object Keyboard {
                 try {
                   val values = line.split('-').map(s => Integer.parseInt(s).toByte)
                   if (values.length == 3) {
-                    driver ! Word(values(0), values(1), values(2))
+                    val w = Word(values(0), values(1), values(2))
+//                    driver ! w
+                    ledMatrix ! Max7219Word(w)
                     logger.debug(s"Word sent to driver [${values(0)}, ${values(1)}, ${values(2)}].")
                   }
                 }

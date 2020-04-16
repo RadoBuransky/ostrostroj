@@ -21,7 +21,7 @@ object PedalController {
   class PedalControllerBehavior(driver: ActorRef[DriverCommand],
                                 ctx: ActorContext[ControllerCommand]) extends AbstractBehavior[ControllerCommand](ctx) {
     private val ledMatrix = ctx.spawn(LedMatrix(driver,
-      Max7219.Config(dinPin = Pin5, csPin = Pin4, clkPin = Pin3)), "ledMatrix")
+      OldMax7219.Config(dinPin = Pin5, csPin = Pin4, clkPin = Pin3)), "ledMatrix")
     private val led1 = ctx.spawn(RgbLed(driver, RgbLed.Config(Pin0, Pin1, Pin2)), "led1")
 
     if (OstrostrojConfig.develeoperMode) {

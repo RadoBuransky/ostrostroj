@@ -12,18 +12,18 @@ import scala.concurrent.duration._
  * MAX7219 chip driver. From the official specification CLK max 10MHz means at least 100 nanoseconds period length, also
  * CLK low and high width must be at least 50 nanoseconds.
  */
-object Max7219 {
-  private val logger = LoggerFactory.getLogger(Max7219.getClass)
+object OldMax7219 {
+  private val logger = LoggerFactory.getLogger(OldMax7219.getClass)
   final case class Config(dinPin: GpioPin, csPin: GpioPin, clkPin: GpioPin)
   sealed trait Command
-  case class Word(address: Byte, data: Byte, chipIndex: Int) extends Command
+  case class OldWord(address: Byte, data: Byte, chipIndex: Int) extends Command
   private case object ClkTimeout extends Command
 
 //  private val CLK_PERIOD = 100.nanoseconds
   private val CLK_PERIOD = 1.millisecond
   private case object ClkTimerKey
 
-  def apply(driver: ActorRef[PinCommand], config: Config): Behavior[Max7219.Command] = Behaviors.setup { ctx =>
+  def apply(driver: ActorRef[PinCommand], config: Config): Behavior[OldMax7219.Command] = Behaviors.setup { ctx =>
     Behaviors.withTimers { timers =>
       new Max7219Behavior(driver, config, timers, ctx)
     }
@@ -31,15 +31,15 @@ object Max7219 {
 
   class Max7219Behavior(driver: ActorRef[PinCommand],
                         config: Config,
-                        timers: TimerScheduler[Max7219.Command],
-                        ctx: ActorContext[Max7219.Command]) extends AbstractBehavior[Max7219.Command](ctx) {
-    private val words = new mutable.Queue[Word]()
+                        timers: TimerScheduler[OldMax7219.Command],
+                        ctx: ActorContext[OldMax7219.Command]) extends AbstractBehavior[OldMax7219.Command](ctx) {
+    private val words = new mutable.Queue[OldWord]()
     private val bits = new mutable.Queue[Boolean]()
     private var clkState: Boolean = false
 
-    override def onMessage(msg: Max7219.Command): Behavior[Max7219.Command] = {
+    override def onMessage(msg: OldMax7219.Command): Behavior[OldMax7219.Command] = {
       msg match {
-        case word: Word =>
+        case word: OldWord =>
           val wasEmpty = words.isEmpty
           words.enqueue(word)
           if (wasEmpty) {
@@ -100,7 +100,7 @@ object Max7219 {
       }
     }
 
-    private def enqueueWordBits(word: Word): Unit = {
+    private def enqueueWordBits(word: OldWord): Unit = {
       logger.debug(s"Enqueuing word... [${word.address}, ${word.data}]")
 
       // D15 - D12 are ignored
