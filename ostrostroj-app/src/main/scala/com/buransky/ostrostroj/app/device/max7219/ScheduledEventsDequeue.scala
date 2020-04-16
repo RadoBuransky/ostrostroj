@@ -24,7 +24,7 @@ class ScheduledEventsDequeue(executors: DequeueExecutors) extends AutoCloseable 
   }
 
   override def run(): Unit = {
-    logger.debug("Scheduled run.")
+    logger.trace("Scheduled run.")
     eventsQueue.dequeue(executors)
   }
 }

@@ -83,16 +83,17 @@ class EventsQueue {
   def queue(msg: Message): Unit = {
     eventStream.synchronized {
       val events = MessageTranslator(msg)
-      if (logger.isDebugEnabled) {
-        logger.debug(s"Message [$msg] translated to ${events.length} events.")
-      }
       eventStream.enqueueAll(events)
+      if (logger.isDebugEnabled) {
+        logger.debug(s"Message [$msg] translated to ${events.length} events. Queue size = ${eventStream.size}.")
+      }
     }
   }
 
   def dequeue(executors: DequeueExecutors): Unit = {
     eventStream.synchronized {
-      if (eventStream.nonEmpty) {
+      logger.debug(s"Dequeueing. Queue size = ${eventStream.size}.")
+      if (!eventStream.isEmpty) {
         val events = eventStream.dequeue();
         logger.debug(s"Events dequeued. [$events]")
         executeEvent(events.load, executors.loadPin)
