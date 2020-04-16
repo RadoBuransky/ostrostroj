@@ -92,7 +92,7 @@ class EventsQueue {
 
   def dequeue(executors: DequeueExecutors): Unit = {
     eventStream.synchronized {
-      logger.debug(s"Dequeueing. Queue size = ${eventStream.size}.")
+      logger.trace(s"Dequeueing. Queue size = ${eventStream.size}.")
       if (!eventStream.isEmpty) {
         val events = eventStream.dequeue();
         logger.debug(s"Events dequeued. [$events]")

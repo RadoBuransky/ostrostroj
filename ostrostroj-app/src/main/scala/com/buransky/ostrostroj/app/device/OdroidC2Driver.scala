@@ -72,7 +72,7 @@ object OdroidC2Driver {
       }.toMap
     }
 
-    private val max7219Driver = new EventsQueue()
+    private val eventsQueue = new EventsQueue()
     private val scheduledEventsDequeue = {
       //TODO: Hardcoded?!
       val executors = DequeueExecutors(
@@ -80,7 +80,7 @@ object OdroidC2Driver {
         clkPin = stateExecutor(digitalOutputPins(OdroidC1Pin.GPIO_03.getAddress)),
         dinPin = stateExecutor(digitalOutputPins(OdroidC1Pin.GPIO_05.getAddress))
       )
-      new ScheduledEventsDequeue(executors)
+      new ScheduledEventsDequeue(eventsQueue, executors)
     }
 
     override def onMessage(msg: DriverCommand): Behavior[DriverCommand] = msg match {
@@ -91,7 +91,7 @@ object OdroidC2Driver {
       case word: Word =>
         logger.debug(s"Word received. [${word.address}, ${word.data}, ${word.chipIndex}]")
         val msg = Message(new RegisterAddress(word.address), Data(word.data), new Chip(word.chipIndex))
-        max7219Driver.queue(msg)
+        eventsQueue.queue(msg)
         Behaviors.same
     }
 
