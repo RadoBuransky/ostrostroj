@@ -31,5 +31,5 @@ class ScheduledEventsDequeue(eventsQueue: EventsQueue,
 
 private object ScheduledEventsDequeue {
   private val logger = LoggerFactory.getLogger(classOf[ScheduledEventsDequeue])
-  private val SCHEDULER_PERIOD_NS = 100
+  private val SCHEDULER_PERIOD_NS = 500
 }
