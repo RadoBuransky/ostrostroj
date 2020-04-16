@@ -34,6 +34,7 @@ object Keyboard {
                   val values = line.split('-').map(s => Integer.parseInt(s).toByte)
                   if (values.length == 3) {
                     driver ! Word(values(0), values(1), values(2))
+                    logger.debug(s"Word sent to driver [${values(0)}, ${values(1)}, ${values(2)}].")
                   }
                 }
                 catch {

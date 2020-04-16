@@ -12,8 +12,8 @@ class ScheduledEventsDequeue(executors: DequeueExecutors) extends AutoCloseable 
 
   private val eventsQueue = new EventsQueue()
   private val scheduler = Executors.newScheduledThreadPool(1)
-  private val schedulerHandle = scheduler.scheduleAtFixedRate(() => command(), SCHEDULER_PERIOD_NS,
-    SCHEDULER_PERIOD_NS, TimeUnit.NANOSECONDS)
+  private val schedulerHandle = scheduler.scheduleAtFixedRate(() => command(), SCHEDULER_PERIOD_MS,
+    SCHEDULER_PERIOD_MS, TimeUnit.MILLISECONDS)
 
   override def close(): Unit = {
     logger.debug("Shutting down ScheduledEventsDequeue...")
@@ -29,9 +29,5 @@ class ScheduledEventsDequeue(executors: DequeueExecutors) extends AutoCloseable 
 
 private object ScheduledEventsDequeue {
   private val logger = LoggerFactory.getLogger(classOf[ScheduledEventsDequeue])
-
-  /**
-   * I'm assuming we'll never 100 ns
-   */
-  private val SCHEDULER_PERIOD_NS = 100
+  private val SCHEDULER_PERIOD_MS = 100
 }

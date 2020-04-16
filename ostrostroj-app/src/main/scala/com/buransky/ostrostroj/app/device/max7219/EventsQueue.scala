@@ -94,6 +94,7 @@ class EventsQueue {
     eventStream.synchronized {
       if (eventStream.nonEmpty) {
         val events = eventStream.dequeue();
+        logger.debug(s"Events dequeued. [$events]")
         executeEvent(events.load, executors.loadPin)
         executeEvent(events.clk, executors.clkPin)
         executeEvent(events.din, executors.dinPin)

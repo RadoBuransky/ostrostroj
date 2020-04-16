@@ -89,6 +89,7 @@ object OdroidC2Driver {
         stateExecutor(pin)(pinCommand.state)
         Behaviors.same
       case word: Word =>
+        logger.debug(s"Word received. [${word.address}, ${word.data}, ${word.chipIndex}]")
         val msg = Message(new RegisterAddress(word.address), Data(word.data), new Chip(word.chipIndex))
         max7219Driver.queue(msg)
         Behaviors.same
