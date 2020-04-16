@@ -7,13 +7,14 @@ import org.slf4j.LoggerFactory
 /**
  * Implementation using scheduled thread pool for dequeue timing.
  */
-class ScheduledEventsDequeue(executors: DequeueExecutors) extends AutoCloseable {
+class ScheduledEventsDequeue(executors: DequeueExecutors) extends AutoCloseable with Runnable {
   import ScheduledEventsDequeue._
 
   private val eventsQueue = new EventsQueue()
   private val scheduler = Executors.newScheduledThreadPool(1)
-  private val schedulerHandle = scheduler.scheduleAtFixedRate(() => command(), SCHEDULER_PERIOD_MS,
+  private val schedulerHandle = scheduler.scheduleAtFixedRate(this, SCHEDULER_PERIOD_MS,
     SCHEDULER_PERIOD_MS, TimeUnit.MILLISECONDS)
+  logger.debug(s"Scheduler initialized. [$schedulerHandle]")
 
   override def close(): Unit = {
     logger.debug("Shutting down ScheduledEventsDequeue...")
@@ -22,7 +23,8 @@ class ScheduledEventsDequeue(executors: DequeueExecutors) extends AutoCloseable 
     logger.info("ScheduledEventsDequeue shut down.")
   }
 
-  private def command(): Unit = {
+  override def run(): Unit = {
+    logger.debug("Scheduled run.")
     eventsQueue.dequeue(executors)
   }
 }
