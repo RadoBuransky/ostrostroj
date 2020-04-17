@@ -21,9 +21,22 @@ class MessageTranslatorSpec extends AnyFlatSpec {
     println(printTranslation(msg, result))
 
     // Assert
+    assertLoad(result.map(_.load))
+    assertClk(result.map(_.clk))
+    assertDin(result.map(_.din))
+
     val dataBits = extractAllDataBits(result)
     assert(dataBits == Integer.parseInt("000000100000001", 2), "Extracted bits = " + Integer.toBinaryString(dataBits))
     assertTotalDataBits(result)
+  }
+
+  private def assertLoad(loadEvents: Seq[Event]): Unit = {
+  }
+
+  private def assertClk(clkEvents: Seq[Event]): Unit = {
+  }
+
+  private def assertDin(dinEvents: Seq[Event]): Unit = {
   }
 
   private def assertDontCareBits(events: Seq[Events]): Unit = {
@@ -60,7 +73,7 @@ class MessageTranslatorSpec extends AnyFlatSpec {
       }
     }
 
-    assert(count == 16)
+    assert(count == MessageTranslator.CHIP_COUNT*16)
   }
 
   private def getBits(num: Int, from: Int, to: Int): Int = (num << (31 - to)) >>> (from + (31 - to))
