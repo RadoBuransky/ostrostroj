@@ -2,7 +2,8 @@ package com.buransky.ostrostroj.app.controller
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
-import com.buransky.ostrostroj.app.controller.LedMatrix.Max7219Word
+import com.buransky.max7219.register.{DisplayTestRegister, IntensityRegister}
+import com.buransky.ostrostroj.app.controller.PedalController.{ControllerCommand, LedMatrixDraw, LedMatrixDrawPoint, LedMatrixRegister}
 import com.buransky.ostrostroj.app.device._
 import org.slf4j.LoggerFactory
 
@@ -14,48 +15,43 @@ object Keyboard {
 
   final case class ListenForKey()
 
-  def apply(driver: ActorRef[DriverCommand],
-            ledMatrix: ActorRef[LedMatrix.LedMatrixCommand]): Behavior[ListenForKey] = Behaviors.setup { ctx =>
-    ctx.self ! ListenForKey()
-    Behaviors.receiveMessage {
-      case ListenForKey() =>
-        val futureLine = Future(Console.in.readLine())(ctx.executionContext)
-        ctx.pipeToSelf(futureLine) {
-          case Success(line) =>
-            line match {
-              case "R" => driver ! PinCommand(Pin2, true)
-              case "G" => driver ! PinCommand(Pin1, true)
-              case "B" => driver ! PinCommand(Pin0, true)
+  def apply(driver: ActorRef[DriverCommand], pedalController: ActorRef[ControllerCommand]): Behavior[ListenForKey] =
+    Behaviors.setup { ctx =>
+      ctx.self ! ListenForKey()
+      Behaviors.receiveMessage {
+        case ListenForKey() =>
+          val futureLine = Future(Console.in.readLine())(ctx.executionContext)
+          ctx.pipeToSelf(futureLine) {
+            case Success(line) =>
+              line match {
+                case "R" => driver ! PinCommand(Pin2, true)
+                case "G" => driver ! PinCommand(Pin1, true)
+                case "B" => driver ! PinCommand(Pin0, true)
 
-              case "r" => driver ! PinCommand(Pin2, false)
-              case "g" => driver ! PinCommand(Pin1, false)
-              case "b" => driver ! PinCommand(Pin0, false)
-              case _ =>
-                try {
-                  val values = line.split('.').map(s => Integer.parseInt(s).toByte)
-                  if (values.length == 3) {
-                    if (values(0) > 0) {
-                      val w = Word(values(0), values(1), values(2))
-                      ledMatrix ! Max7219Word(w)
-                      logger.debug(s"Word sent to LED matrix [${values(0)}, ${values(1)}, ${values(2)}].")
-                    } else {
-                      val w = Word((-1*values(0)).toByte, values(1), values(2))
-                      driver ! w
-                      logger.debug(s"Word sent to driver [${values(0)}, ${values(1)}, ${values(2)}].")
-                    }
+                case "r" => driver ! PinCommand(Pin2, false)
+                case "g" => driver ! PinCommand(Pin1, false)
+                case "b" => driver ! PinCommand(Pin0, false)
+                case l if l.startsWith("i") => pedalController ! LedMatrixRegister(new IntensityRegister(l.tail.toByte))
+                case "T" => pedalController ! LedMatrixRegister(DisplayTestRegister.NormalOperation)
+                case "t" => pedalController ! LedMatrixRegister(DisplayTestRegister.NormalOperation)
+                case "d" =>
+                  for (i <- 0 to 7) {
+                    pedalController ! LedMatrixDraw(List(LedMatrixDrawPoint(i, i, true)))
                   }
-                }
-                catch {
-                  case ex: Exception => logger.warn("", ex)
-                }
-            }
+                case _ =>
+                  val parts = line.split('.')
+                  val row = parts(0).toInt
+                  val column = parts(1).toInt
+                  val ledOn: Boolean = parts(2).toInt > 0
+                  pedalController ! LedMatrixDraw(List(LedMatrixDrawPoint(row, column, ledOn)))
+              }
 
-            ListenForKey()
-          case Failure(e) =>
-            logger.error(s"Key read error!", e)
-            ListenForKey()
-        }
-        Behaviors.same
+              ListenForKey()
+            case Failure(e) =>
+              logger.error(s"Key read error!", e)
+              ListenForKey()
+          }
+          Behaviors.same
+      }
     }
-  }
 }

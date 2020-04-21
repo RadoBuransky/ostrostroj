@@ -4,10 +4,11 @@ import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{Behavior, PostStop, Signal}
 import com.buransky.ostrostroj.app.common.{OstrostrojException, OstrostrojMessage}
-import com.buransky.ostrostroj.app.device.max7219._
 import com.pi4j.io.gpio._
 import com.pi4j.platform.{Platform, PlatformManager}
 import org.slf4j.LoggerFactory
+
+import scala.collection.mutable
 
 // Low-level API for physical device
 sealed trait DriverCommand extends OstrostrojMessage
@@ -22,8 +23,9 @@ case object Pin4 extends GpioPin(OdroidC1Pin.GPIO_04.getAddress)
 case object Pin5 extends GpioPin(OdroidC1Pin.GPIO_05.getAddress)
 final case class PinCommand(pin: GpioPin, state: Boolean) extends DriverCommand
 
-// Led matrix commands
-final case class Word(address: Byte, data: Byte, chipIndex: Int) extends DriverCommand
+// SPI commands
+final case class StartSpi(spiId: Int, pins: Seq[GpioPin], periodNs: Int) extends DriverCommand
+final case class EnqueueToSpi(spiId: Int, spiData: Iterable[Byte]) extends DriverCommand
 
 /**
  * Low-level driver for Odroid C2.
@@ -32,8 +34,9 @@ object OdroidC2Driver {
   // Static initialization of Pi4j
   PlatformManager.setPlatform(Platform.ODROID)
 
-  private val logger = LoggerFactory.getLogger(OdroidC2Driver.getClass)
   val odroidC2DriverKey: ServiceKey[DriverCommand] = ServiceKey[DriverCommand]("odroidC2Driver")
+  private val logger = LoggerFactory.getLogger(OdroidC2Driver.getClass)
+  private val spis = mutable.Map[Int, SpiQueue]()
 
   def apply(): Behavior[DriverCommand] = Behaviors.setup { ctx =>
     ctx.system.receptionist ! Receptionist.Register(odroidC2DriverKey, ctx.self)
@@ -72,26 +75,17 @@ object OdroidC2Driver {
       }.toMap
     }
 
-    private val eventsQueue = new EventsQueue()
-    private val scheduledEventsDequeue = {
-      //TODO: Hardcoded?!
-      val executors = DequeueExecutors(
-        loadPin = stateExecutor(digitalOutputPins(OdroidC1Pin.GPIO_04.getAddress)),
-        clkPin = stateExecutor(digitalOutputPins(OdroidC1Pin.GPIO_03.getAddress)),
-        dinPin = stateExecutor(digitalOutputPins(OdroidC1Pin.GPIO_05.getAddress))
-      )
-      new ScheduledEventsDequeue(eventsQueue, executors)
-    }
-
     override def onMessage(msg: DriverCommand): Behavior[DriverCommand] = msg match {
       case pinCommand: PinCommand =>
         val pin = digitalOutputPins(pinCommand.pin.pi4jPinAddress)
         stateExecutor(pin)(pinCommand.state)
         Behaviors.same
-      case word: Word =>
-        logger.debug(s"Word received. [${word.address}, ${word.data}, ${word.chipIndex}]")
-        val msg = Message(new RegisterAddress(word.address), Data(word.data), new Chip(word.chipIndex))
-        eventsQueue.queue(msg)
+      case StartSpi(spiId, pins, periodNs) =>
+        val spiQueue = new SpiQueue(pins.map(p => digitalOutputPins(p.pi4jPinAddress)).toVector, periodNs)
+        spis.addOne(spiId -> spiQueue)
+        Behaviors.same
+      case EnqueueToSpi(spiId, spiData) =>
+        spis(spiId).enqueue(spiData)
         Behaviors.same
     }
 
@@ -100,7 +94,6 @@ object OdroidC2Driver {
         logger.debug("Shutting down PI4J GPIO...")
         gpio.shutdown()
         logger.info("PI4J GPIO shut down.")
-        scheduledEventsDequeue.close()
         Behaviors.stopped
     }
 
