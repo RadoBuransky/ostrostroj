@@ -11,7 +11,7 @@ import scala.collection.mutable
 /**
  * Implementation using scheduled thread pool for dequeue timing.
  */
-class SpiQueue(pins: Vector[GpioPinDigitalOutput], periodNs: Int) extends AutoCloseable with Runnable {
+class SpiQueue(pins: Vector[GpioPinDigitalOutput], periodMs: Int) extends AutoCloseable with Runnable {
   import SpiQueue._
 
   checkArgument(pins.nonEmpty)
@@ -23,7 +23,7 @@ class SpiQueue(pins: Vector[GpioPinDigitalOutput], periodNs: Int) extends AutoCl
 
   private val queue = mutable.Queue[Byte]()
   private val scheduler = Executors.newScheduledThreadPool(1)
-  private val schedulerHandle = scheduler.scheduleAtFixedRate(this, periodNs, periodNs, TimeUnit.NANOSECONDS)
+  private val schedulerHandle = scheduler.scheduleAtFixedRate(this, periodMs, periodMs, TimeUnit.MILLISECONDS)
   logger.debug(s"Scheduler initialized. [$schedulerHandle]")
 
   override def close(): Unit = {
