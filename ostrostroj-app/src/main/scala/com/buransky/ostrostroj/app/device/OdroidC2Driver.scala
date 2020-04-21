@@ -25,7 +25,7 @@ final case class PinCommand(pin: GpioPin, state: Boolean) extends DriverCommand
 
 // SPI commands
 final case class StartSpi(spiId: Int, pins: Seq[GpioPin], periodNs: Int) extends DriverCommand
-final case class EnqueueToSpi(spiId: Int, spiData: Iterable[Byte]) extends DriverCommand
+final case class EnqueueToSpi(spiId: Int, spiData: Iterable[Int]) extends DriverCommand
 
 /**
  * Low-level driver for Odroid C2.
@@ -85,7 +85,7 @@ object OdroidC2Driver {
         spis.addOne(spiId -> spiQueue)
         Behaviors.same
       case EnqueueToSpi(spiId, spiData) =>
-        spis(spiId).enqueue(spiData)
+        spis(spiId).enqueue(spiData.map(_.toByte))
         Behaviors.same
     }
 

@@ -3,7 +3,7 @@ package com.buransky.ostrostroj.app.controller
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
 import com.buransky.max7219
-import com.buransky.max7219.register.{DecodeModeRegister, DisplayTestRegister, IntensityRegister, ScanLimitRegister, ShutdownRegister}
+import com.buransky.max7219.register._
 import com.buransky.max7219.{LedMatrix, Max7219}
 import com.buransky.ostrostroj.app.common.OstrostrojConfig
 import com.buransky.ostrostroj.app.device._
@@ -79,7 +79,7 @@ object PedalController {
     }
 
     private def enqueueLedMatrixResult(result: java.lang.Iterable[java.lang.Byte]): EnqueueToSpi = {
-      EnqueueToSpi(0, result.asScala.map(_.byteValue()))
+      EnqueueToSpi(0, result.asScala.map(_.intValue()))
     }
   }
 }
