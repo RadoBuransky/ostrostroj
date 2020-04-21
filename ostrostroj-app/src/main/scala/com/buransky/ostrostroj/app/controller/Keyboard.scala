@@ -32,6 +32,7 @@ object Keyboard {
                 case "r" => driver ! PinCommand(Pin2, false)
                 case "g" => driver ! PinCommand(Pin1, false)
                 case "b" => driver ! PinCommand(Pin0, false)
+
                 case l if l.startsWith("i") => pedalController ! LedMatrixRegister(new IntensityRegister(l.tail.toByte))
                 case "T" => pedalController ! LedMatrixRegister(DisplayTestRegister.DisplayTestMode)
                 case "t" => pedalController ! LedMatrixRegister(DisplayTestRegister.NormalOperation)
@@ -51,6 +52,8 @@ object Keyboard {
                       val address = parts(0).toByte
                       val data = parts(1).toByte
                       pedalController ! LedMatrixRegister(InternalRegister(address, data))
+                    } else {
+                      processLine(driver, line)
                     }
                   }
               }
@@ -63,6 +66,32 @@ object Keyboard {
           Behaviors.same
       }
     }
+
+  // NOOP - eqWwWwWwWwWwWwWwWwWwWwWwWwWwWwWwWwE
+  // Test on - eqWwWwWwWwQWwWwWwWwqWwWwWwWwWwWwWwQWwE
+  // Test off - eqWwWwWwWwQWwWwWwWwqWwWwWwWwWwWwWwWwE
+  // No decode - eqWwWwWwWwQWwqWwqWwQWwqWwWwWwWwWwWwWwWwE
+  // Scan limit - eqWwWwWwWwQWwqWwQWwQWwqWwWwWwWwWwQWwWwWwE
+  // Digit0 - eqWwWwWwWwWwWwWwQWwqWwWwWwWwWwWwWwQWwE
+  // Digit1 - eqWwWwWwWwWwWwQWwqWwqWwWwWwWwWwWwQWwqWwE
+  // Digit2 - eqWwWwWwWwWwWwQWwQWwqWwWwWwWwWwQWwqWwWwE
+  // Intensity 0 - eqWwWwWwWwQWwqWwQWwqWwWwWwWwWwWwWwWwWwE
+  // Turn on - eqWwWwWwWwQWwWwqWwWwWwWwWwWwWwWwWwQWwE
+  private def processLine(driver: ActorRef[DriverCommand], line: String): Unit = {
+    line.foreach {
+      // DIN
+      case 'Q' => driver ! PinCommand(Pin5, true)
+      case 'q' => driver ! PinCommand(Pin5, false)
+
+      // CLK
+      case 'W' => driver ! PinCommand(Pin3, true)
+      case 'w' => driver ! PinCommand(Pin3, false)
+
+      // LOAD/CS
+      case 'E' => driver ! PinCommand(Pin4, true)
+      case 'e' => driver ! PinCommand(Pin4, false)
+    }
+  }
 }
 
 private case class InternalRegister(address: Byte, data: Byte) extends Register {

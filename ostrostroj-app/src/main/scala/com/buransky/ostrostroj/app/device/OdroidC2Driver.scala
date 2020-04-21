@@ -81,7 +81,7 @@ object OdroidC2Driver {
         stateExecutor(pin)(pinCommand.state)
         Behaviors.same
       case StartSpi(spiId, pins, periodNs) =>
-        val spiQueue = new SpiQueue(pins.map(p => digitalOutputPins(p.pi4jPinAddress)).toVector, periodNs)
+        val spiQueue = new SpiQueue(context.self, pins.toVector, periodNs)
         spis.addOne(spiId -> spiQueue)
         Behaviors.same
       case EnqueueToSpi(spiId, spiData) =>
@@ -94,7 +94,7 @@ object OdroidC2Driver {
         logger.debug("Shutting down PI4J GPIO...")
         gpio.shutdown()
         logger.info("PI4J GPIO shut down.")
-        Behaviors.stopped
+        Behaviors.same
     }
 
     private def stateExecutor(pin: GpioPinDigitalOutput)(state: Boolean): Unit = {
