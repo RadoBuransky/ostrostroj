@@ -52,8 +52,8 @@ class SpiQueue(pins: Vector[GpioPinDigitalOutput], periodNs: Int) extends AutoCl
     val debugString = (0 to 2).map { bit =>
       pinStates.map { p =>
         ((p >> bit) & 1).toString
-      }.mkString
-    }.mkString(System.lineSeparator())
+      }.mkString(pins(bit).getPin.getAddress.toString + " - ", "", "")
+    }.mkString(System.lineSeparator(), System.lineSeparator(), System.lineSeparator())
     logger.debug(debugString)
 
     queue.synchronized {
@@ -62,15 +62,23 @@ class SpiQueue(pins: Vector[GpioPinDigitalOutput], periodNs: Int) extends AutoCl
   }
 
   private def executePinStates(pinStates: Byte): Unit = {
+    val sb = new mutable.StringBuilder()
+    sb.append(pinStates)
+    sb.append(" -> ")
     var shiftedPinStates: Int = pinStates
     pins.foreach { pin =>
+      sb.append(pin.getPin.getAddress);
       if ((shiftedPinStates & 1) == 0) {
         pin.low()
+        sb.append("l")
       } else {
         pin.high()
+        sb.append("h")
       }
+      sb.append(" ")
       shiftedPinStates >>>= 1
     }
+    logger.debug(sb.toString())
   }
 }
 
