@@ -17,10 +17,10 @@ class SpiQueue(pins: Vector[GpioPinDigitalOutput], periodNs: Int) extends AutoCl
   checkArgument(pins.nonEmpty)
   checkArgument(pins.length < 8)
 
+  private val queue = mutable.Queue[Byte]()
   private val scheduler = Executors.newScheduledThreadPool(1)
   private val schedulerHandle = scheduler.scheduleAtFixedRate(this, periodNs, periodNs, TimeUnit.NANOSECONDS)
   logger.debug(s"Scheduler initialized. [$schedulerHandle]")
-  private val queue = mutable.Queue[Byte]()
 
   override def close(): Unit = {
     logger.debug("Shutting down ScheduledEventsDequeue...")
@@ -30,11 +30,17 @@ class SpiQueue(pins: Vector[GpioPinDigitalOutput], periodNs: Int) extends AutoCl
   }
 
   override def run(): Unit = {
-    queue.synchronized {
-      logger.debug("Queue size = " + queue.size)
-      if (queue.nonEmpty) {
-        executePinStates(queue.dequeue())
+    try {
+      queue.synchronized {
+        if (queue.nonEmpty) {
+          executePinStates(queue.dequeue())
+        }
       }
+    }
+    catch {
+      case t: Throwable =>
+        logger.error("Scheduler crashed!", t);
+        throw t
     }
   }
 
