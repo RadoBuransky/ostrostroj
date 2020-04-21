@@ -30,8 +30,8 @@ class SpiQueue(pins: Vector[GpioPinDigitalOutput], periodNs: Int) extends AutoCl
   }
 
   override def run(): Unit = {
-    logger.trace("Scheduled run.")
     queue.synchronized {
+      logger.debug("Queue size = " + queue.size)
       if (queue.nonEmpty) {
         executePinStates(queue.dequeue())
       }
