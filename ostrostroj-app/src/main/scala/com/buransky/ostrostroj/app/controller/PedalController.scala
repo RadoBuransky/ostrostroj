@@ -1,5 +1,7 @@
 package com.buransky.ostrostroj.app.controller
 
+import java.util
+
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
 import com.buransky.max7219
@@ -69,7 +71,7 @@ object PedalController {
 
     private def createLedMatrix(): LedMatrix = {
       val result = Max7219.initLedMatrix(8, 8, 1, 1)
-      driver ! StartSpi(0, Vector(Pin5, Pin3, Pin4), 10)
+      driver ! StartSpi(0, util.Arrays.asList(Pin5, Pin3, Pin4), 10)
       driver ! enqueueLedMatrixResult(result.executeAll(ShutdownRegister.NormalOperation))
       driver ! enqueueLedMatrixResult(result.executeAll(ScanLimitRegister.Digits0to7))
       driver ! enqueueLedMatrixResult(result.executeAll(DecodeModeRegister.NoDecode))
@@ -79,7 +81,7 @@ object PedalController {
     }
 
     private def enqueueLedMatrixResult(result: java.lang.Iterable[java.lang.Byte]): EnqueueToSpi = {
-      EnqueueToSpi(0, result.asScala.map(_.intValue()))
+      EnqueueToSpi(0, result)
     }
   }
 }

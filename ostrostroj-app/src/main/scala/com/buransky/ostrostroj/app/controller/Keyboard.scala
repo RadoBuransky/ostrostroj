@@ -37,9 +37,8 @@ object Keyboard {
                 case "T" => pedalController ! LedMatrixRegister(DisplayTestRegister.DisplayTestMode)
                 case "t" => pedalController ! LedMatrixRegister(DisplayTestRegister.NormalOperation)
                 case "d" =>
-                  for (i <- 0 to 7) {
-                    pedalController ! LedMatrixDraw(List(LedMatrixDrawPoint(i, i, true)))
-                  }
+                  val toDraw = (0 to 7).map(i => LedMatrixDrawPoint(i, i, true))
+                  pedalController ! LedMatrixDraw(toDraw)
                 case _ =>
                   val parts = line.split('.')
                   if (parts.length == 3) {
