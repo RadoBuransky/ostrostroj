@@ -38,7 +38,6 @@ object Main {
     ctx.system.receptionist ! Receptionist.Subscribe(OdroidC2Driver.odroidC2DriverKey, ctx.self)
     Behaviors.receive {
       case (ctx, OdroidC2Driver.odroidC2DriverKey.Listing(listings)) =>
-        logger.debug("OdroidC2Driver discovered by receptionist.")
         listings.foreach(initDriverDependencies(_, ctx))
         Behaviors.same
       case (_, Terminated(_)) => Behaviors.stopped
@@ -65,6 +64,7 @@ object Main {
 
   private def initDriverDependencies(driver: ActorRef[DriverCommand],
                                      ctx: ActorContext[_]): Unit = {
+    logger.debug("OdroidC2Driver discovered by receptionist.")
     if (shouldSpawnController(ctx)) {
         ctx.spawn(PedalController(driver), "controller")
     }

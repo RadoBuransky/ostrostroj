@@ -41,10 +41,12 @@ class SpiQueue(pins: Vector[GpioPinDigitalOutput], periodNs: Int) extends AutoCl
   def enqueue(pinStates: Iterable[Byte]): Unit = {
     queue.synchronized {
       queue.enqueueAll(pinStates)
+      logger.debug(s"Pin states enqueued. [${pinStates.size}]");
     }
   }
 
   private def executePinStates(pinStates: Byte): Unit = {
+    logger.debug("Execute pin states = " + Integer.toBinaryString(pinStates))
     var shiftedPinStates: Int = pinStates
     for (i <- 0 to pins.length) {
       val pin = pins(i)
