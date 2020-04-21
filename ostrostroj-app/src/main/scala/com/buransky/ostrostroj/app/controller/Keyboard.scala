@@ -2,6 +2,7 @@ package com.buransky.ostrostroj.app.controller
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
+import com.buransky.max7219.Register
 import com.buransky.max7219.register.{DisplayTestRegister, IntensityRegister}
 import com.buransky.ostrostroj.app.controller.PedalController.{ControllerCommand, LedMatrixDraw, LedMatrixDrawPoint, LedMatrixRegister}
 import com.buransky.ostrostroj.app.device._
@@ -32,7 +33,7 @@ object Keyboard {
                 case "g" => driver ! PinCommand(Pin1, false)
                 case "b" => driver ! PinCommand(Pin0, false)
                 case l if l.startsWith("i") => pedalController ! LedMatrixRegister(new IntensityRegister(l.tail.toByte))
-                case "T" => pedalController ! LedMatrixRegister(DisplayTestRegister.NormalOperation)
+                case "T" => pedalController ! LedMatrixRegister(DisplayTestRegister.DisplayTestMode)
                 case "t" => pedalController ! LedMatrixRegister(DisplayTestRegister.NormalOperation)
                 case "d" =>
                   for (i <- 0 to 7) {
@@ -40,10 +41,18 @@ object Keyboard {
                   }
                 case _ =>
                   val parts = line.split('.')
-                  val row = parts(0).toInt
-                  val column = parts(1).toInt
-                  val ledOn: Boolean = parts(2).toInt > 0
-                  pedalController ! LedMatrixDraw(List(LedMatrixDrawPoint(row, column, ledOn)))
+                  if (parts.length == 3) {
+                    val row = parts(0).toInt
+                    val column = parts(1).toInt
+                    val ledOn: Boolean = parts(2).toInt > 0
+                    pedalController ! LedMatrixDraw(List(LedMatrixDrawPoint(row, column, ledOn)))
+                  } else {
+                    if (parts.length == 2) {
+                      val address = parts(0).toByte
+                      val data = parts(1).toByte
+                      pedalController ! LedMatrixRegister(InternalRegister(address, data))
+                    }
+                  }
               }
 
               ListenForKey()
@@ -54,4 +63,9 @@ object Keyboard {
           Behaviors.same
       }
     }
+}
+
+private case class InternalRegister(address: Byte, data: Byte) extends Register {
+  override def getAddress: Byte = address
+  override def getData: Byte = data
 }
