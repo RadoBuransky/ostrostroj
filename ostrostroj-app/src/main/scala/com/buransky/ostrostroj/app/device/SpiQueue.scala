@@ -54,7 +54,7 @@ class SpiQueue(pins: Vector[GpioPinDigitalOutput], periodNs: Int) extends AutoCl
   private def executePinStates(pinStates: Byte): Unit = {
     logger.debug("Execute pin states = " + Integer.toBinaryString(pinStates))
     var shiftedPinStates: Int = pinStates
-    for (i <- 0 to pins.length) {
+    for (i <- pins.indices) {
       val pin = pins(i)
       if ((shiftedPinStates & 1) == 0) {
         pin.low()
