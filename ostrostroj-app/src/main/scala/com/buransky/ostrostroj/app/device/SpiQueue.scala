@@ -17,6 +17,10 @@ class SpiQueue(pins: Vector[GpioPinDigitalOutput], periodNs: Int) extends AutoCl
   checkArgument(pins.nonEmpty)
   checkArgument(pins.length < 8)
 
+  pins.zipWithIndex.foreach { case (p, i) =>
+    logger.debug(s"Pin $i is ${p.getPin.getAddress}.")
+  }
+
   private val queue = mutable.Queue[Byte]()
   private val scheduler = Executors.newScheduledThreadPool(1)
   private val schedulerHandle = scheduler.scheduleAtFixedRate(this, periodNs, periodNs, TimeUnit.NANOSECONDS)
@@ -54,12 +58,12 @@ class SpiQueue(pins: Vector[GpioPinDigitalOutput], periodNs: Int) extends AutoCl
   private def executePinStates(pinStates: Byte): Unit = {
     logger.debug("Execute pin states = " + Integer.toBinaryString(pinStates))
     var shiftedPinStates: Int = pinStates
-    for (i <- pins.indices) {
-      val pin = pins(i)
+    pins.foreach { pin =>
       if ((shiftedPinStates & 1) == 0) {
         pin.low()
       } else {
         pin.high()
+        logger.debug(s"Pin ${pin.getPin.getAddress} is high.")
       }
       shiftedPinStates >>>= 1
     }
