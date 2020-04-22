@@ -9,13 +9,13 @@ import scala.collection.mutable
 /**
  * Implementation using scheduled thread pool for dequeue timing.
  */
-class SpiQueue(commandExecutor: (PinCommand) => Unit, periodMs: Int) extends AutoCloseable
+class SpiQueue(commandExecutor: (PinCommand) => Unit, periodNs: Int) extends AutoCloseable
   with Runnable {
   import SpiQueue._
 
   private val queue = mutable.Queue[PinCommand]()
   private val scheduler = Executors.newScheduledThreadPool(1)
-  private val schedulerHandle = scheduler.scheduleAtFixedRate(this, periodMs, periodMs, TimeUnit.MILLISECONDS)
+  private val schedulerHandle = scheduler.scheduleAtFixedRate(this, periodNs, periodNs, TimeUnit.NANOSECONDS)
   logger.debug(s"Scheduler initialized. [$schedulerHandle]")
 
   override def close(): Unit = {

@@ -101,7 +101,9 @@ object OdroidC2Driver {
     }
 
     private def stateExecutor(pin: GpioPinDigitalOutput)(state: Boolean): Unit = {
-      logger.debug(s"${pin.getPin.getAddress} - ${state}")
+      if (logger.isTraceEnabled) {
+        logger.trace(s"${pin.getPin.getAddress} - ${state}")
+      }
       if (state) {
         pin.high()
       } else {

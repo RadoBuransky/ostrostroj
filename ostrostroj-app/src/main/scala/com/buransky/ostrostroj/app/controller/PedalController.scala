@@ -76,7 +76,7 @@ object PedalController {
 
     private def createLedMatrix(): LedMatrix = {
       val result = Max7219.initLedMatrix(8, 8, 1, 4)
-      driver ! StartSpi(0, 1)
+      driver ! StartSpi(0, 100)
       driver ! enqueueLedMatrixResult(result.executeAll(ShutdownRegister.NormalOperation))
       driver ! enqueueLedMatrixResult(result.executeAll(ScanLimitRegister.Digits0to7))
       driver ! enqueueLedMatrixResult(result.executeAll(DecodeModeRegister.NoDecode))

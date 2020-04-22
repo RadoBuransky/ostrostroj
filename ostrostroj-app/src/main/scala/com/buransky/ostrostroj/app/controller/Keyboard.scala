@@ -94,6 +94,6 @@ object Keyboard {
 }
 
 private case class InternalRegister(address: Byte, data: Byte) extends Register {
-  override def getAddress: Byte = address
-  override def getData: Byte = data
+  override def getAddress: Short = address
+  override def getData: Short = data
 }
