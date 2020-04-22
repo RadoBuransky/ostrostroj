@@ -30,17 +30,17 @@ final case class EnqueueToSpi(spiId: Int, spiData: Iterable[PinCommand]) extends
 /**
  * Low-level driver for Odroid C2.
  */
-object OdroidC2Driver {
+object OdroidGpio {
   // Static initialization of Pi4j
   PlatformManager.setPlatform(Platform.ODROID)
 
-  val odroidC2DriverKey: ServiceKey[DriverCommand] = ServiceKey[DriverCommand]("odroidC2Driver")
-  private val logger = LoggerFactory.getLogger(OdroidC2Driver.getClass)
+  val odroidGpioKey: ServiceKey[DriverCommand] = ServiceKey[DriverCommand]("OdroidGpio")
+  private val logger = LoggerFactory.getLogger(OdroidGpio.getClass)
   private val spis = mutable.Map[Int, SpiQueue]()
 
   def apply(): Behavior[DriverCommand] = Behaviors.setup { ctx =>
-    ctx.system.receptionist ! Receptionist.Register(odroidC2DriverKey, ctx.self)
-    logger.debug("OdroidC2Driver registered to receptionist.")
+    ctx.system.receptionist ! Receptionist.Register(odroidGpioKey, ctx.self)
+    logger.debug("OdroidGpio registered to receptionist.")
     new GpioBehavior(ctx)
   }
 
