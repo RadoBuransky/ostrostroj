@@ -36,6 +36,20 @@ object Keyboard {
                 case l if l.startsWith("i") => pedalController ! LedMatrixRegister(new IntensityRegister(l.tail.toByte))
                 case "T" => pedalController ! LedMatrixRegister(DisplayTestRegister.DisplayTestMode)
                 case "t" => pedalController ! LedMatrixRegister(DisplayTestRegister.NormalOperation)
+                case "fill" =>
+                  val toDraw = for (
+                    display <- 0 to 3;
+                    row <- 0 to 7;
+                    column <- 0 to 7
+                  ) yield LedMatrixDrawPoint(row, display*8 + column, true)
+                  pedalController ! LedMatrixDraw(toDraw)
+                case "clear" =>
+                  val toDraw = for (
+                    display <- 0 to 3;
+                    row <- 0 to 7;
+                    column <- 0 to 7
+                  ) yield LedMatrixDrawPoint(row, display*8 + column, false)
+                  pedalController ! LedMatrixDraw(toDraw)
                 case "d" =>
                   val toDraw = (0 to 7).map(i => LedMatrixDrawPoint(i, i, true))
                   pedalController ! LedMatrixDraw(toDraw)
