@@ -9,7 +9,6 @@ import com.pi4j.platform.{Platform, PlatformManager}
 import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
-import scala.jdk.CollectionConverters._
 
 // Low-level API for physical device
 sealed trait DriverCommand extends OstrostrojMessage
@@ -25,8 +24,8 @@ case object Pin5 extends GpioPin(OdroidC1Pin.GPIO_05.getAddress)
 final case class PinCommand(pin: GpioPin, state: Boolean) extends DriverCommand
 
 // SPI commands
-final case class StartSpi(spiId: Int, pins: java.lang.Iterable[GpioPin], periodNs: Int) extends DriverCommand
-final case class EnqueueToSpi(spiId: Int, spiData: java.lang.Iterable[java.lang.Byte]) extends DriverCommand
+final case class StartSpi(spiId: Int, periodNs: Int) extends DriverCommand
+final case class EnqueueToSpi(spiId: Int, spiData: Iterable[PinCommand]) extends DriverCommand
 
 /**
  * Low-level driver for Odroid C2.
@@ -78,15 +77,14 @@ object OdroidC2Driver {
 
     override def onMessage(msg: DriverCommand): Behavior[DriverCommand] = msg match {
       case pinCommand: PinCommand =>
-        val pin = digitalOutputPins(pinCommand.pin.pi4jPinAddress)
-        stateExecutor(pin)(pinCommand.state)
+        commandExecutor(pinCommand)
         Behaviors.same
-      case StartSpi(spiId, pins, periodNs) =>
-        val spiQueue = new SpiQueue(context.self, pins.asScala.toVector, periodNs)
+      case StartSpi(spiId, periodNs) =>
+        val spiQueue = new SpiQueue(commandExecutor, periodNs)
         spis.addOne(spiId -> spiQueue)
         Behaviors.same
       case EnqueueToSpi(spiId, spiData) =>
-        spis(spiId).enqueue(spiData.asScala.map(_.toByte))
+        spis(spiId).enqueue(spiData)
         Behaviors.same
     }
 
@@ -96,6 +94,10 @@ object OdroidC2Driver {
         gpio.shutdown()
         logger.info("PI4J GPIO shut down.")
         Behaviors.same
+    }
+
+    private def commandExecutor(pinCommand: PinCommand): Unit = {
+      stateExecutor(digitalOutputPins(pinCommand.pin.pi4jPinAddress))(pinCommand.state)
     }
 
     private def stateExecutor(pin: GpioPinDigitalOutput)(state: Boolean): Unit = {

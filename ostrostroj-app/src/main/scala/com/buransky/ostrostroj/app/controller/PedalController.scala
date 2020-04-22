@@ -5,9 +5,10 @@ import java.util
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
 import com.buransky.max7219
+import com.buransky.max7219.Max7219.BitChange
 import com.buransky.max7219.register._
 import com.buransky.max7219.{LedMatrix, Max7219}
-import com.buransky.ostrostroj.app.common.OstrostrojConfig
+import com.buransky.ostrostroj.app.common.{OstrostrojConfig, OstrostrojException}
 import com.buransky.ostrostroj.app.device._
 
 import scala.jdk.CollectionConverters._
@@ -16,6 +17,10 @@ import scala.jdk.CollectionConverters._
  * Logical API for physical floor pedal controller (buttons, LEDs, ...).
  */
 object PedalController {
+  private val LOADCS_PIN = Pin4;
+  private val CLK_PIN = Pin3;
+  private val DIN_PIN = Pin5;
+
   sealed trait ControllerCommand
   final case class LedControllerCommand(led: Model.Led, ledCommand: Model.LedColor) extends ControllerCommand
   final case class LedMatrixRegister(register: max7219.Register) extends ControllerCommand
@@ -70,8 +75,8 @@ object PedalController {
     }
 
     private def createLedMatrix(): LedMatrix = {
-      val result = Max7219.initLedMatrix(8, 8, 1, 1)
-      driver ! StartSpi(0, util.Arrays.asList(Pin5, Pin3, Pin4), 10)
+      val result = Max7219.initLedMatrix(8, 8, 1, 4)
+      driver ! StartSpi(0, 1)
       driver ! enqueueLedMatrixResult(result.executeAll(ShutdownRegister.NormalOperation))
       driver ! enqueueLedMatrixResult(result.executeAll(ScanLimitRegister.Digits0to7))
       driver ! enqueueLedMatrixResult(result.executeAll(DecodeModeRegister.NoDecode))
@@ -80,8 +85,17 @@ object PedalController {
       result
     }
 
-    private def enqueueLedMatrixResult(result: java.lang.Iterable[java.lang.Byte]): EnqueueToSpi = {
-      EnqueueToSpi(0, result)
+    private def enqueueLedMatrixResult(result: java.lang.Iterable[BitChange]): EnqueueToSpi = {
+      val pinCommands = result.asScala.map {
+        case BitChange.LOADCS_HIGH => PinCommand(LOADCS_PIN, state = true);
+        case BitChange.LOADCS_LOW => PinCommand(LOADCS_PIN, state = false);
+        case BitChange.CLK_HIGH => PinCommand(CLK_PIN, state = true);
+        case BitChange.CLK_LOW => PinCommand(CLK_PIN, state = false);
+        case BitChange.DIN_HIGH => PinCommand(DIN_PIN, state = true);
+        case BitChange.DIN_LOW => PinCommand(DIN_PIN, state = false);
+        case other => throw new OstrostrojException(s"Unknown bit change! [$other]")
+      }
+      EnqueueToSpi(0, pinCommands)
     }
   }
 }
