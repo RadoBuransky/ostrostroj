@@ -48,7 +48,13 @@ object BitmapDisplay {
   }
 
   sealed trait Command
-  final case class Position(column: Int, row: Int)
+
+  /**
+   * Canvas coordinates.
+   * @param x Horizontal position. 0 is the the leftmost pixel.
+   * @param y Vertical position. 0 is the top pixel.
+   */
+  final case class Position(x: Int, y: Int)
   final case class Point(position: Position, color: Boolean) extends Command
   final case class HorizontalLine(from: Position, length: Int, color: Boolean) extends Command
   final case class VerticalLine(from: Position, length: Int, color: Boolean) extends Command
@@ -60,7 +66,7 @@ object BitmapDisplay {
   def apply(driver: ActorRef[DriverCommand], config: Config): Behavior[Command] = Behaviors.setup { ctx =>
     val ledMatrix = Max7219.initLedMatrix(config.displayRows, config.displayColumns, config.displaysVertically,
       config.displaysHorizontally)
-    val canvas = new Canvas(ledMatrix)
+    val canvas = new Canvas(ledMatrix, config.displayRows*config.displaysVertically)
 
     driver ! StartSpi(config.id, config.periodNs)
     driver ! enqueueLedMatrixResult(config, ledMatrix.reset())

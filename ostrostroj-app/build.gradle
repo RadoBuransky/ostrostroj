@@ -7,8 +7,8 @@ dependencies {
     implementation 'com.typesafe.akka:akka-cluster-typed_2.13:2.6.4'
     implementation 'com.typesafe.akka:akka-slf4j_2.13:2.6.4'
     implementation 'com.typesafe.akka:akka-serialization-jackson_2.13:2.6.4'
-
     implementation 'com.pi4j:pi4j-core:1.2'
+    implementation 'org.scala-lang.modules:scala-xml_2.13:2.0.0-M1'
 
     testImplementation 'com.typesafe.akka:akka-actor-testkit-typed_2.13:2.6.4'
 }

@@ -27,5 +27,7 @@ subprojects {
 
         testImplementation 'org.scalatest:scalatest_2.13:3.1.1'
         testImplementation 'org.scalatestplus:junit-4-12_2.13:3.3.0.0-SNAP2'
+        testImplementation 'org.mockito:mockito-core:3.3.3'
+
     }
 }
