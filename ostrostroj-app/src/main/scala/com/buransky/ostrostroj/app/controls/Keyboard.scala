@@ -2,8 +2,7 @@ package com.buransky.ostrostroj.app.controls
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
-import com.buransky.max7219.Register
-import com.buransky.ostrostroj.app.controls.BitmapDisplay.Draw
+import com.buransky.ostrostroj.app.controls.display.BitmapDisplay.Draw
 import com.buransky.ostrostroj.app.device._
 import org.slf4j.LoggerFactory
 
@@ -41,9 +40,4 @@ object Keyboard {
           Behaviors.same
       }
     }
-}
-
-private case class InternalRegister(address: Byte, data: Byte) extends Register {
-  override def getAddress: Short = address
-  override def getData: Short = data
 }

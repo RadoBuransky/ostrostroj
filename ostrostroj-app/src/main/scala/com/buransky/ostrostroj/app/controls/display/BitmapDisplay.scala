@@ -1,4 +1,4 @@
-package com.buransky.ostrostroj.app.controls
+package com.buransky.ostrostroj.app.controls.display
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
@@ -47,26 +47,44 @@ object BitmapDisplay {
     private[BitmapDisplay] override val dinPinLow = PinCommand(dinPin, state = false)
   }
 
-  /**
-   * Draws bitmap.
-   * @param bitmap pixels(x)(y)
-   */
-  final case class Draw(bitmap: Vector[Vector[Boolean]])
+  sealed trait Command
+  final case class Position(column: Int, row: Int)
+  final case class Point(position: Position, color: Boolean) extends Command
+  final case class HorizontalLine(from: Position, length: Int, color: Boolean) extends Command
+  final case class VerticalLine(from: Position, length: Int, color: Boolean) extends Command
+  final case class Rectangle(from: Position, to: Position, color: Boolean) extends Command
+  final case class Write(text: String, position: Position, color: Boolean) extends Command
+  final case class Draw(bitmap: Vector[Vector[Boolean]]) extends Command
+  final case object Repaint extends Command
 
-  def apply(driver: ActorRef[DriverCommand], config: Config): Behavior[Draw] = Behaviors.setup { ctx =>
+  def apply(driver: ActorRef[DriverCommand], config: Config): Behavior[Command] = Behaviors.setup { ctx =>
     val ledMatrix = Max7219.initLedMatrix(config.displayRows, config.displayColumns, config.displaysVertically,
       config.displaysHorizontally)
+    val canvas = new Canvas(ledMatrix)
 
     driver ! StartSpi(config.id, config.periodNs)
     driver ! enqueueLedMatrixResult(config, ledMatrix.reset())
 
     Behaviors.receiveMessage {
+      case Point(position, color) =>
+        canvas.point(position, color)
+        Behaviors.same
+      case HorizontalLine(from, length, color) =>
+        canvas.horizontalLine(from, length, color)
+        Behaviors.same
+      case VerticalLine(from, length, color) =>
+        canvas.verticalLine(from, length, color)
+        Behaviors.same
+      case Rectangle(from, to, color) =>
+        canvas.rectangle(from, to, color)
+        Behaviors.same
+      case Write(text, position, color) =>
+        canvas.write(text, position, color)
+        Behaviors.same
       case Draw(bitmap) =>
-        for (column <- bitmap.indices) {
-          for (row <- bitmap(column).indices) {
-            ledMatrix.setLedStatus(row, column, bitmap(column)(row))
-          }
-        }
+        canvas.draw(bitmap)
+        Behaviors.same
+      case Repaint =>
         driver ! enqueueLedMatrixResult(config, ledMatrix.draw())
         Behaviors.same
     }

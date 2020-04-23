@@ -5,10 +5,11 @@ import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
 import com.buransky.ostrostroj.app.common.OstrostrojConfig
 import com.buransky.ostrostroj.app.controls.RgbLed.Led1
+import com.buransky.ostrostroj.app.controls.display.BitmapDisplay
 import com.buransky.ostrostroj.app.device._
 
 /**
- * Logical API for physical floor pedal controller (buttons, LEDs, ...).
+ * Orchestrator for physical controls.
  */
 object OstrostrojController {
 
