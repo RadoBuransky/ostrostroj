@@ -10,6 +10,9 @@ import javax.imageio.ImageIO
 
 import scala.annotation.tailrec
 
+/**
+ * Thanks! https://github.com/oddoid/mem-font
+ */
 class TextWriter(ledMatrix: LedMatrix, totalRowCount: Int) {
   import TextWriter._
   private val memFont: Font = FontXml(fontFileResourceName)
@@ -30,16 +33,32 @@ class TextWriter(ledMatrix: LedMatrix, totalRowCount: Int) {
   private def write(fontChars: List[FontChar], position: Position, color: Boolean): Unit = {
     fontChars match {
       case head :: tail =>
-        for (x <- 0 to 3) {
-          for (y <- 0 to 3) {
-            if (fontImage.getRGB(head.x + x, head.y + y) != 0) {
-              ledMatrix.setLedStatus(Canvas.yToRow(position.y + y, totalRowCount), position.x + x, color)
-            }
-          }
-        }
-        // TODO: Kerning
-        write(tail, Position(x = position.x + head.xadvance, y = position.y), color)
+        writeChar(head, position, color)
+        val kerning = kerningAmount(head, tail)
+        write(tail, Position(x = position.x + head.xadvance + kerning, y = position.y), color)
       case _ =>
+    }
+  }
+
+  private def kerningAmount(firstChar: FontChar, remainingChars: List[FontChar]): Int = {
+    remainingChars match {
+      case secondChar :: _ =>
+        memFont
+          .kernings
+          .find(k => k.firstId == firstChar.id && k.secondId == secondChar.id)
+          .map(_.amount)
+          .getOrElse(0)
+      case Nil => 0
+    }
+  }
+
+  private def writeChar(fontChar: FontChar, position: Position, color: Boolean): Unit = {
+    for (x <- 0 until fontChar.width) {
+      for (y <- 0 to fontChar.height) {
+        if (fontImage.getRGB(fontChar.x + x, fontChar.y + y) != 0) {
+          ledMatrix.setLedStatus(Canvas.yToRow(position.y + y, totalRowCount), position.x + x, color)
+        }
+      }
     }
   }
 
