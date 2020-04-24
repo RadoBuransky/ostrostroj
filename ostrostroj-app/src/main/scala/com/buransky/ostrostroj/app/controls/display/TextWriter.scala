@@ -9,12 +9,12 @@ import com.buransky.ostrostroj.app.controls.display.BitmapDisplay.Position
 import javax.imageio.ImageIO
 
 import scala.annotation.tailrec
-import scala.xml.{Elem, Node, XML}
 
 class TextWriter(ledMatrix: LedMatrix, totalRowCount: Int) {
   import TextWriter._
-  private[display] val chars: Map[Char, FontChar] = loadChars(fontFileResourceName)
-  private[display] val fontImage: BufferedImage = readFontImage(fontImageResourceName)
+  private val memFont: Font = FontXml(fontFileResourceName)
+  private val chars: Map[Char, FontChar] = decodeChars(memFont)
+  private val fontImage: BufferedImage = readFontImage(memFont.file)
 
   def write(text: String, position: Position, color: Boolean): Unit = {
     val fontChars = text.toList.map { c =>
@@ -33,7 +33,7 @@ class TextWriter(ledMatrix: LedMatrix, totalRowCount: Int) {
         for (x <- 0 to 3) {
           for (y <- 0 to 3) {
             if (fontImage.getRGB(head.x + x, head.y + y) != 0) {
-              ledMatrix.setLedStatus(yToRow(position.y + y), position.x + x, color)
+              ledMatrix.setLedStatus(Canvas.yToRow(position.y + y, totalRowCount), position.x + x, color)
             }
           }
         }
@@ -43,28 +43,12 @@ class TextWriter(ledMatrix: LedMatrix, totalRowCount: Int) {
     }
   }
 
-  /**
-   * Converts "y" canvas coordinate to LED matrix "row".
-   * @param y Canvas coordinate.
-   * @return LED matrix row.
-   */
-  private def yToRow(y: Int): Int = (totalRowCount - 1) - y
-
-  private def loadChars(fontFileResourceName: String): Map[Char, FontChar] = {
-    val ibm437Charset = Charset.forName("IBM437")
-    val charNodes = readFontFile(fontFileResourceName) \ "chars" \ "char"
-    charNodes.map(processCharNode(_, ibm437Charset)).toMap
-  }
-
-  private def processCharNode(charNode: Node, ibm437Charset: Charset) = {
-    val ibm437Char = (charNode \@ "id").toInt
-    val char = ibm437Charset.decode(ByteBuffer.wrap(Array(ibm437Char.toByte))).get(0)
-    val x = (charNode \@ "x").toInt
-    val y = (charNode \@ "y").toInt
-    val xoffset = (charNode \@ "xoffset").toInt
-    val yoffset = (charNode \@ "yoffset").toInt
-    val xadvance = (charNode \@ "xadvance").toInt
-    char -> FontChar(char, ibm437Char, x, y, xoffset, yoffset, xadvance)
+  private def decodeChars(font: Font): Map[Char, FontChar] = {
+    val charset = Charset.forName(font.charset)
+    font.chars.map { fontChar =>
+      val unicodeChar = charset.decode(ByteBuffer.wrap(Array(fontChar.id.toByte))).get(0)
+      unicodeChar -> fontChar
+    }.toMap
   }
 
   private def readFontImage(resourceName: String): BufferedImage = {
@@ -75,21 +59,8 @@ class TextWriter(ledMatrix: LedMatrix, totalRowCount: Int) {
       resourceStream.close()
     }
   }
-
-  private def readFontFile(resourceName: String): Elem = {
-    val resourceStream = ClassLoader.getSystemResourceAsStream(resourceName)
-    try {
-      XML.load(resourceStream)
-    } finally {
-      resourceStream.close()
-    }
-  }
 }
 
 object TextWriter {
-  private val fontFileResourceName = "font.fnt"
-  private val fontImageResourceName = "font.png"
+  private val fontFileResourceName = "mem.fnt"
 }
-
-private case class FontChar(unicodeChar: Char, ibm437Char: Int, x: Int, y: Int, xoffset: Int, yoffset: Int,
-                            xadvance: Int)
