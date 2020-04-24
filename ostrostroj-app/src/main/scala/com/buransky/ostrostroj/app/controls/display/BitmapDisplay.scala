@@ -60,7 +60,6 @@ object BitmapDisplay {
   final case class VerticalLine(from: Position, length: Int, color: Boolean) extends Command
   final case class Rectangle(from: Position, to: Position, color: Boolean) extends Command
   final case class Write(text: String, position: Position, color: Boolean) extends Command
-  final case class Draw(bitmap: Vector[Vector[Boolean]]) extends Command
   final case object Repaint extends Command
 
   def apply(driver: ActorRef[DriverCommand], config: Config): Behavior[Command] = Behaviors.setup { ctx =>
@@ -86,9 +85,6 @@ object BitmapDisplay {
         Behaviors.same
       case Write(text, position, color) =>
         canvas.write(text, position, color)
-        Behaviors.same
-      case Draw(bitmap) =>
-        canvas.draw(bitmap)
         Behaviors.same
       case Repaint =>
         driver ! enqueueLedMatrixResult(config, ledMatrix.draw())

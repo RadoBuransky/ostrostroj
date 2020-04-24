@@ -33,14 +33,6 @@ class Canvas(ledMatrix: LedMatrix, totalRowCount: Int) {
   }
 
   def write(text: String, position: Position, color: Boolean): Unit = textWriter.write(text, position, color)
-
-  def draw(bitmap: Vector[Vector[Boolean]]): Unit = {
-    for (column <- bitmap.indices) {
-      for (row <- bitmap(column).indices) {
-        ledMatrix.setLedStatus(yToRow(row, totalRowCount), column, bitmap(column)(row))
-      }
-    }
-  }
 }
 
 object Canvas {

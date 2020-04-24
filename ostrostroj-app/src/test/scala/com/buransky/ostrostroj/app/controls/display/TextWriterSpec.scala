@@ -29,7 +29,7 @@ class TextWriterSpec extends AnyFlatSpec {
     textWriter.write("a", Position(2, 2), color = true)
 
     // Verify
-    verifyExpectedLedStatus(expected, color = true, ledMatrix)
+    CanvasSpec.verifyExpectedLedStatus(expected, color = true, ledMatrix)
     verifyNoMoreInteractions(ledMatrix)
   }
 
@@ -47,23 +47,8 @@ class TextWriterSpec extends AnyFlatSpec {
     textWriter.write("čh7", Position(0, 0), color = false)
 
     // Verify
-    verifyExpectedLedStatus(expected, color = false, ledMatrix)
+    CanvasSpec.verifyExpectedLedStatus(expected, color = false, ledMatrix)
     verifyNoMoreInteractions(ledMatrix)
-  }
-
-  private def verifyExpectedLedStatus(expected: String, color: Boolean, ledMatrix: LedMatrix): Unit = {
-    var row = totalRowCount - 1
-    var column = 0
-    expected.foreach {
-      case '.' => column += 1
-      case 'X' =>
-        verify(ledMatrix).setLedStatus(row, column, color)
-        column += 1
-      case '-' =>
-        row -= 1
-        column = 0
-      case _ =>
-    }
   }
 }
 

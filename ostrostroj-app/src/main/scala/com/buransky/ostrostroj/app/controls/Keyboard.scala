@@ -2,7 +2,7 @@ package com.buransky.ostrostroj.app.controls
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
-import com.buransky.ostrostroj.app.controls.display.BitmapDisplay.Draw
+import com.buransky.ostrostroj.app.controls.display.BitmapDisplay
 import com.buransky.ostrostroj.app.device._
 import org.slf4j.LoggerFactory
 
@@ -14,7 +14,7 @@ object Keyboard {
 
   final case class ListenForKey()
 
-  def apply(driver: ActorRef[DriverCommand], display: ActorRef[Draw]): Behavior[ListenForKey] =
+  def apply(driver: ActorRef[DriverCommand], display: ActorRef[BitmapDisplay.Command]): Behavior[ListenForKey] =
     Behaviors.setup { ctx =>
       ctx.self ! ListenForKey()
       Behaviors.receiveMessage {
