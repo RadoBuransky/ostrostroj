@@ -38,15 +38,20 @@ object AudioPlayer {
     extends AbstractBehavior[Command](ctx) {
 
     if (logger.isDebugEnabled) {
-      AudioSystem.getMixerInfo.foreach { mixerInfo =>
-        logger.debug(s"Name: ${mixerInfo.getName}")
-        logger.debug(s"Vendor: ${mixerInfo.getVendor}")
-        logger.debug(s"Description: ${mixerInfo.getDescription}")
+      try {
+        AudioSystem.getMixerInfo.foreach { mixerInfo =>
+          logger.debug(s"Name: ${mixerInfo.getName}")
+          logger.debug(s"Vendor: ${mixerInfo.getVendor}")
+          logger.debug(s"Description: ${mixerInfo.getDescription}")
 
-        val mixer = AudioSystem.getMixer(mixerInfo)
-        val sourceLinesInfo = mixer.getSourceLineInfo.map(_.toString)
-          .mkString("Source lines:" + System.lineSeparator(), System.lineSeparator(), "")
-        logger.debug(sourceLinesInfo)
+          val mixer = AudioSystem.getMixer(mixerInfo)
+          val sourceLinesInfo = mixer.getSourceLineInfo.map(_.toString)
+            .mkString("Source lines:" + System.lineSeparator(), System.lineSeparator(), "")
+          logger.debug(sourceLinesInfo)
+        }
+      }
+      catch {
+        case _: Throwable => // Ignore intentionally
       }
     }
 
