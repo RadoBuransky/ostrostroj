@@ -1,0 +1,32 @@
+{
+  "title": "Song 1",
+  "audio": "main.wav",
+  "tracks": [
+    {
+      "audio": "track1.wav",
+      "type": "bass"
+    },
+    {
+      "audio": "track2.wav",
+      "type": "beat"
+    },
+    {
+      "audio": "track3.wav",
+      "type": "synth"
+    },
+    {
+      "audio": "track4.wav",
+      "type": "synth"
+    }
+  ],
+  "loops": [
+    {
+      "start": 143002,
+      "end": 156321
+    },
+    {
+      "start": 216540,
+      "end": 217601
+    }
+  ]
+}
