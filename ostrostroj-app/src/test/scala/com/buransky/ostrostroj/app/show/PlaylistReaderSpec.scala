@@ -1,4 +1,4 @@
-package com.buransky.ostrostroj.app.show.playlist
+package com.buransky.ostrostroj.app.show
 
 import java.nio.file.Paths
 

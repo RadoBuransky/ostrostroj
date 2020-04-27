@@ -71,11 +71,11 @@ object OstrostrojApp {
 
     private def initDevicePart(ctx: ActorContext[_]): Unit = {
       ctx.spawn(OdroidGpio(), "gpio")
+      ctx.spawn(AudioPlayer(ctx.self), "audioPlayer")
     }
 
     private def initDesktopPart(ctx: ActorContext[_]): Unit = {
       ctx.spawn(PerformanceManager(), "performanceManager")
-      ctx.spawn(AudioPlayer(), "audioPlayer")
     }
   }
 }
