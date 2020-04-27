@@ -20,10 +20,11 @@ object OstrostrojApp {
   }
 
   class OstrostrojApp(ctx: ActorContext[Receptionist.Listing]) extends AbstractBehavior[Receptionist.Listing](ctx) {
+    ctx.system.receptionist ! Receptionist.Subscribe(OdroidGpio.odroidGpioKey, ctx.self)
+
     initDesktopAndDeviceParts(ctx)
 
     override def onMessage(msg: Receptionist.Listing): Behavior[Receptionist.Listing] = {
-      ctx.system.receptionist ! Receptionist.Subscribe(OdroidGpio.odroidGpioKey, ctx.self)
       Behaviors.receive {
         case (ctx, OdroidGpio.odroidGpioKey.Listing(listings)) =>
           listings.foreach(initDriverDependencies(_, ctx))
@@ -69,7 +70,7 @@ object OstrostrojApp {
     }
 
     private def initDevicePart(ctx: ActorContext[_]): Unit = {
-      ctx.spawn(OdroidGpio(), "driver")
+      ctx.spawn(OdroidGpio(), "gpio")
     }
 
     private def initDesktopPart(ctx: ActorContext[_]): Unit = {

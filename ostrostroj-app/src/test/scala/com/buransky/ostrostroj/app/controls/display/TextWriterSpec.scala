@@ -36,15 +36,33 @@ class TextWriterSpec extends AnyFlatSpec {
   it should "write \"čh7\"" in {
     // Prepare
     val expected =
-      """XXX..X.XX.-
-        |..X..X...X-
-        |.XX..XXX.X-
-        |.X...X.X.X-""".stripMargin
+      """XXXX.XX.-
+        |..XX...X-
+        |.XXXXX.X-
+        |.X.X.X.X-""".stripMargin
     val ledMatrix = mock(classOf[LedMatrix])
     val textWriter = new TextWriter(ledMatrix, totalRowCount)
 
     // Execute
     textWriter.write("čh7", Position(0, 0), color = false)
+
+    // Verify
+    CanvasSpec.verifyExpectedLedStatus(expected, color = false, ledMatrix)
+    verifyNoMoreInteractions(ledMatrix)
+  }
+
+  it should "write \"Ost\"" in {
+    // Prepare
+    val expected =
+      """.XX.....X..-
+        |X..X.XXXXX.-
+        |X..X.X..X..-
+        |.XX.XX..X..-""".stripMargin
+    val ledMatrix = mock(classOf[LedMatrix])
+    val textWriter = new TextWriter(ledMatrix, totalRowCount)
+
+    // Execute
+    textWriter.write("Ost", Position(0, 0), color = false)
 
     // Verify
     CanvasSpec.verifyExpectedLedStatus(expected, color = false, ledMatrix)

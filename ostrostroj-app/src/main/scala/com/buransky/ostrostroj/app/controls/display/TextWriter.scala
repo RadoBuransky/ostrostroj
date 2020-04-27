@@ -33,10 +33,28 @@ class TextWriter(ledMatrix: LedMatrix, totalRowCount: Int) {
   private def write(fontChars: List[FontChar], position: Position, color: Boolean): Unit = {
     fontChars match {
       case head :: tail =>
-        writeChar(head, position, color)
-        val kerning = kerningAmount(head, tail)
-        write(tail, Position(x = position.x + head.xadvance + kerning, y = position.y), color)
+        val compressed = compress(head)
+        writeChar(compressed, Position(x = position.x + compressed.xoffset, y = position.y + compressed.yoffset), color)
+        val kerning = kerningAmount(compressed, tail)
+        write(tail, Position(x = position.x + compressed.xadvance + kerning, y = position.y), color)
       case _ =>
+    }
+  }
+
+  private def compress(fontChar: FontChar): FontChar = {
+    val (minX, maxX) = getMinMaxX(fontChar, 0, fontChar.width - 1, 0)
+    fontChar.copy(xoffset = -1 * minX, xadvance = maxX - minX + 1)
+  }
+
+  @tailrec
+  private def getMinMaxX(fontChar: FontChar, x: Int, minX: Int, maxX: Int): (Int, Int) = {
+    if (x == fontChar.width) {
+      (minX, maxX)
+    } else {
+      val anyPixel = (0 until fontChar.height).exists(y => fontImage.getRGB(fontChar.x + x, fontChar.y + y) != 0)
+      val newMinX = if (anyPixel && minX > x) x else minX
+      val newMaxX = if (anyPixel && maxX < x) x else maxX
+      getMinMaxX(fontChar, x + 1, newMinX, newMaxX)
     }
   }
 
@@ -54,7 +72,7 @@ class TextWriter(ledMatrix: LedMatrix, totalRowCount: Int) {
 
   private def writeChar(fontChar: FontChar, position: Position, color: Boolean): Unit = {
     for (x <- 0 until fontChar.width) {
-      for (y <- 0 to fontChar.height) {
+      for (y <- 0 until fontChar.height) {
         if (fontImage.getRGB(fontChar.x + x, fontChar.y + y) != 0) {
           ledMatrix.setLedStatus(Canvas.yToRow(position.y + y, totalRowCount), position.x + x, color)
         }
