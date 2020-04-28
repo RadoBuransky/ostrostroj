@@ -55,7 +55,7 @@ object OstrostrojApp {
                                        ctx: ActorContext[_]): Unit = {
       logger.debug("OdroidC2Driver discovered by receptionist.")
       if (shouldSpawnController(ctx)) {
-        ctx.spawn(OstrostrojController(driver), "controller")
+        ctx.watch(ctx.spawn(OstrostrojController(driver), "controller"))
       }
     }
 
@@ -70,12 +70,12 @@ object OstrostrojApp {
     }
 
     private def initDevicePart(ctx: ActorContext[_]): Unit = {
-      ctx.spawn(OdroidGpio(), "gpio")
-      ctx.spawn(AudioPlayer(ctx.self), "audioPlayer")
+      ctx.watch(ctx.spawn(OdroidGpio(), "gpio"))
     }
 
     private def initDesktopPart(ctx: ActorContext[_]): Unit = {
-      ctx.spawn(PerformanceManager(), "performanceManager")
+      ctx.watch(ctx.spawn(PerformanceManager(), "performanceManager"))
+      ctx.watch(ctx.spawn(AudioPlayer(ctx.self), "audioPlayer"))
     }
   }
 }

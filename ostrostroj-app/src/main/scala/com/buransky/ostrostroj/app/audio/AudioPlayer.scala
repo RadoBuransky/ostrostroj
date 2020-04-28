@@ -1,18 +1,33 @@
 package com.buransky.ostrostroj.app.audio
 
 import java.nio.file.Path
+import java.util.concurrent.{ExecutorService, Executors}
 
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior, PostStop, Signal}
 import com.buransky.ostrostroj.app.common.OstrostrojException
-import javax.sound.sampled.{AudioSystem, Mixer}
+import javax.sound.sampled._
 import org.slf4j.LoggerFactory
+
+import scala.collection.mutable
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
  * Multi-track audio player capable of looping, track un/muting and software down-mixing.
+ *
+ * Memory requirements math:
+ * Max number of tracks = 5
+ * Sampling rate / bits = 44.1 kHz / 16 bit
+ * Bytes per second per track = 0.176 MB
+ * Bytes per minute per track = 10.58 MB
+ * Bytes per 4 min song, 5 tracks = 211.6 MB
+ * Bytes per 10 min song, 5 tracks = 529 MB
+ *
  */
 object AudioPlayer {
-  private val HIFI_SHIELD_2 = "ODROIDDAC"
+  private val mixerName = "Digital Output x" // Desktop mixer for testing
+//  private val hifiShield = "ODROIDDAC" // Odroid HiFi Shield
+  private val bufferSize = 4410 * 2 * 2; // 0.1 second @ 44.1 kHz, 16 bit, 2 channels
   private val logger = LoggerFactory.getLogger(AudioPlayer.getClass)
 
   final case class Position(sample: Int)
@@ -31,45 +46,170 @@ object AudioPlayer {
   final case class MuteTrack(trackIndex: Int) extends Command
 
   def apply(listener: ActorRef[_]): Behavior[Command] = Behaviors.setup { ctx =>
-    new AudioPlayerBehavior(listener, ctx)
+    if (logger.isDebugEnabled) {
+      logDebugInfo()
+    }
+
+    val mixer: Mixer = AudioSystem.getMixer(getMixerInfo)
+    logger.info(s"Audio mixer open. [${mixer.getMixerInfo.getName}]")
+
+    val executorService = Executors.newFixedThreadPool(1)
+
+    Behaviors.receive[Command] {
+      case (ctx, Load(tracks)) => new AudioPlayerBehavior(tracks, mixer, listener, executorService, ctx)
+      case _ => Behaviors.ignore
+    }.receiveSignal {
+      case (_, PostStop) =>
+        executorService.shutdown()
+        Behaviors.same
+    }
   }
 
-  class AudioPlayerBehavior(listener: ActorRef[_], ctx: ActorContext[Command])
-    extends AbstractBehavior[Command](ctx) {
+  class AudioPlayerBehavior(tracks: Seq[Path],
+                            mixer: Mixer,
+                            listener: ActorRef[_],
+                            executorService: ExecutorService,
+                            ctx: ActorContext[Command]) extends AbstractBehavior[Command](ctx) with LineListener {
+    private val mutedTracks = mutable.ArraySeq.fill[Boolean](tracks.length)(true)
+    private val trackInputStreams: Seq[AudioInputStream] = load(tracks)
+    private val sourceDataLine = AudioSystem.getSourceDataLine(trackInputStreams.head.getFormat, mixer.getMixerInfo)
+    sourceDataLine.open(trackInputStreams.head.getFormat, bufferSize)
+    logger.debug(s"Source data line open. [${trackInputStreams.head.getFormat}]")
 
-    if (logger.isDebugEnabled) {
-      try {
-        AudioSystem.getMixerInfo.foreach { mixerInfo =>
-          logger.debug(s"Name: ${mixerInfo.getName}")
-          logger.debug(s"Vendor: ${mixerInfo.getVendor}")
-          logger.debug(s"Description: ${mixerInfo.getDescription}")
+    private val buffers = tracks.map(_ => new Array[Byte](sourceDataLine.getBufferSize)) // Bytes per sample * channels
+    logger.debug(s"Buffer size = ${sourceDataLine.getBufferSize}")
 
-          val mixer = AudioSystem.getMixer(mixerInfo)
-          val sourceLinesInfo = mixer.getSourceLineInfo.map(_.toString)
-            .mkString("Source lines:" + System.lineSeparator(), System.lineSeparator(), "")
-          logger.debug(sourceLinesInfo)
+    private val audioReaderWriterFuture: java.util.concurrent.Future[_] = executorService.submit(new AudioReaderWriter())
+
+    sourceDataLine.addLineListener(this)
+
+    override def onMessage(msg: Command): Behavior[Command] = msg match {
+      case Load(newTracks) =>
+        stop()
+        new AudioPlayerBehavior(newTracks, mixer, listener, executorService, ctx)
+      case Play =>
+        if (!sourceDataLine.isRunning) {
+          sourceDataLine.start()
+          dataWriter(ctx.executionContext)
         }
-      }
-      catch {
-        case _: Throwable => // Ignore intentionally
-      }
+        Behaviors.same
+      case Pause =>
+        sourceDataLine.stop()
+        Behaviors.same
+      case StartLooping(_, _) =>
+        Behaviors.same
+      case StopLooping =>
+        Behaviors.same
+      case UnmuteTrack(trackIndex) =>
+        mutedTracks.update(trackIndex, false)
+        logger.debug(s"Track unmuted. [$trackIndex]")
+        Behaviors.same
+      case MuteTrack(trackIndex) =>
+        mutedTracks.update(trackIndex, true)
+        logger.debug(s"Track muted. [$trackIndex]")
+        Behaviors.same
     }
-
-    private val mixer: Mixer = AudioSystem.getMixer(getHifiShieldMixerInfo)
-    logger.info("Audio mixer open.")
-
-    private def getHifiShieldMixerInfo: Mixer.Info = {
-      AudioSystem.getMixerInfo.find(_.getName.contains(HIFI_SHIELD_2))
-        .getOrElse(throw new OstrostrojException("Audio mixer for HiFi shield not found!"))
-    }
-
-    override def onMessage(msg: Command): Behavior[Command] = Behaviors.ignore
 
     override def onSignal: PartialFunction[Signal, Behavior[Command]] = {
       case PostStop =>
+        stop()
         mixer.close()
         logger.info("Audio mixer closed.")
         Behaviors.same
+    }
+
+    override def update(event: LineEvent): Unit = {
+      if (event != null) {
+        logger.debug(s"Line event = ${event}")
+      }
+    }
+
+    private def dataWriter(implicit executionContext: ExecutionContext): Future[_] = {
+      Future {
+        val bytesRead = fillBuffers()
+        logger.debug(s"Bytes read = $bytesRead")
+
+        if (bytesRead > -1) {
+          mixBuffers(bytesRead)
+          // TODO: What to do with bytesWritten?
+          val bytesWritten = sourceDataLine.write(buffers.head, 0, bytesRead)
+          logger.debug(s"Bytes written = $bytesWritten")
+
+          // Read next data
+          dataWriter(executionContext)
+        }
+      }
+    }
+
+    private def mixBuffers(bytesRead: Int): Unit = {
+      val acc = buffers.head
+      for (sample <- 0 until bytesRead) {
+        var mix = 0
+        for (track <- buffers.indices) {
+          if (!mutedTracks(track)) {
+            mix += buffers(track)(sample)
+          }
+        }
+        acc.update(sample, mix.toByte)
+      }
+    }
+
+    private def fillBuffers(): Int = {
+      trackInputStreams.zip(buffers).map { case (stream, buffer) =>
+        stream.read(buffer, 0, buffer.length)
+      }.min
+    }
+
+    private def stop(): Unit = {
+      sourceDataLine.close()
+      logger.info("Source data line closed.")
+      trackInputStreams.foreach { trackInputStream =>
+        trackInputStream.close()
+      }
+      logger.info("Track input streams closed.")
+    }
+
+    private def load(tracks: Seq[Path]): Seq[AudioInputStream] = {
+      val mainAudioFileFormat = AudioSystem.getAudioFileFormat(tracks.head.toFile)
+
+      if (logger.isDebugEnabled) {
+        logger.debug(s"Sampling frequency = ${mainAudioFileFormat.getFormat.getSampleRate}")
+        logger.debug(s"Channels = ${mainAudioFileFormat.getFormat.getChannels}")
+        logger.debug(s"Bits per sample = ${mainAudioFileFormat.getFormat.getSampleSizeInBits}")
+        logger.debug(s"Encoding = ${mainAudioFileFormat.getFormat.getEncoding}")
+      }
+
+      tracks.map { trackPath =>
+        val trackAudioFileFormat = AudioSystem.getAudioFileFormat(trackPath.toFile)
+        // Make sure all audio files are using the same format
+        if (trackAudioFileFormat != mainAudioFileFormat)
+          throw new OstrostrojException(s"Track [$trackPath] has different audio format! [$trackAudioFileFormat]")
+
+        AudioSystem.getAudioInputStream(trackPath.toFile)
+      }
+    }
+  }
+
+  private def getMixerInfo: Mixer.Info = {
+    AudioSystem.getMixerInfo.find(_.getName.contains(mixerName))
+      .getOrElse(throw new OstrostrojException(s"Audio mixer for not found! [$mixerName]"))
+  }
+
+  private def logDebugInfo(): Unit = {
+    try {
+      AudioSystem.getMixerInfo.foreach { mixerInfo =>
+        logger.debug(s"Name: ${mixerInfo.getName}")
+        logger.debug(s"Vendor: ${mixerInfo.getVendor}")
+        logger.debug(s"Description: ${mixerInfo.getDescription}")
+
+        val mixer = AudioSystem.getMixer(mixerInfo)
+        val sourceLinesInfo = mixer.getSourceLineInfo.map(_.toString)
+          .mkString("Source lines:" + System.lineSeparator(), System.lineSeparator(), "")
+        logger.debug(sourceLinesInfo)
+      }
+    }
+    catch {
+      case _: Throwable => // Ignore intentionally
     }
   }
 }
