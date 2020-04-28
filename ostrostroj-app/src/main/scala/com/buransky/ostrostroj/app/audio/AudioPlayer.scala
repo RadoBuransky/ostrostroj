@@ -70,7 +70,7 @@ object AudioPlayer {
                             listener: ActorRef[_],
                             executorService: ExecutorService,
                             ctx: ActorContext[Command]) extends AbstractBehavior[Command](ctx) with LineListener {
-    private val mutedTracks = mutable.ArraySeq.fill[Boolean](tracks.length)(true)
+    private val mutedTracks = mutable.ArraySeq.fill[Boolean](tracks.length)(false)
     private val trackInputStreams: Seq[AudioInputStream] = load(tracks)
     private val sourceDataLine = AudioSystem.getSourceDataLine(trackInputStreams.head.getFormat, mixer.getMixerInfo)
     sourceDataLine.open(trackInputStreams.head.getFormat, bufferSize)

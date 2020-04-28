@@ -24,6 +24,7 @@
     </appender>
 
     <logger name="com.buransky.ostrostroj" level="DEBUG" />
+    <logger name="akka.cluster" level="WARN" />
 
     <root level="INFO">
         <appender-ref ref="STDOUT"/>

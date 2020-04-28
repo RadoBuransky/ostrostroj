@@ -78,7 +78,9 @@ object OstrostrojApp {
       val audioPlayer = ctx.spawn(AudioPlayer(ctx.self), "audioPlayer")
       ctx.watch(audioPlayer)
 
-      audioPlayer ! AudioPlayer.Load(playlist.songs.map(_.audio))
+      val tracks = playlist.songs.head.audio :: playlist.songs.head.tracks.map(_.audio).toList
+      audioPlayer ! AudioPlayer.Load(tracks)
+      audioPlayer ! AudioPlayer.Play
     }
   }
 }
