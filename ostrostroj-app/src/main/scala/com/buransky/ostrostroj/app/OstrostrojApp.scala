@@ -9,11 +9,12 @@ import com.buransky.ostrostroj.app.common.OstrostrojConfig.{DEV_DESKTOP, DEV_DEV
 import com.buransky.ostrostroj.app.common.{OstrostrojConfig, OstrostrojException}
 import com.buransky.ostrostroj.app.controls.OstrostrojController
 import com.buransky.ostrostroj.app.device.{DriverCommand, OdroidGpio}
-import com.buransky.ostrostroj.app.show.PerformanceManager
+import com.buransky.ostrostroj.app.show.PlaylistReader
 import org.slf4j.LoggerFactory
 
 object OstrostrojApp {
   private val logger = LoggerFactory.getLogger(OstrostrojApp.getClass)
+  private val playlist = PlaylistReader.read(OstrostrojConfig.playlistPath)
 
   def apply(): Behavior[_] = Behaviors.setup[Receptionist.Listing] { ctx =>
     new OstrostrojApp(ctx)
@@ -74,8 +75,10 @@ object OstrostrojApp {
     }
 
     private def initDesktopPart(ctx: ActorContext[_]): Unit = {
-      ctx.watch(ctx.spawn(PerformanceManager(), "performanceManager"))
-      ctx.watch(ctx.spawn(AudioPlayer(ctx.self), "audioPlayer"))
+      val audioPlayer = ctx.spawn(AudioPlayer(ctx.self), "audioPlayer")
+      ctx.watch(audioPlayer)
+
+      audioPlayer ! AudioPlayer.Load(playlist.songs.map(_.audio))
     }
   }
 }

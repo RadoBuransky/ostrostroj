@@ -19,11 +19,12 @@ case object SynthTrack extends TrackType
 /**
  * https://github.com/playframework/play-json
  */
-class PlaylistReader {
-  import PlaylistReader._
+object PlaylistReader {
+  private val songFileName = "song.json"
 
-  def read(rootDir: Path): Playlist = {
-    processJsonFile(rootDir.resolve(playlistFileName)) { playlistJson =>
+  def read(playlistPath: Path): Playlist = {
+    processJsonFile(playlistPath) { playlistJson =>
+      val rootDir = playlistPath.getParent
       val songDirs = (playlistJson \ "songs").as[Seq[String]]
       val songs = songDirs.map(songDir => readSong(rootDir.resolve(songDir)))
       Playlist(songs)
@@ -82,9 +83,4 @@ class PlaylistReader {
       inputStream.close()
     }
   }
-}
-
-object PlaylistReader {
-  private val playlistFileName = "playlist.json"
-  private val songFileName = "song.json"
 }

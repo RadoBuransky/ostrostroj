@@ -25,7 +25,7 @@ import scala.concurrent.{ExecutionContext, Future}
  *
  */
 object AudioPlayer {
-  private val mixerName = "Digital Output x" // Desktop mixer for testing
+  private val mixerName = "Digital Output" // Desktop mixer for testing
 //  private val hifiShield = "ODROIDDAC" // Odroid HiFi Shield
   private val bufferSize = 4410 * 2 * 2; // 0.1 second @ 44.1 kHz, 16 bit, 2 channels
   private val logger = LoggerFactory.getLogger(AudioPlayer.getClass)
@@ -46,8 +46,8 @@ object AudioPlayer {
   final case class MuteTrack(trackIndex: Int) extends Command
 
   def apply(listener: ActorRef[_]): Behavior[Command] = Behaviors.setup { ctx =>
-    if (logger.isDebugEnabled) {
-      logDebugInfo()
+    if (logger.isTraceEnabled()) {
+      logMixerInfo()
     }
 
     val mixer: Mixer = AudioSystem.getMixer(getMixerInfo)
@@ -182,8 +182,12 @@ object AudioPlayer {
       tracks.map { trackPath =>
         val trackAudioFileFormat = AudioSystem.getAudioFileFormat(trackPath.toFile)
         // Make sure all audio files are using the same format
-        if (trackAudioFileFormat != mainAudioFileFormat)
-          throw new OstrostrojException(s"Track [$trackPath] has different audio format! [$trackAudioFileFormat]")
+        if (trackAudioFileFormat.getFormat.getSampleRate.toInt != mainAudioFileFormat.getFormat.getSampleRate.toInt ||
+          trackAudioFileFormat.getFormat.getChannels != mainAudioFileFormat.getFormat.getChannels ||
+          trackAudioFileFormat.getFormat.getSampleSizeInBits != mainAudioFileFormat.getFormat.getSampleSizeInBits ||
+          trackAudioFileFormat.getFormat.getEncoding != mainAudioFileFormat.getFormat.getEncoding)
+          throw new OstrostrojException(s"Track [$trackPath] has different audio format! " +
+            s"[${mainAudioFileFormat.getFormat} vs ${trackAudioFileFormat.getFormat}]")
 
         AudioSystem.getAudioInputStream(trackPath.toFile)
       }
@@ -195,17 +199,17 @@ object AudioPlayer {
       .getOrElse(throw new OstrostrojException(s"Audio mixer for not found! [$mixerName]"))
   }
 
-  private def logDebugInfo(): Unit = {
+  private def logMixerInfo(): Unit = {
     try {
       AudioSystem.getMixerInfo.foreach { mixerInfo =>
-        logger.debug(s"Name: ${mixerInfo.getName}")
-        logger.debug(s"Vendor: ${mixerInfo.getVendor}")
-        logger.debug(s"Description: ${mixerInfo.getDescription}")
+        logger.trace(s"Name: ${mixerInfo.getName}")
+        logger.trace(s"Vendor: ${mixerInfo.getVendor}")
+        logger.trace(s"Description: ${mixerInfo.getDescription}")
 
         val mixer = AudioSystem.getMixer(mixerInfo)
         val sourceLinesInfo = mixer.getSourceLineInfo.map(_.toString)
           .mkString("Source lines:" + System.lineSeparator(), System.lineSeparator(), "")
-        logger.debug(sourceLinesInfo)
+        logger.trace(sourceLinesInfo)
       }
     }
     catch {

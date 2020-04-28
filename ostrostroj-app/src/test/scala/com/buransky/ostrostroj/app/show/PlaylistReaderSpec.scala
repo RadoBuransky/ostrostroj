@@ -12,13 +12,13 @@ class PlaylistReaderSpec extends AnyFlatSpec {
 
   it should "read test playlist" in {
     // Prepare
-    val rootDir = Paths.get(ClassLoader.getSystemResource("playlist").toURI)
-    val playlistReader = new PlaylistReader()
+    val playlistPath = Paths.get(ClassLoader.getSystemResource("playlist/playlist.json").toURI)
 
     // Execute
-    val playlist = playlistReader.read(rootDir)
+    val playlist = PlaylistReader.read(playlistPath)
 
     // Assert
+    val rootDir = playlistPath.getParent
     assert(playlist.songs.size == 2)
     val song1 = playlist.songs(0)
     val song1Dir = rootDir.resolve("song1")
