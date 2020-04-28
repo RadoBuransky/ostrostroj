@@ -26,9 +26,8 @@ import scala.concurrent.{ExecutionContext, Future}
  */
 object AudioPlayer {
   private val mixerName = "Digital Output" // Desktop mixer for testing
-  private val bufferSize = 4*1024*1024
 //  private val hifiShield = "ODROIDDAC" // Odroid HiFi Shield
-//  private val bufferSize = 4410 * 2 * 2; // 0.1 second @ 44.1 kHz, 16 bit, 2 channels
+  private val bufferSize = 4410 * 2 * 2; // 0.1 second @ 44.1 kHz, 16 bit, 2 channels
   private val logger = LoggerFactory.getLogger(AudioPlayer.getClass)
 
   final case class Position(sample: Int)
@@ -108,11 +107,11 @@ object AudioPlayer {
         Behaviors.same
       case UnmuteTrack(trackIndex) =>
         mutedTracks.update(trackIndex, false)
-        logger.debug(s"Track unmuted. [$trackIndex]")
+        logger.debug(s"Track unmuted. [${tracks(trackIndex)}]")
         Behaviors.same
       case MuteTrack(trackIndex) =>
         mutedTracks.update(trackIndex, true)
-        logger.debug(s"Track muted. [$trackIndex]")
+        logger.debug(s"Track muted. [${tracks(trackIndex)}]")
         Behaviors.same
     }
 
@@ -136,14 +135,15 @@ object AudioPlayer {
         logger.debug(s"Bytes read = $bytesRead")
 
         if (bytesRead > -1) {
-          // TODO: Mute
-          AudioMixer.mix16bitLe(buffers, bytesRead)
-          // TODO: What to do with bytesWritten?
+          val unmutedBuffers = buffers.zipWithIndex.filter(bi => !mutedTracks(bi._2)).map(_._1)
+          AudioMixer.mix16bitLe(unmutedBuffers, bytesRead)
           val bytesWritten = sourceDataLine.write(buffers.head, 0, bytesRead)
           logger.debug(s"Bytes written = $bytesWritten")
 
-          // Read next data
-          dataWriter(executionContext)
+          if (bytesWritten == bytesRead) {
+            // Read next data
+            dataWriter(executionContext)
+          }
         }
       }
     }
