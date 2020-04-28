@@ -5,7 +5,7 @@ import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior, Terminated}
 import akka.cluster.typed.Cluster
 import com.buransky.ostrostroj.app.audio.AudioPlayer
-import com.buransky.ostrostroj.app.audio.AudioPlayer.{MuteTrack, UnmuteTrack}
+import com.buransky.ostrostroj.app.audio.AudioPlayer.{Position, StartLooping}
 import com.buransky.ostrostroj.app.common.OstrostrojConfig.{DEV_DESKTOP, DEV_DEVICE}
 import com.buransky.ostrostroj.app.common.{OstrostrojConfig, OstrostrojException}
 import com.buransky.ostrostroj.app.controls.OstrostrojController
@@ -85,13 +85,15 @@ object OstrostrojApp {
       audioPlayer ! AudioPlayer.Play
 
       // TODO: Just for testing, remove!
-      ctx.scheduleOnce(3.seconds, audioPlayer, MuteTrack(1))
-      ctx.scheduleOnce(5.seconds, audioPlayer, MuteTrack(2))
-      ctx.scheduleOnce(6.seconds, audioPlayer, UnmuteTrack(1))
-      ctx.scheduleOnce(7.seconds, audioPlayer, MuteTrack(3))
-      ctx.scheduleOnce(8.seconds, audioPlayer, UnmuteTrack(2))
-      ctx.scheduleOnce(9.seconds, audioPlayer, MuteTrack(4))
-      ctx.scheduleOnce(10.seconds, audioPlayer, UnmuteTrack(3))
+      val loop = playlist.songs.head.loops.head
+      //ctx.scheduleOnce(6.seconds, audioPlayer, StartLooping(Position(loop.start), Position(loop.end)))
+//      ctx.scheduleOnce(3.seconds, audioPlayer, MuteTrack(1))
+//      ctx.scheduleOnce(5.seconds, audioPlayer, MuteTrack(2))
+//      ctx.scheduleOnce(6.seconds, audioPlayer, UnmuteTrack(1))
+//      ctx.scheduleOnce(7.seconds, audioPlayer, MuteTrack(3))
+//      ctx.scheduleOnce(8.seconds, audioPlayer, UnmuteTrack(2))
+//      ctx.scheduleOnce(9.seconds, audioPlayer, MuteTrack(4))
+//      ctx.scheduleOnce(10.seconds, audioPlayer, UnmuteTrack(3))
     }
   }
 }

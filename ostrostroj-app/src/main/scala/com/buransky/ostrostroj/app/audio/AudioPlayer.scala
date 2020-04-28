@@ -6,6 +6,7 @@ import java.util.concurrent.{ExecutorService, Executors}
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior, PostStop, Signal}
 import com.buransky.ostrostroj.app.common.OstrostrojException
+import com.sun.media.sound.WaveFileReader
 import javax.sound.sampled._
 import org.slf4j.LoggerFactory
 
@@ -27,7 +28,7 @@ import scala.concurrent.{ExecutionContext, Future}
 object AudioPlayer {
   private val mixerName = "Digital Output" // Desktop mixer for testing
 //  private val hifiShield = "ODROIDDAC" // Odroid HiFi Shield
-  private val bufferSize = 4410 * 2 * 2; // 0.1 second @ 44.1 kHz, 16 bit, 2 channels
+  private val bufferSize = 2205 * 2 * 2; // 0.05 second @ 44.1 kHz, 16 bit, 2 channels
   private val logger = LoggerFactory.getLogger(AudioPlayer.getClass)
 
   final case class Position(sample: Int)
@@ -76,15 +77,28 @@ object AudioPlayer {
                             executorService: ExecutorService,
                             ctx: ActorContext[Command]) extends AbstractBehavior[Command](ctx) with LineListener {
     private val mutedTracks = mutable.ArraySeq.fill[Boolean](tracks.length)(false)
-    private val trackInputStreams: Seq[AudioInputStream] = load(tracks)
-    private val sourceDataLine = AudioSystem.getSourceDataLine(trackInputStreams.head.getFormat, mixer.getMixerInfo)
-    sourceDataLine.open(trackInputStreams.head.getFormat, bufferSize)
-    logger.debug(s"Source data line open. [${trackInputStreams.head.getFormat}]")
+    private val fileStreams: Seq[RandomAccessInputStream] = load(tracks)
+
+    val ais = AudioSystem.getAudioInputStream(tracks.head.toFile)
+
+    private val audioFormat: AudioFormat = {
+      val waveFileReader = new WaveFileReader()
+      fileStreams.map(waveFileReader.getAudioFileFormat).head.getFormat
+    }
+    fileStreams.foreach { fs =>
+      logger.debug(s"Init file pointer = ${fs.filePointer}")
+    }
+    private val sourceDataLine = AudioSystem.getSourceDataLine(audioFormat, mixer.getMixerInfo)
+    sourceDataLine.open(audioFormat, bufferSize)
+    logger.debug(s"Source data line open. [$audioFormat]")
 
     private val buffers = tracks.map(_ => new Array[Byte](sourceDataLine.getBufferSize)) // Bytes per sample * channels
     logger.debug(s"Buffer size = ${sourceDataLine.getBufferSize}")
 
     private val audioReaderWriterFuture: java.util.concurrent.Future[_] = executorService.submit(new AudioReaderWriter())
+
+    private val loopStart: Long = 88200L*2*2
+    private val loopEnd: Long = 441000L*2*2
 
     sourceDataLine.addLineListener(this)
 
@@ -101,7 +115,7 @@ object AudioPlayer {
       case Pause =>
         sourceDataLine.stop()
         Behaviors.same
-      case StartLooping(_, _) =>
+      case StartLooping(start, end) =>
         Behaviors.same
       case StopLooping =>
         Behaviors.same
@@ -131,14 +145,19 @@ object AudioPlayer {
 
     private def dataWriter(implicit executionContext: ExecutionContext): Future[_] = {
       Future {
+        if (fileStreams.head.filePointer > loopEnd) {
+          sourceDataLine.flush()
+          fileStreams.foreach(_.seek(loopStart))
+        }
+
         val bytesRead = fillBuffers()
-        logger.debug(s"Bytes read = $bytesRead")
+        logger.trace(s"Bytes read = $bytesRead")
 
         if (bytesRead > -1) {
           val unmutedBuffers = buffers.zipWithIndex.filter(bi => !mutedTracks(bi._2)).map(_._1)
           AudioMixer.mix16bitLe(unmutedBuffers, bytesRead)
           val bytesWritten = sourceDataLine.write(buffers.head, 0, bytesRead)
-          logger.debug(s"Bytes written = $bytesWritten")
+          logger.trace(s"Bytes written = $bytesWritten")
 
           if (bytesWritten == bytesRead) {
             // Read next data
@@ -149,21 +168,19 @@ object AudioPlayer {
     }
 
     private def fillBuffers(): Int = {
-      trackInputStreams.zip(buffers).map { case (stream, buffer) =>
-        stream.read(buffer, 0, buffer.length)
+      fileStreams.zip(buffers).map { case (fileStream, buffer) =>
+        fileStream.read(buffer, 0, buffer.length)
       }.min
     }
 
     private def stop(): Unit = {
       sourceDataLine.close()
       logger.info("Source data line closed.")
-      trackInputStreams.foreach { trackInputStream =>
-        trackInputStream.close()
-      }
+      fileStreams.foreach(_.close())
       logger.info("Track input streams closed.")
     }
 
-    private def load(tracks: Seq[Path]): Seq[AudioInputStream] = {
+    private def load(tracks: Seq[Path]): Seq[RandomAccessInputStream] = {
       val mainAudioFileFormat = AudioSystem.getAudioFileFormat(tracks.head.toFile)
 
       if (logger.isDebugEnabled) {
@@ -183,7 +200,7 @@ object AudioPlayer {
           throw new OstrostrojException(s"Track [$trackPath] has different audio format! " +
             s"[${mainAudioFileFormat.getFormat} vs ${trackAudioFileFormat.getFormat}]")
 
-        AudioSystem.getAudioInputStream(trackPath.toFile)
+        RandomAccessInputStream(trackPath)
       }
     }
   }
