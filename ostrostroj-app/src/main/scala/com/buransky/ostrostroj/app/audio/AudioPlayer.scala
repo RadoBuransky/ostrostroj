@@ -26,8 +26,9 @@ import scala.concurrent.{ExecutionContext, Future}
  */
 object AudioPlayer {
   private val mixerName = "Digital Output" // Desktop mixer for testing
+  private val bufferSize = 4*1024*1024
 //  private val hifiShield = "ODROIDDAC" // Odroid HiFi Shield
-  private val bufferSize = 4410 * 2 * 2; // 0.1 second @ 44.1 kHz, 16 bit, 2 channels
+//  private val bufferSize = 4410 * 2 * 2; // 0.1 second @ 44.1 kHz, 16 bit, 2 channels
   private val logger = LoggerFactory.getLogger(AudioPlayer.getClass)
 
   final case class Position(sample: Int)
@@ -64,6 +65,11 @@ object AudioPlayer {
         Behaviors.same
     }
   }
+
+  private final case class AudioTrack(path: Path,
+                                      inputStream: AudioInputStream,
+                                      buffer: Array[Byte],
+                                      var muted: Boolean)
 
   class AudioPlayerBehavior(tracks: Seq[Path],
                             mixer: Mixer,
@@ -130,7 +136,8 @@ object AudioPlayer {
         logger.debug(s"Bytes read = $bytesRead")
 
         if (bytesRead > -1) {
-          mixBuffers(bytesRead)
+          // TODO: Mute
+          AudioMixer.mix16bitLe(buffers, bytesRead)
           // TODO: What to do with bytesWritten?
           val bytesWritten = sourceDataLine.write(buffers.head, 0, bytesRead)
           logger.debug(s"Bytes written = $bytesWritten")
@@ -138,19 +145,6 @@ object AudioPlayer {
           // Read next data
           dataWriter(executionContext)
         }
-      }
-    }
-
-    private def mixBuffers(bytesRead: Int): Unit = {
-      val acc = buffers.head
-      for (sample <- 0 until bytesRead) {
-        var mix = 0
-        for (track <- buffers.indices) {
-          if (!mutedTracks(track)) {
-            mix += buffers(track)(sample)
-          }
-        }
-        acc.update(sample, mix.toByte)
       }
     }
 
