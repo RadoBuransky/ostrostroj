@@ -78,9 +78,6 @@ object AudioPlayer {
                             ctx: ActorContext[Command]) extends AbstractBehavior[Command](ctx) with LineListener {
     private val mutedTracks = mutable.ArraySeq.fill[Boolean](tracks.length)(false)
     private val fileStreams: Seq[RandomAccessInputStream] = load(tracks)
-
-    val ais = AudioSystem.getAudioInputStream(tracks.head.toFile)
-
     private val audioFormat: AudioFormat = {
       val waveFileReader = new WaveFileReader()
       fileStreams.map(waveFileReader.getAudioFileFormat).head.getFormat
@@ -94,8 +91,6 @@ object AudioPlayer {
 
     private val buffers = tracks.map(_ => new Array[Byte](sourceDataLine.getBufferSize)) // Bytes per sample * channels
     logger.debug(s"Buffer size = ${sourceDataLine.getBufferSize}")
-
-    private val audioReaderWriterFuture: java.util.concurrent.Future[_] = executorService.submit(new AudioReaderWriter())
 
     private val loopStart: Long = 88200L*2*2
     private val loopEnd: Long = 441000L*2*2

@@ -8,7 +8,7 @@ import play.api.libs.json.{JsValue, Json}
 
 final case class Playlist(songs: Seq[Song])
 final case class Song(title: String, audio: Path, tracks: Seq[Track], loops: Seq[Loop])
-final case class Track(audio: Path, trackType: TrackType)
+final case class Track(audio: Path, trackType: TrackType, defaultMuted: Boolean)
 final case class Loop(start: Int, end: Int)
 
 sealed trait TrackType
@@ -47,7 +47,8 @@ object PlaylistReader {
       optTracks.map { track =>
         Track(
           audio = songDir.resolve((track \ "audio").as[String]),
-          trackType = readTrackType((track \ "type").as[String])
+          trackType = readTrackType((track \ "type").as[String]),
+          defaultMuted = (track \ "defaultMuted").as[Boolean]
         )
       }
     }.getOrElse(Nil)
