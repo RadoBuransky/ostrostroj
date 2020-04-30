@@ -113,7 +113,7 @@ object PlaylistPlayer {
     private def createSongStream(playlist: Playlist, songIndex: Int): SongStream = {
       val song = playlist.songs(songIndex)
       val audioInputStreams = loadAudioInputStreams(song.tracks)
-      new SongStream(song, audioInputStreams)
+      new SongStream(song, audioInputStreams, sourceDataLine.getBufferSize)
     }
 
     private def loadAudioInputStreams(tracks: Seq[Track]): Seq[AudioInputStream] = {
