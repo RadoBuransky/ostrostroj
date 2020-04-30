@@ -9,8 +9,8 @@ import org.slf4j.LoggerFactory
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
 
-class BufferedInputStream(upstream: InputStream) extends AutoCloseable {
-  import BufferedInputStream._
+class OldBufferedInputStream(upstream: InputStream) extends AutoCloseable {
+  import OldBufferedInputStream._
   private val executorService = Executors.newSingleThreadExecutor()
   private implicit val executionContext: ExecutionContext = ExecutionContext.fromExecutorService(executorService)
   private val buffers: mutable.Queue[Future[ByteBuffer]] = mutable.Queue.empty
@@ -67,8 +67,8 @@ class BufferedInputStream(upstream: InputStream) extends AutoCloseable {
   }
 }
 
-object BufferedInputStream {
-  private val logger = LoggerFactory.getLogger(classOf[BufferedInputStream])
+object OldBufferedInputStream {
+  private val logger = LoggerFactory.getLogger(classOf[OldBufferedInputStream])
   private val endOfStreamResult = ByteBuffer.allocate(0)
   private val endOfStreamReader = Future.successful(endOfStreamResult)
   private val buffersMaxCount = 15
