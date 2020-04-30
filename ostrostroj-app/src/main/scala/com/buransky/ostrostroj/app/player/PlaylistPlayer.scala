@@ -43,7 +43,7 @@ object PlaylistPlayer {
   def apply(playlist: Playlist): Behavior[Command] = Behaviors.setup { ctx =>
     val mixer = getMixer(mixerName)
     val songIndex = 0
-    val firstSongFirstTrack = playlist.songs(songIndex).tracks.head.audio
+    val firstSongFirstTrack = playlist.songs(songIndex).tracks.head.path
     val sourceDataLine = getSourceDataLine(firstSongFirstTrack, mixer.getMixerInfo)
     new PlaylistPlayerBehavior(playlist, songIndex, mixer, sourceDataLine, ctx)
   }
@@ -118,9 +118,9 @@ object PlaylistPlayer {
 
     private def loadAudioInputStreams(tracks: Seq[Track]): Seq[AudioInputStream] = {
       tracks.map { track =>
-        val audioInputStream = AudioSystem.getAudioInputStream(track.audio.toFile)
+        val audioInputStream = AudioSystem.getAudioInputStream(track.path.toFile)
         if (!checkAudioFormat(sourceDataLine.getFormat, audioInputStream.getFormat)) {
-          throw new OstrostrojException(s"Not the same audio format! [${track.audio}]")
+          throw new OstrostrojException(s"Not the same audio format! [${track.path}]")
         }
         audioInputStream
       }

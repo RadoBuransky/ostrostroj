@@ -1,4 +1,9 @@
 {
   "title": "Song 2",
-  "audio": "main.wav"
+  "tracks": [
+    {
+      "path": "main.wav",
+      "type": "main"
+    }
+  ]
 }

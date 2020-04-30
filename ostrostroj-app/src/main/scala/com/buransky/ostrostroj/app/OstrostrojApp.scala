@@ -5,7 +5,6 @@ import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior, Terminated}
 import akka.cluster.typed.Cluster
 import com.buransky.ostrostroj.app.audio.AudioPlayer
-import com.buransky.ostrostroj.app.audio.AudioPlayer.{Position, StartLooping}
 import com.buransky.ostrostroj.app.common.OstrostrojConfig.{DEV_DESKTOP, DEV_DEVICE}
 import com.buransky.ostrostroj.app.common.{OstrostrojConfig, OstrostrojException}
 import com.buransky.ostrostroj.app.controls.OstrostrojController
@@ -76,11 +75,10 @@ object OstrostrojApp {
     }
 
     private def initDesktopPart(ctx: ActorContext[_]): Unit = {
-      import concurrent.duration._
       val audioPlayer = ctx.spawn(AudioPlayer(ctx.self), "audioPlayer")
       ctx.watch(audioPlayer)
 
-      val tracks = playlist.songs.head.audio :: playlist.songs.head.tracks.map(_.audio).toList
+      val tracks = playlist.songs.head.tracks.map(_.path).toList
       audioPlayer ! AudioPlayer.Load(tracks)
       audioPlayer ! AudioPlayer.Play
 

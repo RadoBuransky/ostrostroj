@@ -7,11 +7,12 @@ import com.buransky.ostrostroj.app.common.OstrostrojException
 import play.api.libs.json.{JsValue, Json}
 
 final case class Playlist(songs: Seq[Song])
-final case class Song(title: String, audio: Path, tracks: Seq[Track], loops: Seq[Loop])
-final case class Track(audio: Path, trackType: TrackType, defaultMuted: Boolean)
+final case class Song(title: String, tracks: Seq[Track], loops: Seq[Loop])
+final case class Track(path: Path, trackType: TrackType, muted: Boolean)
 final case class Loop(start: Int, end: Int)
 
 sealed trait TrackType
+case object MainTrack extends TrackType
 case object BassTrack extends TrackType
 case object BeatTrack extends TrackType
 case object SynthTrack extends TrackType
@@ -35,7 +36,6 @@ object PlaylistReader {
     processJsonFile(songDir.resolve(songFileName)) { songJson =>
       Song(
         title = (songJson \ "title").as[String],
-        audio = songDir.resolve((songJson \ "audio").as[String]),
         tracks = readTracks(songDir, songJson),
         loops = readLoops(songJson)
       )
@@ -46,9 +46,9 @@ object PlaylistReader {
     (songJson \ "tracks").asOpt[Seq[JsValue]].map { optTracks =>
       optTracks.map { track =>
         Track(
-          audio = songDir.resolve((track \ "audio").as[String]),
+          path = songDir.resolve((track \ "path").as[String]),
           trackType = readTrackType((track \ "type").as[String]),
-          defaultMuted = (track \ "defaultMuted").as[Boolean]
+          muted = (track \ "muted").asOpt[Boolean].getOrElse(false)
         )
       }
     }.getOrElse(Nil)
@@ -56,6 +56,7 @@ object PlaylistReader {
 
   private def readTrackType(trackTypeJson: String): TrackType = {
     trackTypeJson match {
+      case "main" => MainTrack
       case "bass" => BassTrack
       case "beat" => BeatTrack
       case "synth" => SynthTrack
