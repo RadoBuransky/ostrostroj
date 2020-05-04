@@ -7,7 +7,7 @@ import play.api.libs.json.{JsValue, Json}
 
 final case class Playlist(songs: Seq[Song])
 final case class Song(title: String, path: Path, loops: Seq[Loop])
-final case class Loop(start: Int, end: Int, tracks: Seq[Track])
+final case class Loop(start: Int, endExclusive: Int, tracks: Seq[Track])
 final case class Track(level: Int, path: Path)
 
 /**
@@ -40,7 +40,7 @@ object PlaylistReader {
       optLoops.map { loop =>
         Loop(
           start = (loop \ "start").as[Int],
-          end = (loop \ "end").as[Int],
+          endExclusive = (loop \ "end").as[Int],
           tracks = readTracks(songDir, loop)
         )
       }
