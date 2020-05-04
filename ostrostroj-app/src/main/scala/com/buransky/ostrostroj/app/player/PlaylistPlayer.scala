@@ -43,7 +43,7 @@ object PlaylistPlayer {
   def apply(playlist: Playlist): Behavior[Command] = Behaviors.setup { ctx =>
     val mixer = getMixer(mixerName)
     val songIndex = 0
-    val firstSongFirstTrack = playlist.songs(songIndex).tracks.head.path
+    val firstSongFirstTrack = playlist.songs(songIndex).path
     val sourceDataLine = getSourceDataLine(firstSongFirstTrack, mixer.getMixerInfo)
     new PlaylistPlayerBehavior(playlist, songIndex, mixer, sourceDataLine, ctx)
   }
@@ -54,7 +54,7 @@ object PlaylistPlayer {
                                sourceDataLine: SourceDataLine,
                                ctx: ActorContext[Command]) extends AbstractBehavior[Command](ctx) {
     logger.debug(s"Playlist player created. [$songIndex]")
-    private val songStream: SongStream = createSongStream(playlist, songIndex)
+    private val songStream: MainStream = createSongStream(playlist, songIndex)
     private val buffer: Array[Byte] = new Array[Byte](sourceDataLine.getBufferSize)
     playSongStream()
 
@@ -110,10 +110,10 @@ object PlaylistPlayer {
       bytesWritten
     }
 
-    private def createSongStream(playlist: Playlist, songIndex: Int): SongStream = {
+    private def createSongStream(playlist: Playlist, songIndex: Int): MainStream = {
       val song = playlist.songs(songIndex)
-      val audioInputStreams = loadAudioInputStreams(song.tracks)
-      new SongStream(song, audioInputStreams, sourceDataLine.getBufferSize)
+//      val audioInputStreams = loadAudioInputStreams(song.tracks)
+      new MainStream(song)
     }
 
     private def loadAudioInputStreams(tracks: Seq[Track]): Seq[AudioInputStream] = {
@@ -133,9 +133,9 @@ object PlaylistPlayer {
     }
   }
 
-  private def getSourceDataLine(firstSongFirstTrack: Path, mixerInfo: Mixer.Info): SourceDataLine = {
+  private def getSourceDataLine(firstSongMaster: Path, mixerInfo: Mixer.Info): SourceDataLine = {
     val waveFileReader = new WaveFileReader()
-    val format = waveFileReader.getAudioFileFormat(firstSongFirstTrack.toFile).getFormat
+    val format = waveFileReader.getAudioFileFormat(firstSongMaster.toFile).getFormat
     val sourceDataLine = AudioSystem.getSourceDataLine(format, mixerInfo)
 
     val bufferSize = bufferDuration.toMillis*format.getSampleRate*(format.getSampleSizeInBits/8)*format.getChannels/1000

@@ -1,6 +1,6 @@
 package com.buransky.ostrostroj.app.show
 
-import java.nio.file.Paths
+import java.nio.file.{Path, Paths}
 
 import org.junit.runner.RunWith
 import org.scalatest.flatspec.AnyFlatSpec
@@ -20,34 +20,35 @@ class PlaylistReaderSpec extends AnyFlatSpec {
     // Assert
     val rootDir = playlistPath.getParent
     assert(playlist.songs.size == 2)
-    val song1 = playlist.songs(0)
+    assertSong1(playlist.songs(0), rootDir)
+    assertSong2(playlist.songs(1), rootDir)
+  }
+
+  private def assertSong1(song1: Song, rootDir: Path) = {
     val song1Dir = rootDir.resolve("song1")
     assert(song1.title == "Song 1")
-    assert(song1.tracks.size == 5)
-    assert(song1.tracks(0).path == song1Dir.resolve("main.wav"))
-    assert(song1.tracks(0).trackType == MainTrack)
-    assert(song1.tracks(1).path == song1Dir.resolve("track1.wav"))
-    assert(song1.tracks(1).trackType == BassTrack)
-    assert(song1.tracks(2).path == song1Dir.resolve("track2.wav"))
-    assert(song1.tracks(2).trackType == BeatTrack)
-    assert(song1.tracks(2).muted)
-    assert(song1.tracks(3).path == song1Dir.resolve("track3.wav"))
-    assert(song1.tracks(3).trackType == SynthTrack)
-    assert(song1.tracks(3).muted)
-    assert(song1.tracks(4).path == song1Dir.resolve("track4.wav"))
-    assert(song1.tracks(4).trackType == SynthTrack)
-    assert(song1.tracks(4).muted)
-    assert(song1.loops.size == 2)
-    assert(song1.loops(0).start == 143002)
-    assert(song1.loops(0).end == 156321)
-    assert(song1.loops(1).start == 216540)
-    assert(song1.loops(1).end == 217601)
-    val song2 = playlist.songs(1)
+    assert(song1.path == song1Dir.resolve("main.wav"))
+    assert(song1.loops.size == 1)
+    val firstLoop = song1.loops(0)
+    assert(firstLoop.start == 143002)
+    assert(firstLoop.end == 156321)
+    assert(firstLoop.tracks.size == 5)
+    assert(firstLoop.tracks(0).level == -2)
+    assert(firstLoop.tracks(0).path == song1Dir.resolve("loop1s2.wav"))
+    assert(firstLoop.tracks(1).level == -1)
+    assert(firstLoop.tracks(1).path == song1Dir.resolve("loop1s1.wav"))
+    assert(firstLoop.tracks(2).level == 0)
+    assert(firstLoop.tracks(2).path == song1Dir.resolve("loop1.wav"))
+    assert(firstLoop.tracks(3).level == 1)
+    assert(firstLoop.tracks(3).path == song1Dir.resolve("loop1h1.wav"))
+    assert(firstLoop.tracks(4).level == 2)
+    assert(firstLoop.tracks(4).path == song1Dir.resolve("loop1h2.wav"))
+  }
+
+  private def assertSong2(song2: Song, rootDir: Path) = {
     val song2Dir = rootDir.resolve("song2")
     assert(song2.title == "Song 2")
-    assert(song2.tracks.size == 1)
-    assert(song2.tracks(0).path == song2Dir.resolve("main.wav"))
-    assert(song2.tracks(0).trackType == MainTrack)
+    assert(song2.path == song2Dir.resolve("main.wav"))
     assert(song2.loops.isEmpty)
   }
 }

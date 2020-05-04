@@ -1,38 +1,32 @@
 {
   "title": "Song 1",
-  "tracks": [
-    {
-      "path": "main.wav",
-      "type": "main"
-    },
-    {
-      "path": "track1.wav",
-      "type": "bass"
-    },
-    {
-      "path": "track2.wav",
-      "type": "beat",
-      "muted": true
-    },
-    {
-      "path": "track3.wav",
-      "type": "synth",
-      "muted": true
-    },
-    {
-      "path": "track4.wav",
-      "type": "synth",
-      "muted": true
-    }
-  ],
+  "path": "main.wav",
   "loops": [
     {
       "start": 143002,
-      "end": 156321
-    },
-    {
-      "start": 216540,
-      "end": 217601
+      "end": 156321,
+      "tracks": [
+        {
+          "level": -2,
+          "path": "loop1s2.wav"
+        },
+        {
+          "level": -1,
+          "path": "loop1s1.wav"
+        },
+        {
+          "level": 0,
+          "path": "loop1.wav"
+        },
+        {
+          "level": 1,
+          "path": "loop1h1.wav"
+        },
+        {
+          "level": 2,
+          "path": "loop1h2.wav"
+        }
+      ]
     }
   ]
 }

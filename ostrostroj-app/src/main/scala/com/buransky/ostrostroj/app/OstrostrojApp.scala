@@ -78,10 +78,6 @@ object OstrostrojApp {
       val audioPlayer = ctx.spawn(AudioPlayer(ctx.self), "audioPlayer")
       ctx.watch(audioPlayer)
 
-      val tracks = playlist.songs.head.tracks.map(_.path).toList
-      audioPlayer ! AudioPlayer.Load(tracks)
-      audioPlayer ! AudioPlayer.Play
-
       // TODO: Just for testing, remove!
       val loop = playlist.songs.head.loops.head
       //ctx.scheduleOnce(6.seconds, audioPlayer, StartLooping(Position(loop.start), Position(loop.end)))
