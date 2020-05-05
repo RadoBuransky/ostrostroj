@@ -6,6 +6,7 @@ import java.time.{Duration, Instant}
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior, PostStop, Signal}
 import com.buransky.ostrostroj.app.common.OstrostrojException
+import com.buransky.ostrostroj.app.player.looper.SongLooper
 import com.buransky.ostrostroj.app.show.Playlist
 import com.sun.media.sound.WaveFileReader
 import javax.sound.sampled._
@@ -42,7 +43,6 @@ object PlaylistPlayer {
   final case class ReportStatusTo(actorRef: ActorRef[_]) extends Command
   private final case object NextBuffer extends Command
   private final case object NoOp extends Command
-  private final case class ChangeBehavior(newBehavior: PlaylistPlayerBehavior) extends Command
   private final case class FutureFailed(cause: Throwable) extends Command
 
   def apply(playlist: Playlist): Behavior[Command] = Behaviors.setup { ctx =>
@@ -54,16 +54,17 @@ object PlaylistPlayer {
   }
 
   class PlaylistPlayerBehavior private (playlist: Playlist,
-                               songIndex: Int,
-                               looper: Looper,
-                               mixer: Mixer,
-                               sourceDataLine: SourceDataLine,
-                               ctx: ActorContext[Command]) extends AbstractBehavior[Command](ctx) {
+                                        songIndex: Int,
+                                        looper: SongLooper,
+                                        mixer: Mixer,
+                                        sourceDataLine: SourceDataLine,
+                                        ctx: ActorContext[Command]) extends AbstractBehavior[Command](ctx) {
     import ctx.executionContext
 
     def this(playlist: Playlist, songIndex: Int, mixer: Mixer, sourceDataLine: SourceDataLine,
              ctx: ActorContext[Command]) {
-      this(playlist, songIndex, new Looper(playlist.songs(songIndex)), mixer, sourceDataLine, ctx)
+      this(playlist, songIndex, new SongLooper(playlist.songs(songIndex), sourceDataLine.getFormat), mixer,
+        sourceDataLine, ctx)
     }
 
     logger.debug(s"Playlist player created. [$songIndex]")
@@ -81,9 +82,15 @@ object PlaylistPlayer {
       case StartLooping =>
         startLooping()
         Behaviors.same
-      case StopLooping => copy(looper.stopLooping())
-      case Harder => copy(looper.harder())
-      case Softer => copy(looper.softer())
+      case StopLooping =>
+        looper.stopLooping()
+        Behaviors.same
+      case Harder =>
+        looper.harder()
+        Behaviors.same
+      case Softer =>
+        looper.softer()
+        Behaviors.same
       case NextSong if songIndex == playlist.songs.length - 1 => Behaviors.same
       case NextSong => copy(songIndex + 1)
       case VolumeUp => Behaviors.same
@@ -96,13 +103,8 @@ object PlaylistPlayer {
       case NoOp => Behaviors.same
     }
 
-    private def startLooping(): Unit = {
-      ctx.pipeToSelf(Future {
-        copy(looper.startLooping(masterStreamPosition))
-      }) {
-        case Success(newBehavior) => ChangeBehavior(newBehavior)
-        case Failure(t) => FutureFailed(new OstrostrojException(s"Start looping failed!", t))
-      }
+    private def startLooping(): Unit = Future {
+      looper.startLooping(masterStreamPosition)
     }
 
     override def onSignal: PartialFunction[Signal, Behavior[Command]] = {
@@ -190,7 +192,7 @@ object PlaylistPlayer {
       new PlaylistPlayerBehavior(playlist, songIndex, mixer, sourceDataLine, ctx)
     }
 
-    private def copy(looper: Looper): PlaylistPlayerBehavior = {
+    private def copy(looper: SongLooper): PlaylistPlayerBehavior = {
       new PlaylistPlayerBehavior(playlist, songIndex, looper, mixer, sourceDataLine, ctx)
     }
   }
