@@ -7,10 +7,9 @@ import com.buransky.ostrostroj.app.common.OstrostrojException
 import javax.sound.sampled.AudioFormat
 
 object BufferMixer {
-  val xfadingDuration: Duration = Duration.ofMillis(10)
+  val xfadingDuration: Duration = Duration.ofMillis(2)
 
   /**
-   *
    * @return Buffer size in bytes.
    */
   def xfadingBufferLength(audioFormat: AudioFormat): Int = {
@@ -18,7 +17,7 @@ object BufferMixer {
     (xfadingDuration.toMillis*getSampleSizeInBits*getChannels*getSampleRate/(8*1000)).toInt
   }
 
-  def mix(audioFormat: AudioFormat, track1: ByteBuffer, track2: ByteBuffer, track1Level: Float, track2Level: Float,
+  def mix(audioFormat: AudioFormat, track1: ByteBuffer, track2: ByteBuffer, track1Level: Double, track2Level: Double,
           dst: ByteBuffer): Int = {
     if (!audioFormat.isBigEndian && audioFormat.getSampleSizeInBits == 16) {
       mix16bitLe(track1, track2, track1Level, track2Level, dst)
@@ -50,7 +49,7 @@ object BufferMixer {
    * @param dst Destination buffer.
    * @return Number of bytes actually mixed.
    */
-  def mix16bitLe(track1: ByteBuffer, track2: ByteBuffer, track1Level: Float, track2Level: Float,
+  def mix16bitLe(track1: ByteBuffer, track2: ByteBuffer, track1Level: Double, track2Level: Double,
                  dst: ByteBuffer): Int = {
     if ((track1.position() != track2.position()) || (track1.limit() != track2.limit())) {
       throw new OstrostrojException(s"Tracks for mixing are different! [${track1.position()}, ${track2.position()}, " +
@@ -63,10 +62,12 @@ object BufferMixer {
       throw new OstrostrojException(s"Not enough room to mix into! [$srcSize, $dstSize]")
     }
 
+    val track1LevelSqrt = Math.sqrt(track1Level)
+    val track2LevelSqrt = Math.sqrt(track2Level)
     while (track1.position() < track1.limit()) {
       val sample1 = readLeShort(track1)
       val sample2 = readLeShort(track2)
-      val mixedSample = mix16bitLeSamples(sample1, sample2, track1Level, track2Level)
+      val mixedSample = mix16bitLeSamples(sample1, sample2, track1LevelSqrt, track2LevelSqrt)
       putLeShort(mixedSample, dst)
     }
 
@@ -86,10 +87,10 @@ object BufferMixer {
 
     val startingPosition = from.position()
     while (from.position() < from.limit()) {
-      val t = (from.position() - startingPosition).toDouble/fromSize.toDouble
+      val t: Double = (from.position() - startingPosition).toDouble/fromSize.toDouble
       val fromSample = readLeShort(from)
       val toSample = readLeShort(to)
-      val mixedSample = mix16bitLeSamples(fromSample, toSample, 1.0 - t, t)
+      val mixedSample = mix16bitLeSamples(fromSample, toSample, Math.sqrt(1.0 - t), Math.sqrt(t))
       to.position(to.position() - 2)
       putLeShort(mixedSample, to)
     }
@@ -100,8 +101,8 @@ object BufferMixer {
   /**
    * https://dsp.stackexchange.com/questions/14754/equal-power-crossfade
    */
-  private def mix16bitLeSamples(sample1: Short, sample2: Short, level1: Double, level2: Double): Short =
-    (sample1*Math.sqrt(level1) + sample2*Math.sqrt(level2)).toShort
+  private def mix16bitLeSamples(sample1: Short, sample2: Short, level1Sqrt: Double, level2Sqrt: Double): Short =
+    (sample1*level1Sqrt + sample2*level2Sqrt).toShort
 
   private def putLeShort(s: Short, buffer: ByteBuffer): Unit = {
     val (loByte, hiByte) = shortToLeBytes(s)
