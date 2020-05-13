@@ -8,8 +8,13 @@ class SongLooper(song: Song, audioFormat: AudioFormat) {
 
   def read(buffer: Array[Byte], masterStreamPosition: Int): LooperReadResult = synchronized {
     loopLooper match {
-      case Some(l) => l.read(buffer, masterStreamPosition)
-      case None => LooperReadResult(-1, 0)
+      case Some(l) =>
+        val result = l.read(buffer, masterStreamPosition)
+        if (result.bytesRead == -1) {
+          loopLooper = None
+        }
+        result
+      case None => LooperReadResult.empty
     }
   }
 
