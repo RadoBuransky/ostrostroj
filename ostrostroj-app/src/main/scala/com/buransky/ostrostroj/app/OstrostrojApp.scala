@@ -4,11 +4,11 @@ import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior, Terminated}
 import akka.cluster.typed.Cluster
-import com.buransky.ostrostroj.app.audio.AudioPlayer
 import com.buransky.ostrostroj.app.common.OstrostrojConfig.{DEV_DESKTOP, DEV_DEVICE}
 import com.buransky.ostrostroj.app.common.{OstrostrojConfig, OstrostrojException}
 import com.buransky.ostrostroj.app.controls.OstrostrojController
 import com.buransky.ostrostroj.app.device.{DriverCommand, OdroidGpio}
+import com.buransky.ostrostroj.app.player.PlaylistPlayer
 import com.buransky.ostrostroj.app.show.PlaylistReader
 import org.slf4j.LoggerFactory
 
@@ -75,19 +75,7 @@ object OstrostrojApp {
     }
 
     private def initDesktopPart(ctx: ActorContext[_]): Unit = {
-      val audioPlayer = ctx.spawn(AudioPlayer(ctx.self), "audioPlayer")
-      ctx.watch(audioPlayer)
-
-      // TODO: Just for testing, remove!
-      val loop = playlist.songs.head.loops.head
-      //ctx.scheduleOnce(6.seconds, audioPlayer, StartLooping(Position(loop.start), Position(loop.end)))
-//      ctx.scheduleOnce(3.seconds, audioPlayer, MuteTrack(1))
-//      ctx.scheduleOnce(5.seconds, audioPlayer, MuteTrack(2))
-//      ctx.scheduleOnce(6.seconds, audioPlayer, UnmuteTrack(1))
-//      ctx.scheduleOnce(7.seconds, audioPlayer, MuteTrack(3))
-//      ctx.scheduleOnce(8.seconds, audioPlayer, UnmuteTrack(2))
-//      ctx.scheduleOnce(9.seconds, audioPlayer, MuteTrack(4))
-//      ctx.scheduleOnce(10.seconds, audioPlayer, UnmuteTrack(3))
+      ctx.watch(ctx.spawn(PlaylistPlayer(playlist), "player"))
     }
   }
 }
