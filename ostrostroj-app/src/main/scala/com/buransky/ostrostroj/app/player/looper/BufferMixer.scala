@@ -102,7 +102,7 @@ object BufferMixer {
    * https://dsp.stackexchange.com/questions/14754/equal-power-crossfade
    */
   private def mix16bitLeSamples(sample1: Short, sample2: Short, level1Sqrt: Double, level2Sqrt: Double): Short =
-    (sample1*level1Sqrt + sample2*level2Sqrt).toShort
+    (sample1.toDouble*level1Sqrt + sample2.toDouble*level2Sqrt).toShort
 
   private def putLeShort(s: Short, buffer: ByteBuffer): Unit = {
     val (loByte, hiByte) = shortToLeBytes(s)

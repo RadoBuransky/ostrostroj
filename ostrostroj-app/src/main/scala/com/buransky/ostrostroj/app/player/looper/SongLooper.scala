@@ -21,7 +21,7 @@ class SongLooper(song: Song, audioFormat: AudioFormat) {
   def startLooping(masterStreamPosition: Int): Unit = synchronized {
     loopLooper match {
       case Some(l) => l.stopDraining()
-      case None => loopLooper = loopAtPosition(masterStreamPosition).map(new LoopLooper(_, audioFormat))
+      case None => loopLooper = loopAtPosition(masterStreamPosition).map(LoopLooper(_, audioFormat))
     }
   }
 

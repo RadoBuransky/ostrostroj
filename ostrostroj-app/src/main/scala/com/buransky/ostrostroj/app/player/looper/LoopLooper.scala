@@ -3,7 +3,7 @@ package com.buransky.ostrostroj.app.player.looper
 import java.nio.ByteBuffer
 
 import com.buransky.ostrostroj.app.common.OstrostrojException
-import com.buransky.ostrostroj.app.show.{Loop, Track}
+import com.buransky.ostrostroj.app.show.Loop
 import javax.sound.sampled.{AudioFormat, AudioSystem}
 
 import scala.annotation.tailrec
@@ -13,12 +13,7 @@ case object LooperReadResult {
   val empty: LooperReadResult = LooperReadResult(-1, 0)
 }
 
-class LoopLooper(loop: Loop, audioFormat: AudioFormat) {
-  /**
-   * Map of level index and audio data.
-   */
-  private val levelBuffers: Map[Int, Array[Byte]] = loadLevelBuffers(loop.tracks)
-
+class LoopLooper(loop: Loop, audioFormat: AudioFormat, levelBuffers: Map[Int, Array[Byte]]) {
   /**
    * Small buffer used only for crossfading between levels.
    */
@@ -35,7 +30,7 @@ class LoopLooper(loop: Loop, audioFormat: AudioFormat) {
   private var currentLevelLimits: (Int, Int) = (0, 0)
 
   /**
-   * Target level to
+   * Target level to get to
    */
   private var targetLevel: Int = 0
   private var looperPosition: Int = -1
@@ -43,21 +38,29 @@ class LoopLooper(loop: Loop, audioFormat: AudioFormat) {
 
   def read(dst: Array[Byte], masterStreamPosition: Int): LooperReadResult = synchronized {
     if (looperPosition == -1) {
-      // Initialize looper position
-      looperPosition = masterStreamPosition
+      initLooperPosition(masterStreamPosition)
     }
 
-    val dstBuffer = ByteBuffer.wrap(dst)
-    val newBufferPosition = read(dstBuffer, looperPosition - loop.start)
-    looperPosition = loop.start + newBufferPosition
-
-    LooperReadResult(dstBuffer.position(), loop.endExclusive - masterStreamPosition)
+    val bufferPosition = looperPosition - loop.start
+    if (bufferPosition == 0 && draining) {
+      LooperReadResult(-1, 0)
+    } else {
+      val dstBuffer = ByteBuffer.wrap(dst)
+      val newBufferPosition = read(dstBuffer, bufferPosition)
+      looperPosition = loop.start + newBufferPosition
+      createResult(masterStreamPosition, dstBuffer)
+    }
   }
 
   def harder(): Unit = setTargetLevel(targetLevel + 1)
   def softer(): Unit = setTargetLevel(targetLevel - 1)
   def startDraining(): Unit = synchronized { draining = true }
   def stopDraining(): Unit = synchronized { draining = false }
+
+  private def createResult(masterStreamPosition: Int, dstBuffer: ByteBuffer): LooperReadResult = {
+    val loopEndPosition = loop.endExclusive * audioFormat.getChannels * audioFormat.getSampleSizeInBits / 8
+    LooperReadResult(dstBuffer.position(), loopEndPosition - masterStreamPosition)
+  }
 
   @tailrec
   private def read(dst: ByteBuffer, bufferPosition: Int): Int = {
@@ -82,17 +85,25 @@ class LoopLooper(loop: Loop, audioFormat: AudioFormat) {
   }
 
   private def xfadeNextLevelToBuffer(dst: ByteBuffer): Int = {
-    // Get some little data for current level
-    val bufferPosition = looperPosition - loop.start
-    xfadeBuffer.clear()
-    mixLevelToBuffer(currentLevel, currentLevelLimits, bufferPosition, xfadeBuffer)
+    if (dst.limit() - dst.position() < xfadeBuffer.limit() - xfadeBuffer.position()) {
+      // The buffer is too small, switch to the next level without crossfading
+      currentLevel = targetLevel
+      currentLevelToBuffer(dst)
+    } else {
+      // Get some little data for current level
+      val bufferPosition = looperPosition - loop.start
+      xfadeBuffer.clear()
+      mixLevelToBuffer(currentLevel, currentLevelLimits, bufferPosition, xfadeBuffer)
+      xfadeBuffer.position(0)
 
-    // Get data for new level
-    currentLevel = targetLevel
-    currentLevelToBuffer(dst)
+      // Get data for new level
+      currentLevel = targetLevel
+      currentLevelToBuffer(dst)
+      dst.position(0)
 
-    // Cross-fade from - to
-    BufferMixer.xfade(audioFormat, xfadeBuffer, dst)
+      // Cross-fade from - to
+      BufferMixer.xfade(audioFormat, xfadeBuffer, dst)
+    }
   }
 
   private def currentLevelToBuffer(dst: ByteBuffer) = {
@@ -105,16 +116,17 @@ class LoopLooper(loop: Loop, audioFormat: AudioFormat) {
    */
   private def mixLevelToBuffer(level: Int, levelLimits: (Int, Int), bufferPosition: Int, dst: ByteBuffer): Int = {
     val bytesCopied = copyAudioData(level, levelLimits, bufferPosition, dst)
-    dst.position(dst.position() + bytesCopied)
     (bufferPosition + bytesCopied) % levelBuffers(currentLevelLimits._1).length
   }
 
   /**
    * @return Bytes copied.
    */
-  private def copyAudioData(level: Int, levelLimits: (Int, Int), bufferPosition: Int, dst: ByteBuffer) = {
+  private def copyAudioData(level: Int, levelLimits: (Int, Int), bufferPosition: Int, dst: ByteBuffer): Int = {
     if (level == levelLimits._1 || level == levelLimits._2) {
-      directCopyAudioData(level, bufferPosition, dst)
+      val bytesCopied = directCopyAudioData(level, bufferPosition, dst)
+      dst.position(dst.position() + bytesCopied)
+      bytesCopied
     } else {
       mixAudioData(level, levelLimits, bufferPosition, dst)
     }
@@ -140,7 +152,7 @@ class LoopLooper(loop: Loop, audioFormat: AudioFormat) {
     val srcBytesLeft = srcBuffer.length - bufferPosition
     val dstBytesLeft = dst.limit() - dst.position()
     val bytesToCopy = Math.min(srcBytesLeft, dstBytesLeft)
-    System.arraycopy(srcBuffer, bufferPosition, dst, dst.position(), bytesToCopy)
+    System.arraycopy(srcBuffer, bufferPosition, dst.array(), dst.position(), bytesToCopy)
     bytesToCopy
   }
 
@@ -171,13 +183,29 @@ class LoopLooper(loop: Loop, audioFormat: AudioFormat) {
     }
   }
 
+  private def initLooperPosition(masterStreamPosition: Int): Unit = {
+    // Initialize looper position
+    looperPosition = masterStreamPosition
+
+    if (looperPosition < loop.start || looperPosition > loop.endExclusive) {
+      throw new OstrostrojException(s"Position outside of the loop! [$looperPosition, ${loop.start}, " +
+        s"${loop.endExclusive}]")
+    }
+  }
+}
+
+object LoopLooper {
+  def apply(loop: Loop, audioFormat: AudioFormat): LoopLooper = {
+    new LoopLooper(loop, audioFormat, loadLevelBuffers(loop, audioFormat))
+  }
+
   /**
    * Loads all audio files for the loop into buffers. This can take longer therefore it's executed asynchronously by
    * the caller (PlaylistPlayer).
    */
-  private def loadLevelBuffers(tracks: Seq[Track]): Map[Int, Array[Byte]] = {
+  private def loadLevelBuffers(loop: Loop, audioFormat: AudioFormat): Map[Int, Array[Byte]] = {
     val bufferSize = (loop.endExclusive - loop.start)*audioFormat.getChannels*audioFormat.getSampleSizeInBits/8
-    tracks.map { track =>
+    loop.tracks.map { track =>
       val stream = AudioSystem.getAudioInputStream(track.path.toFile)
       try {
         val buffer = new Array[Byte](bufferSize)
