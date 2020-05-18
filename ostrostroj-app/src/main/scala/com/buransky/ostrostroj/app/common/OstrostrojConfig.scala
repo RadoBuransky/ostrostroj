@@ -2,9 +2,11 @@ package com.buransky.ostrostroj.app.common
 
 import java.nio.file.{Path, Paths}
 
+import com.google.common.base.Preconditions
 import com.typesafe.config.{Config, ConfigFactory, ConfigValue, ConfigValueFactory}
 import org.slf4j.LoggerFactory
 
+import scala.collection.StringOps
 import scala.jdk.CollectionConverters._
 
 object OstrostrojConfig {
@@ -17,7 +19,7 @@ object OstrostrojConfig {
   val DEV_DEVICE = "dev-device"
 
   // Path to playlist
-  val PLAYLIST_PATH = "OSTROSTROJ_PLAYLIST"
+  val OSTROSTROJ_PLAYLIST = "OSTROSTROJ_PLAYLIST"
 
   lazy val config: Config = {
     val configMap = Map("akka.cluster.roles" -> clusterRoles().asJava)
@@ -45,7 +47,11 @@ object OstrostrojConfig {
 
   val isDevDesktop: Boolean = System.getProperty(DEV_DESKTOP) != null
   val isDevDevice: Boolean = System.getProperty(DEV_DEVICE) != null
-  val playlistPath: Path = Paths.get(System.getenv(PLAYLIST_PATH))
+  val playlistPath: Path = {
+    val playlistPathEnv = Preconditions.checkNotNull(System.getenv(OSTROSTROJ_PLAYLIST),
+      OSTROSTROJ_PLAYLIST.asInstanceOf[AnyRef])
+    Paths.get(playlistPathEnv)
+  }
   val develeoperMode: Boolean = isDevDesktop || isDevDevice
 
   if (logger.isDebugEnabled) {

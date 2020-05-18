@@ -31,7 +31,7 @@ object PlaylistPlayer {
                                 songPosition: Duration,
                                 loop: Option[LoopStatus],
                                 isPlaying: Boolean,
-                                volume: Double)
+                                masterGainDb: Double)
 
   sealed trait Command
   final case object Play extends Command
@@ -53,7 +53,7 @@ object PlaylistPlayer {
     val songIndex = 0
     val firstSongMasterTrack = playlist.songs(songIndex).path
     val sourceDataLine = getSourceDataLine(firstSongMasterTrack, mixer.getMixerInfo)
-    val gainControl = mixer.getControl(FloatControl.Type.MASTER_GAIN) match {
+    val gainControl = sourceDataLine.getControl(FloatControl.Type.MASTER_GAIN) match {
       case fc: FloatControl => fc
       case other => throw new OstrostrojException(s"Master gain is not a FloatControl! [${other.getClass}]")
     }

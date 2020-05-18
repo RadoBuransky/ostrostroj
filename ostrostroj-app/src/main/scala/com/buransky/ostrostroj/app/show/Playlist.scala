@@ -14,8 +14,6 @@ final case class Track(level: Int, path: Path)
  * https://github.com/playframework/play-json
  */
 object PlaylistReader {
-  private val songFileName = "song.json"
-
   def read(playlistPath: Path): Playlist = {
     processJsonFile(playlistPath) { playlistJson =>
       val rootDir = playlistPath.getParent
@@ -26,7 +24,7 @@ object PlaylistReader {
   }
 
   private def readSong(songDir: Path): Song = {
-    processJsonFile(songDir.resolve(songFileName)) { songJson =>
+    processJsonFile(songDir.resolve(songDir.getFileName + ".json")) { songJson =>
       Song(
         title = (songJson \ "title").as[String],
         path = songDir.resolve((songJson \ "path").as[String]),

@@ -116,10 +116,9 @@ class SongPlayer(song: Song, bufferSize: Int) extends AutoCloseable {
   private def loopAtPosition(position: Int): Option[Loop] =
     song.loops.find(l => l.start <= position && l.endExclusive > position)
 
-
   private def checkAudioFormat(expected: AudioFormat, actual: AudioFormat): Boolean = {
-    expected.getSampleRate != actual.getSampleRate || expected.getSampleSizeInBits != actual.getSampleSizeInBits ||
-      expected.getChannels != actual.getChannels || expected.getEncoding != actual.getEncoding ||
-      expected.isBigEndian != actual.isBigEndian
+    expected.getSampleRate == actual.getSampleRate && expected.getSampleSizeInBits == actual.getSampleSizeInBits &&
+      expected.getChannels == actual.getChannels && expected.getEncoding == actual.getEncoding &&
+      expected.isBigEndian == actual.isBigEndian
   }
 }

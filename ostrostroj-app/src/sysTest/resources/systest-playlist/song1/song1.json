@@ -1,0 +1,24 @@
+{
+  "title": "Song 1",
+  "path": "master.wav",
+  "loops": [
+    {
+      "start": 88200,
+      "end": 264600,
+      "tracks": [
+        {
+          "level": -5,
+          "path": "loop1s5.wav"
+        },
+        {
+          "level": 0,
+          "path": "loop1.wav"
+        },
+        {
+          "level": 5,
+          "path": "loop1h5.wav"
+        }
+      ]
+    }
+  ]
+}

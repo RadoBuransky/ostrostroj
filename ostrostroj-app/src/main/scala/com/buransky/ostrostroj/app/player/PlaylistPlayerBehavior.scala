@@ -14,12 +14,12 @@ import org.slf4j.LoggerFactory
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
-class PlaylistPlayerBehavior private (playlist: Playlist,
-                                      songIndex: Int,
-                                      songPlayer: SongPlayer,
-                                      mixer: Mixer,
-                                      sourceDataLine: SourceDataLine,
-                                      gainControl: FloatControl,
+class PlaylistPlayerBehavior private (val playlist: Playlist,
+                                      val songIndex: Int,
+                                      val songPlayer: SongPlayer,
+                                      val mixer: Mixer,
+                                      val sourceDataLine: SourceDataLine,
+                                      val gainControl: FloatControl,
                                       ctx: ActorContext[Command]) extends AbstractBehavior[Command](ctx) {
   import PlaylistPlayerBehavior._
   import ctx.executionContext
@@ -55,10 +55,10 @@ class PlaylistPlayerBehavior private (playlist: Playlist,
     case NextSong if songIndex >= playlist.songs.length - 1 => Behaviors.same
     case NextSong => new PlaylistPlayerBehavior(playlist, songIndex + 1, mixer, sourceDataLine, gainControl, ctx)
     case VolumeUp =>
-      gainControl.setValue(+volumeStepDb)
+      changeVolume(+1)
       Behaviors.same
     case VolumeDown =>
-      gainControl.setValue(-volumeStepDb)
+      changeVolume(-1)
       Behaviors.same
     case GetStatus(replyTo) =>
       replyTo ! currentPlayerStatus()
@@ -79,7 +79,7 @@ class PlaylistPlayerBehavior private (playlist: Playlist,
       Behaviors.stopped
   }
 
-  private def currentPlayerStatus(): PlayerStatus = {
+  def currentPlayerStatus(): PlayerStatus = {
     val songDuration = framePositionToDuration(songPlayer.fileFormat.getFrameLength,
       songPlayer.fileFormat.getFormat.getSampleRate)
     val songPosition = framePositionToDuration(songPlayer.streamPosition / songPlayer.fileFormat.getFormat.getFrameSize,
@@ -88,7 +88,7 @@ class PlaylistPlayerBehavior private (playlist: Playlist,
       gainControl.getValue)
   }
 
-  private def readNextBuffer(): Unit = {
+  def readNextBuffer(): Unit = {
     val result = Future {
       val buffer = songPlayer.read()
       if (buffer.limit() < 1) {
@@ -111,6 +111,10 @@ class PlaylistPlayerBehavior private (playlist: Playlist,
     }
   }
 
+  def changeVolume(stepDelta: Int): Unit = {
+    gainControl.setValue((((gainControl.getValue.toInt / volumeStepDb) + stepDelta)*volumeStepDb))
+  }
+
   private def writeBuffer(buffer: ByteBuffer): Int = {
     val bytesWritten = sourceDataLine.write(buffer.array(), 0, buffer.limit())
     logger.trace(s"Bytes written = $bytesWritten")
@@ -120,5 +124,5 @@ class PlaylistPlayerBehavior private (playlist: Playlist,
 
 object PlaylistPlayerBehavior {
   private val logger = LoggerFactory.getLogger(classOf[PlaylistPlayerBehavior])
-  private val volumeStepDb = 10
+  private val volumeStepDb = 3
 }
