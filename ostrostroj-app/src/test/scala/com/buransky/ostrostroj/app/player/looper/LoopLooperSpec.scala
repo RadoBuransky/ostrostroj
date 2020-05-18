@@ -19,11 +19,12 @@ class LoopLooperSpec extends AnyFlatSpec {
     // Prepare
     val loop = Loop(1, 2, Nil)
     val loopLooper = new LoopLooper(loop, audioFormat, Map.empty)
-    val dst = new Array[Byte](1)
+    val dst = ByteBuffer.allocate(1)
+    dst.limit(0)
 
     // Execute
     val ex = intercept[OstrostrojException] {
-      loopLooper.read(dst, 0)
+      loopLooper.fill(dst, 0)
     }
 
     // Assert
@@ -35,15 +36,17 @@ class LoopLooperSpec extends AnyFlatSpec {
     val loop = Loop(0, 1, Nil)
     val level0 = Array.fill[Byte](2)(1)
     val loopLooper = new LoopLooper(loop, audioFormat, Map(0 -> level0))
-    val dst = new Array[Byte](2)
+    val dst = ByteBuffer.allocate(2)
+    dst.limit(0)
 
     // Execute
-    val result = loopLooper.read(dst, 0)
+    val masterSkip = loopLooper.fill(dst, 0)
 
     // Assert
-    assert(result.bytesRead == 2)
-    assert(result.masterSkip == 2)
-    assert(dst.forall(_ == 1))
+    assert(dst.limit() == 2)
+    assert(masterSkip == 2)
+    for (i <- dst.position() until dst.limit())
+      assert(dst.get(i) == 1)
   }
 
   it should "read the default level, two loops" in {
@@ -51,15 +54,17 @@ class LoopLooperSpec extends AnyFlatSpec {
     val loop = Loop(0, 1, Nil)
     val level0 = Array.fill[Byte](2)(1)
     val loopLooper = new LoopLooper(loop, audioFormat, Map(0 -> level0))
-    val dst = new Array[Byte](4)
+    val dst = ByteBuffer.allocate(4)
+    dst.limit(0)
 
     // Execute
-    val result = loopLooper.read(dst, 0)
+    val masterSkip = loopLooper.fill(dst, 0)
 
     // Assert
-    assert(result.bytesRead == 4)
-    assert(result.masterSkip == 2)
-    assert(dst.forall(_ == 1))
+    assert(dst.limit() == 4)
+    assert(masterSkip == 2)
+    for (i <- dst.position() until dst.limit())
+      assert(dst.get(i) == 1)
   }
 
   it should "switch to the next level in the second pass" in {
@@ -68,26 +73,34 @@ class LoopLooperSpec extends AnyFlatSpec {
     val level0 = Array.fill[Byte](4)(1)
     val level1 = Array.fill[Byte](4)(2)
     val loopLooper = new LoopLooper(loop, audioFormat, Map(0 -> level0, 1 -> level1))
-    val dst = new Array[Byte](2)
+    val dst = ByteBuffer.allocate(2)
+    dst.limit(0)
 
     // 1. We're on the default level 0
-    val r1 = loopLooper.read(dst, 0)
-    assert(r1.bytesRead == 2)
-    assert(r1.masterSkip == 4)
-    assert(dst.forall(_ == 1))
+    val masterSkip1 = loopLooper.fill(dst, 0)
+    assert(dst.limit() == 2)
+    assert(masterSkip1 == 4)
+    for (i <- dst.position() until dst.limit())
+      assert(dst.get(i) == 1)
 
     // 2. Switch to the next level in the middle of the first loop and check that we're still on the first level
     loopLooper.harder()
-    val r2 = loopLooper.read(dst, 4)
-    assert(r2.bytesRead == 2)
-    assert(r2.masterSkip == 0)
-    assert(dst.forall(_ == 1))
+    dst.position(0)
+    dst.limit(0)
+    val masterSkip2 = loopLooper.fill(dst, 4)
+    assert(dst.limit() == 2)
+    assert(masterSkip2 == 0)
+    for (i <- dst.position() until dst.limit())
+      assert(dst.get(i) == 1)
 
     // 3. Read more and see if we're on the second level already
-    val r3 = loopLooper.read(dst, 4)
-    assert(r3.bytesRead == 2)
-    assert(r3.masterSkip == 0)
-    assert(dst.forall(_ == 2))
+    dst.position(0)
+    dst.limit(0)
+    val masterSkip3 = loopLooper.fill(dst, 4)
+    assert(dst.limit() == 2)
+    assert(masterSkip3 == 0)
+    for (i <- dst.position() until dst.limit())
+      assert(dst.get(i) == 2)
   }
 
   it should "mix two levels" in {
@@ -96,14 +109,15 @@ class LoopLooperSpec extends AnyFlatSpec {
     val level0 = Array.fill[Byte](2)(10)
     val level2 = Array.fill[Byte](2)(20)
     val loopLooper = new LoopLooper(loop, audioFormat, Map(0 -> level0, 2 -> level2))
-    val dst = new Array[Byte](2)
+    val dst = ByteBuffer.allocate(2)
+    dst.limit(0)
 
     loopLooper.harder()
-    val result = loopLooper.read(dst, 0)
-    assert(result.bytesRead == 2)
-    assert(result.masterSkip == 2)
-    assert(dst(0) == 75)
-    assert(dst(1) == 21)
+    val masterSkip = loopLooper.fill(dst, 0)
+    assert(dst.limit() == 2)
+    assert(masterSkip == 2)
+    assert(dst.get(0) == 75)
+    assert(dst.get(1) == 21)
   }
 
   it should "crossfade from one level to another" in {
@@ -118,11 +132,12 @@ class LoopLooperSpec extends AnyFlatSpec {
     }
     val loopLooper = new LoopLooper(loop, audioFormat, Map(0 -> level0.array(), 1 -> level1.array()))
     val dst = ByteBuffer.allocate(bufferSize)
+    dst.limit(0)
 
     loopLooper.harder()
-    val result = loopLooper.read(dst.array(), 0)
-    assert(result.bytesRead == bufferSize)
-    assert(result.masterSkip == bufferSize)
+    val masterSkip = loopLooper.fill(dst, 0)
+    assert(dst.limit() == bufferSize)
+    assert(masterSkip == bufferSize)
     assert(dst.getShort == 0x0001)
     assert(dst.getShort(bufferSize/16) == 0xA401.toShort)
     assert(dst.getShort(bufferSize/8) == 0xDD01.toShort)
@@ -139,22 +154,27 @@ class LoopLooperSpec extends AnyFlatSpec {
     val loop = Loop(0, 2, Nil)
     val level0 = Array.fill[Byte](4)(1)
     val loopLooper = new LoopLooper(loop, audioFormat, Map(0 -> level0))
-    val dst1 = new Array[Byte](2)
+    val dst1 = ByteBuffer.allocate(2)
 
     // 1. We're looping
     for (i <- 0 to 2) {
-      val r1 = loopLooper.read(dst1, 0)
-      assert(r1.bytesRead == 2)
+      dst1.position(0)
+      dst1.limit(0)
+      loopLooper.fill(dst1, 0)
+      assert(dst1.limit() == 2)
     }
 
     // 2. Drain
     loopLooper.startDraining()
-    val r3 = loopLooper.read(dst1, 0)
-    assert(r3.bytesRead == 2)
+    dst1.position(0)
+    dst1.limit(0)
+    loopLooper.fill(dst1, 0)
+    assert(dst1.limit() == 2)
 
     // 3. Try to read more
-    val dst2 = new Array[Byte](4)
-    val r4 = loopLooper.read(dst2, 0)
-    assert(r4.bytesRead == -1)
+    val dst2 = ByteBuffer.allocate(4)
+    dst2.limit(0)
+    loopLooper.fill(dst2, 0)
+    assert(dst2.limit() == 0)
   }
 }

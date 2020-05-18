@@ -8,11 +8,6 @@ import javax.sound.sampled.{AudioFormat, AudioSystem}
 
 import scala.annotation.tailrec
 
-case class LooperReadResult(bytesRead: Int, masterSkip: Int)
-case object LooperReadResult {
-  val empty: LooperReadResult = LooperReadResult(-1, 0)
-}
-
 class LoopLooper(val loop: Loop, audioFormat: AudioFormat, levelBuffers: Map[Int, Array[Byte]]) {
   /**
    * Small buffer used only for crossfading between levels.
@@ -36,18 +31,26 @@ class LoopLooper(val loop: Loop, audioFormat: AudioFormat, levelBuffers: Map[Int
   private var looperPosition: Int = -1
   private var _draining: Boolean = false
 
-  def read(dst: Array[Byte], masterStreamPosition: Int): LooperReadResult = synchronized {
+  /**
+   * @return Number of bytes to skip in the master stream.
+   */
+  def fill(buffer: ByteBuffer, masterStreamPosition: Int): Int = synchronized {
     if (looperPosition == -1) {
       initLooperPosition(masterStreamPosition)
     }
 
     val bufferPosition = looperPosition - loop.start
     if (bufferPosition == 0 && _draining) {
-      LooperReadResult(-1, 0)
+      0
     } else {
-      val dstBuffer = ByteBuffer.wrap(dst)
+      val dstBuffer = ByteBuffer.wrap(buffer.array())
+      dstBuffer.position(buffer.limit())
+      dstBuffer.limit(buffer.capacity())
+
       val newBufferPosition = read(dstBuffer, bufferPosition)
+
       looperPosition = loop.start + newBufferPosition
+      buffer.limit(dstBuffer.position())
       createResult(masterStreamPosition, dstBuffer)
     }
   }
@@ -67,9 +70,9 @@ class LoopLooper(val loop: Loop, audioFormat: AudioFormat, levelBuffers: Map[Int
   def targetLevel: Int = _targetLevel
   def draining: Boolean = _draining
 
-  private def createResult(masterStreamPosition: Int, dstBuffer: ByteBuffer): LooperReadResult = {
+  private def createResult(masterStreamPosition: Int, dstBuffer: ByteBuffer): Int = {
     val loopEndPosition = loop.endExclusive * audioFormat.getChannels * audioFormat.getSampleSizeInBits / 8
-    LooperReadResult(dstBuffer.position(), loopEndPosition - masterStreamPosition)
+    loopEndPosition - masterStreamPosition
   }
 
   @tailrec

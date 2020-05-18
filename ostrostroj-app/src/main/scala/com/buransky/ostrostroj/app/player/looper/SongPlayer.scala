@@ -19,7 +19,8 @@ class SongPlayer(song: Song, bufferSize: Int) extends AutoCloseable {
     }
     audioInputStream
   }
-  private val buffer: Array[Byte] = new Array[Byte](bufferSize)
+  private val buffer: ByteBuffer = ByteBuffer.allocate(bufferSize)
+  buffer.limit(0)
   private var masterStreamPosition: Int = 0
   private var loopLooper: Option[LoopLooper] = None
 
@@ -27,13 +28,14 @@ class SongPlayer(song: Song, bufferSize: Int) extends AutoCloseable {
     masterStream.close()
   }
 
-  def read(): ByteBuffer = synchronized {
-    val looperReadResult = readFromLooper(buffer)
-    val bytesRead = readFromMaster(looperReadResult)
-
-    val result = ByteBuffer.wrap(buffer)
-    result.limit(bytesRead)
-    result
+  def fillBuffer(): ByteBuffer = synchronized {
+    if (buffer.position() == buffer.limit()) {
+      buffer.position(0)
+      buffer.limit(0)
+      fillFromLooper()
+      fillFromMaster()
+    }
+    buffer
   }
 
   def startLooping(): Unit = synchronized {
@@ -77,39 +79,28 @@ class SongPlayer(song: Song, bufferSize: Int) extends AutoCloseable {
     }
   }
 
-  private def readFromMaster(looperReadResult: LooperReadResult): Int = {
-    if (looperReadResult.bytesRead > 0) {
-      if (looperReadResult.bytesRead < buffer.length) {
-        readFromMaster(buffer, looperReadResult.bytesRead) + looperReadResult.bytesRead
-      } else {
-        looperReadResult.bytesRead
+  private def fillFromMaster(): Unit = {
+    if (buffer.limit() < buffer.capacity()) {
+      val bytesRead = masterStream.read(buffer.array(), buffer.limit(), buffer.capacity() - buffer.limit())
+      if (bytesRead > 0) {
+        buffer.limit(buffer.limit() + bytesRead)
+        masterStreamPosition += bytesRead
       }
-    } else {
-      readFromMaster(buffer, 0)
     }
   }
 
-  private def readFromMaster(b: Array[Byte], offset: Int): Int = {
-    val bytesRead = masterStream.read(b, offset, b.length - offset)
-    if (bytesRead > 0) {
-      masterStreamPosition += bytesRead
-    }
-    bytesRead
-  }
-
-  private def readFromLooper(buffer: Array[Byte]): LooperReadResult = synchronized {
-    loopLooper match {
-      case Some(l) =>
-        val result = l.read(buffer, masterStreamPosition)
-        if (result.bytesRead == -1) {
-          loopLooper = None
-        } else {
-          if (result.masterSkip > 0) {
-            masterStreamPosition += masterStream.skip(result.masterSkip).toInt
-          }
+  private def fillFromLooper(): Unit = {
+    loopLooper.foreach { l =>
+      val oldLimit = buffer.limit()
+      val masterSkip = l.fill(buffer, masterStreamPosition)
+      if (buffer.limit() - oldLimit == 0) {
+        buffer.limit(0)
+        loopLooper = None
+      } else {
+        if (masterSkip > 0) {
+          masterStreamPosition += masterStream.skip(masterSkip).toInt
         }
-        result
-      case None => LooperReadResult.empty
+      }
     }
   }
 

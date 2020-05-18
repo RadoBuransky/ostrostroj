@@ -34,6 +34,7 @@ class PlaylistPlayerBehavior private (val playlist: Playlist,
   override def onMessage(msg: Command): Behavior[Command] = msg match {
     case Play =>
       sourceDataLine.start()
+      ctx.self ! ReadNextBuffer
       Behaviors.same
     case Pause =>
       sourceDataLine.stop()
@@ -90,16 +91,17 @@ class PlaylistPlayerBehavior private (val playlist: Playlist,
 
   def readNextBuffer(): Unit = {
     val result = Future {
-      val buffer = songPlayer.read()
+      val buffer = songPlayer.fillBuffer()
       if (buffer.limit() < 1) {
         logger.debug(s"Playback of song finished. Automatically proceeding to the next song. [$songIndex]")
         NextSong
       } else {
         val bytesWritten = writeBuffer(buffer)
+        buffer.position(buffer.position() + bytesWritten)
         if (bytesWritten == buffer.limit()) {
           ReadNextBuffer
         } else {
-          logger.debug(s"$bytesWritten bytes written but ${buffer.limit()} bytes read.")
+          logger.debug(s"$bytesWritten bytes written but ${buffer.limit() - buffer.position()} bytes read.")
           NoOp
         }
       }
@@ -116,7 +118,7 @@ class PlaylistPlayerBehavior private (val playlist: Playlist,
   }
 
   private def writeBuffer(buffer: ByteBuffer): Int = {
-    val bytesWritten = sourceDataLine.write(buffer.array(), 0, buffer.limit())
+    val bytesWritten = sourceDataLine.write(buffer.array(), buffer.position(), buffer.limit())
     logger.trace(s"Bytes written = $bytesWritten")
     bytesWritten
   }
