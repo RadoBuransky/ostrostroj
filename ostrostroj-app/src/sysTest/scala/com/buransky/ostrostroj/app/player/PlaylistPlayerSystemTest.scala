@@ -44,18 +44,16 @@ class PlaylistPlayerSystemTest extends BaseSystemTest with PlaylistPlayerFixture
   }
 
   it should "play the whole song 1" in {
-    // Execute
-    playlistPlayerRef ! PlaylistPlayer.Play
-
-    // Wait until playback starts
     val testProbe = testKit.createTestProbe[AnyRef]()
-    whileStatus(testProbe, !_.isPlaying)(_)
+    assert(getStatus(testProbe).songPosition.toMillis == 0, "Position should be at the beginning")
+
+    // Start playback
+    startPlayback(testProbe)
 
     // Wait until playback is done
-    var isPlaying = true
     var oldPos: Long = 0
     whileStatus(testProbe, _.isPlaying) { status =>
-      assert(status.songPosition.toMillis >= oldPos)
+      assert(status.songPosition.toMillis >= oldPos, "Current position should be always growing.")
       oldPos = status.songPosition.toMillis
     }
 
@@ -63,7 +61,12 @@ class PlaylistPlayerSystemTest extends BaseSystemTest with PlaylistPlayerFixture
     val status = getStatus(testProbe)
     assert(!status.isPlaying)
     assert(status.songIndex == 0)
-    assert(status.songPosition == status.songDuration)
+    assert(status.songPosition == status.songDuration, "Position should be at the end")
+  }
+
+  private def startPlayback(testProbe: TestProbe[AnyRef]): Unit = {
+    playlistPlayerRef ! PlaylistPlayer.Play
+    whileStatus(testProbe, !_.isPlaying)(_ => ())
   }
 
   @tailrec
