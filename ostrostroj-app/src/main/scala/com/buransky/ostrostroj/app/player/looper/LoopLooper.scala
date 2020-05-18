@@ -13,7 +13,7 @@ case object LooperReadResult {
   val empty: LooperReadResult = LooperReadResult(-1, 0)
 }
 
-class LoopLooper(loop: Loop, audioFormat: AudioFormat, levelBuffers: Map[Int, Array[Byte]]) {
+class LoopLooper(val loop: Loop, audioFormat: AudioFormat, levelBuffers: Map[Int, Array[Byte]]) {
   /**
    * Small buffer used only for crossfading between levels.
    */
@@ -22,7 +22,7 @@ class LoopLooper(loop: Loop, audioFormat: AudioFormat, levelBuffers: Map[Int, Ar
   /**
    * Current loop level index.
    */
-  private var currentLevel: Int = 0
+  private var _currentLevel: Int = 0
 
   /**
    * Lower and higher limits for the current level.
@@ -32,9 +32,9 @@ class LoopLooper(loop: Loop, audioFormat: AudioFormat, levelBuffers: Map[Int, Ar
   /**
    * Target level to get to
    */
-  private var targetLevel: Int = 0
+  private var _targetLevel: Int = 0
   private var looperPosition: Int = -1
-  private var draining: Boolean = false
+  private var _draining: Boolean = false
 
   def read(dst: Array[Byte], masterStreamPosition: Int): LooperReadResult = synchronized {
     if (looperPosition == -1) {
@@ -42,7 +42,7 @@ class LoopLooper(loop: Loop, audioFormat: AudioFormat, levelBuffers: Map[Int, Ar
     }
 
     val bufferPosition = looperPosition - loop.start
-    if (bufferPosition == 0 && draining) {
+    if (bufferPosition == 0 && _draining) {
       LooperReadResult(-1, 0)
     } else {
       val dstBuffer = ByteBuffer.wrap(dst)
@@ -52,10 +52,20 @@ class LoopLooper(loop: Loop, audioFormat: AudioFormat, levelBuffers: Map[Int, Ar
     }
   }
 
-  def harder(): Unit = setTargetLevel(targetLevel + 1)
-  def softer(): Unit = setTargetLevel(targetLevel - 1)
-  def startDraining(): Unit = synchronized { draining = true }
-  def stopDraining(): Unit = synchronized { draining = false }
+  def harder(): Unit = setTargetLevel(_targetLevel + 1)
+  def softer(): Unit = setTargetLevel(_targetLevel - 1)
+  def startDraining(): Unit = synchronized { _draining = true }
+  def stopDraining(): Unit = synchronized { _draining = false }
+  def streamPosition: Int = synchronized {
+    if (looperPosition == -1) {
+      0
+    } else {
+      looperPosition
+    }
+  }
+  def currentLevel: Int = _currentLevel
+  def targetLevel: Int = _targetLevel
+  def draining: Boolean = _draining
 
   private def createResult(masterStreamPosition: Int, dstBuffer: ByteBuffer): LooperReadResult = {
     val loopEndPosition = loop.endExclusive * audioFormat.getChannels * audioFormat.getSampleSizeInBits / 8
@@ -64,11 +74,11 @@ class LoopLooper(loop: Loop, audioFormat: AudioFormat, levelBuffers: Map[Int, Ar
 
   @tailrec
   private def read(dst: ByteBuffer, bufferPosition: Int): Int = {
-    if (bufferPosition == 0 && draining) {
+    if (bufferPosition == 0 && _draining) {
       // Draining done, we're done with this loop
       bufferPosition
     } else {
-      val newBufferPosition = if (currentLevel == targetLevel || bufferPosition != 0) {
+      val newBufferPosition = if (_currentLevel == _targetLevel || bufferPosition != 0) {
         currentLevelToBuffer(dst)
       } else {
         // Crossfade only at the beginning of the loop
@@ -87,17 +97,17 @@ class LoopLooper(loop: Loop, audioFormat: AudioFormat, levelBuffers: Map[Int, Ar
   private def xfadeNextLevelToBuffer(dst: ByteBuffer): Int = {
     if (dst.limit() - dst.position() < xfadeBuffer.limit() - xfadeBuffer.position()) {
       // The buffer is too small, switch to the next level without crossfading
-      currentLevel = targetLevel
+      _currentLevel = _targetLevel
       currentLevelToBuffer(dst)
     } else {
       // Get some little data for current level
       val bufferPosition = looperPosition - loop.start
       xfadeBuffer.clear()
-      mixLevelToBuffer(currentLevel, currentLevelLimits, bufferPosition, xfadeBuffer)
+      mixLevelToBuffer(_currentLevel, currentLevelLimits, bufferPosition, xfadeBuffer)
       xfadeBuffer.position(0)
 
       // Get data for new level
-      currentLevel = targetLevel
+      _currentLevel = _targetLevel
       currentLevelToBuffer(dst)
       dst.position(0)
 
@@ -107,8 +117,8 @@ class LoopLooper(loop: Loop, audioFormat: AudioFormat, levelBuffers: Map[Int, Ar
   }
 
   private def currentLevelToBuffer(dst: ByteBuffer) = {
-    currentLevelLimits = buffersForLevel(currentLevel)
-    mixLevelToBuffer(currentLevel, currentLevelLimits, looperPosition - loop.start, dst)
+    currentLevelLimits = buffersForLevel(_currentLevel)
+    mixLevelToBuffer(_currentLevel, currentLevelLimits, looperPosition - loop.start, dst)
   }
 
   /**
@@ -168,16 +178,16 @@ class LoopLooper(loop: Loop, audioFormat: AudioFormat, levelBuffers: Map[Int, Ar
   }
 
   private def setTargetLevel(newLevel: Int): Unit = synchronized {
-    if (newLevel != currentLevel) {
+    if (newLevel != _currentLevel) {
       val min = levelBuffers.keys.min
       if (newLevel < min) {
-        targetLevel = min
+        _targetLevel = min
       } else {
         val max = levelBuffers.keys.max
         if (newLevel > max) {
-          targetLevel = max
+          _targetLevel = max
         } else {
-          targetLevel = newLevel
+          _targetLevel = newLevel
         }
       }
     }

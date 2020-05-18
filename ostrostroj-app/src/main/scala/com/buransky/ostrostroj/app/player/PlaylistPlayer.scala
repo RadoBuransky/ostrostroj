@@ -1,19 +1,15 @@
 package com.buransky.ostrostroj.app.player
 
 import java.nio.file.Path
-import java.time.{Duration, Instant}
+import java.time.Duration
 
-import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
-import akka.actor.typed.{ActorRef, Behavior, PostStop, Signal}
+import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.{ActorRef, Behavior}
 import com.buransky.ostrostroj.app.common.OstrostrojException
-import com.buransky.ostrostroj.app.player.looper.SongLooper
 import com.buransky.ostrostroj.app.show.Playlist
 import com.sun.media.sound.WaveFileReader
 import javax.sound.sampled._
 import org.slf4j.LoggerFactory
-
-import scala.concurrent.Future
-import scala.util.{Failure, Success}
 
 object PlaylistPlayer {
   private val logger = LoggerFactory.getLogger(PlaylistPlayer.getClass)
@@ -22,13 +18,20 @@ object PlaylistPlayer {
   //  private val mixerName = "ODROIDDAC" // Odroid HiFi Shield
   private val bufferDuration = Duration.ofMillis(50);
 
+  final case class LoopStatus(start: Duration,
+                              end: Duration,
+                              minLevel: Int,
+                              maxLevel: Int,
+                              currentLevel: Int,
+                              targetLevel: Int,
+                              isDraining: Boolean)
   final case class PlayerStatus(playlist: Playlist,
                                 songIndex: Int,
                                 songDuration: Duration,
-                                songPosition: Instant,
-                                loop: Option[(Instant, Instant)],
-                                mutedTracks: Seq[Boolean],
-                                isPlaying: Boolean)
+                                songPosition: Duration,
+                                loop: Option[LoopStatus],
+                                isPlaying: Boolean,
+                                volume: Double)
 
   sealed trait Command
   final case object Play extends Command
@@ -40,185 +43,45 @@ object PlaylistPlayer {
   final case object NextSong extends Command
   final case object VolumeUp extends Command
   final case object VolumeDown extends Command
-  final case class ReportStatusTo(actorRef: ActorRef[_]) extends Command
-  private final case object NextBuffer extends Command
-  private final case object NoOp extends Command
-  private final case class FutureFailed(cause: Throwable) extends Command
+  final case class GetStatus(replyTo: ActorRef[AnyRef]) extends Command
+  private[player] final case object ReadNextBuffer extends Command
+  private[player] final case object NoOp extends Command
+  private[player] final case class FutureFailed(cause: Throwable) extends Command
 
   def apply(playlist: Playlist): Behavior[Command] = Behaviors.setup { ctx =>
     val mixer = getMixer(mixerName)
     val songIndex = 0
     val firstSongMasterTrack = playlist.songs(songIndex).path
     val sourceDataLine = getSourceDataLine(firstSongMasterTrack, mixer.getMixerInfo)
-    new PlaylistPlayerBehavior(playlist, songIndex, mixer, sourceDataLine, ctx)
+    val gainControl = mixer.getControl(FloatControl.Type.MASTER_GAIN) match {
+      case fc: FloatControl => fc
+      case other => throw new OstrostrojException(s"Master gain is not a FloatControl! [${other.getClass}]")
+    }
+    new PlaylistPlayerBehavior(playlist, songIndex, mixer, sourceDataLine, gainControl, ctx)
   }
 
-  class PlaylistPlayerBehavior private (playlist: Playlist,
-                                        songIndex: Int,
-                                        looper: SongLooper,
-                                        mixer: Mixer,
-                                        sourceDataLine: SourceDataLine,
-                                        ctx: ActorContext[Command]) extends AbstractBehavior[Command](ctx) {
-    import ctx.executionContext
-
-    def this(playlist: Playlist, songIndex: Int, mixer: Mixer, sourceDataLine: SourceDataLine,
-             ctx: ActorContext[Command]) {
-      this(playlist, songIndex, new SongLooper(playlist.songs(songIndex), sourceDataLine.getFormat), mixer,
-        sourceDataLine, ctx)
-    }
-
-    logger.debug(s"Playlist player created. [$songIndex]")
-    private val masterStream: AudioInputStream = createMasterStream(playlist, songIndex)
-    private var masterStreamPosition: Int = 0
-    private val buffer: Array[Byte] = new Array[Byte](sourceDataLine.getBufferSize)
-
-    override def onMessage(msg: Command): Behavior[Command] = msg match {
-      case Play =>
-        sourceDataLine.start()
-        Behaviors.same
-      case Pause =>
-        sourceDataLine.stop()
-        Behaviors.same
-      case StartLooping =>
-        startLooping()
-        Behaviors.same
-      case StopLooping =>
-        looper.stopLooping()
-        Behaviors.same
-      case Harder =>
-        looper.harder()
-        Behaviors.same
-      case Softer =>
-        looper.softer()
-        Behaviors.same
-      case NextSong if songIndex == playlist.songs.length - 1 => Behaviors.same
-      case NextSong => copy(songIndex + 1)
-      case VolumeUp => Behaviors.same
-      case VolumeDown => Behaviors.same
-      case ReportStatusTo(_) => Behaviors.same
-      case NextBuffer =>
-        nextBuffer()
-        Behaviors.same
-      case FutureFailed(t) => throw t
-      case NoOp => Behaviors.same
-    }
-
-    private def startLooping(): Unit = Future {
-      looper.startLooping(masterStreamPosition)
-    }
-
-    override def onSignal: PartialFunction[Signal, Behavior[Command]] = {
-      case PostStop =>
-        sourceDataLine.close()
-        mixer.close()
-        masterStream.close()
-        logger.info("Playlist player closed.")
-        Behaviors.stopped
-    }
-
-    private def nextBuffer(): Unit = {
-      val result = Future {
-        val bytesRead = read(buffer)
-        if (bytesRead < 1) {
-          logger.debug(s"Playback of song finished. Automatically proceeding to the next song. [$songIndex]")
-          NextSong
-        } else {
-          val bytesWritten = writeBuffer(buffer, bytesRead)
-          if (bytesWritten == bytesRead) {
-            NextBuffer
-          } else {
-            logger.debug(s"$bytesWritten bytes written but $bytesRead bytes read.")
-            NoOp
-          }
-        }
-      }
-
-      ctx.pipeToSelf(result) {
-        case Success(msg) => msg
-        case Failure(t) => FutureFailed(new OstrostrojException(s"Next buffer failed!", t))
-      }
-    }
-
-    private def read(b: Array[Byte]): Int = {
-      val looperReadResult = looper.read(b, masterStreamPosition)
-      logger.trace(s"Looper read result = $looperReadResult")
-
-      if (looperReadResult.masterSkip > 0) {
-        masterStreamPosition += masterStream.skip(looperReadResult.masterSkip).toInt
-      }
-
-      if (looperReadResult.bytesRead > 0) {
-        if (looperReadResult.bytesRead < b.length) {
-          readFromMaster(b, looperReadResult.bytesRead) + looperReadResult.bytesRead
-        } else {
-          looperReadResult.bytesRead
-        }
-      } else {
-        readFromMaster(b, 0)
-      }
-    }
-
-    private def readFromMaster(b: Array[Byte], offset: Int): Int = {
-      val bytesRead = masterStream.read(b, offset, b.length - offset)
-      logger.trace(s"Bytes read from master = $bytesRead")
-      if (bytesRead > 0) {
-        masterStreamPosition += bytesRead
-      }
-      bytesRead
-    }
-
-    private def writeBuffer(buffer: Array[Byte], bytesRead: Int): Int = {
-      val bytesWritten = sourceDataLine.write(buffer, 0, bytesRead)
-      logger.trace(s"Bytes written = $bytesWritten")
-      bytesWritten
-    }
-
-    private def createMasterStream(playlist: Playlist, songIndex: Int): AudioInputStream = {
-      val song = playlist.songs(songIndex)
-      val audioInputStream = AudioSystem.getAudioInputStream(song.path.toFile)
-      if (!checkAudioFormat(sourceDataLine.getFormat, audioInputStream.getFormat)) {
-        throw new OstrostrojException(s"Not the same audio format! [${song.path}]")
-      }
-      audioInputStream
-    }
-
-    private def checkAudioFormat(expected: AudioFormat, actual: AudioFormat): Boolean = {
-      expected.getSampleRate != actual.getSampleRate || expected.getSampleSizeInBits != actual.getSampleSizeInBits ||
-      expected.getChannels != actual.getChannels || expected.getEncoding != actual.getEncoding ||
-      expected.isBigEndian != actual.isBigEndian
-    }
-
-    private def copy(songIndex: Int): PlaylistPlayerBehavior = {
-      new PlaylistPlayerBehavior(playlist, songIndex, mixer, sourceDataLine, ctx)
-    }
-
-    private def copy(looper: SongLooper): PlaylistPlayerBehavior = {
-      new PlaylistPlayerBehavior(playlist, songIndex, looper, mixer, sourceDataLine, ctx)
-    }
-  }
+  def framePositionToDuration(framePosition: Int, sampleRate: Double): Duration =
+    Duration.ofMillis((1000.0*framePosition.toDouble/sampleRate).toInt)
 
   private def getSourceDataLine(firstSongMaster: Path, mixerInfo: Mixer.Info): SourceDataLine = {
     val waveFileReader = new WaveFileReader()
-    val format = waveFileReader.getAudioFileFormat(firstSongMaster.toFile).getFormat
-    val sourceDataLine = AudioSystem.getSourceDataLine(format, mixerInfo)
+    val audioFileFormat = waveFileReader.getAudioFileFormat(firstSongMaster.toFile)
+    val audioFormat = audioFileFormat.getFormat
+    val sourceDataLine = AudioSystem.getSourceDataLine(audioFormat, mixerInfo)
 
-    val bufferSize = bufferDuration.toMillis*format.getSampleRate*(format.getSampleSizeInBits/8)*format.getChannels/1000
-    sourceDataLine.open(format, bufferSize.toInt)
-    logger.info(s"Source data line open. [${format.getSampleRate}, ${format.getSampleSizeInBits}, " +
-      s"${format.getChannels}, buffer size = ${sourceDataLine.getBufferSize}]")
+    val bufferSize = bufferDuration.toMillis*audioFormat.getSampleRate*(audioFormat.getSampleSizeInBits/8)*audioFormat.getChannels/1000
+    sourceDataLine.open(audioFormat, bufferSize.toInt)
+    logger.info(s"Source data line open. [${audioFormat.getSampleRate}, ${audioFormat.getSampleSizeInBits}, " +
+      s"${audioFormat.getChannels}, buffer size = ${sourceDataLine.getBufferSize}]")
     sourceDataLine
   }
 
   private def getMixer(mixerName: String): Mixer = {
-    val mixerInfo = getMixerInfo(mixerName)
+    val mixerInfo = AudioSystem.getMixerInfo.find(_.getName.contains(mixerName))
+      .getOrElse(throw new OstrostrojException(s"Audio mixer for not found! [$mixerName]"))
     val mixer = AudioSystem.getMixer(mixerInfo)
     mixer.open()
     logger.info(s"Audio mixer is open. [${mixer.getMixerInfo.getName}]")
     mixer
-  }
-
-  private def getMixerInfo(mixerName: String): Mixer.Info = {
-    AudioSystem.getMixerInfo.find(_.getName.contains(mixerName))
-      .getOrElse(throw new OstrostrojException(s"Audio mixer for not found! [$mixerName]"))
   }
 }
