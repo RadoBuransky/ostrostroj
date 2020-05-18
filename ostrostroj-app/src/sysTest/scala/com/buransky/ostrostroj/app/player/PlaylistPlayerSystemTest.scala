@@ -1,14 +1,17 @@
 package com.buransky.ostrostroj.app.player
 
-import akka.actor.testkit.typed.scaladsl.BehaviorTestKit
+import akka.actor.testkit.typed.scaladsl.{BehaviorTestKit, TestProbe}
 import akka.actor.typed.ActorRef
 import com.buransky.ostrostroj.app.common.OstrostrojConfig
+import com.buransky.ostrostroj.app.player.PlaylistPlayer.PlayerStatus
 import com.buransky.ostrostroj.app.show.{Playlist, PlaylistReader}
 import com.buransky.ostrostroj.app.sysTest.BaseSystemTest
 import javax.sound.sampled.AudioFormat.Encoding
 import org.junit.runner.RunWith
 import org.scalatest.BeforeAndAfterAll
 import org.scalatestplus.junit.JUnitRunner
+
+import scala.annotation.tailrec
 import scala.concurrent.duration._
 
 @RunWith(classOf[JUnitRunner])
@@ -40,23 +43,42 @@ class PlaylistPlayerSystemTest extends BaseSystemTest with PlaylistPlayerFixture
     assert(status.songDuration.toMillis == 8000)
   }
 
-  it should "start playback" in {
+  it should "play the whole song 1" in {
     // Execute
     playlistPlayerRef ! PlaylistPlayer.Play
 
     // Wait until playback starts
     val testProbe = testKit.createTestProbe[AnyRef]()
-    do {
-      playlistPlayerRef ! PlaylistPlayer.GetStatus(testProbe.ref)
-      Thread.sleep(100)
-    } while (!testProbe.expectMessageType[PlaylistPlayer.PlayerStatus](1.second).isPlaying)
+    whileStatus(testProbe, !_.isPlaying)(_)
 
     // Wait until playback is done
-    do {
-      playlistPlayerRef ! PlaylistPlayer.GetStatus(testProbe.ref)
-      Thread.sleep(100)
-    } while (testProbe.expectMessageType[PlaylistPlayer.PlayerStatus](1.second).isPlaying)
+    var isPlaying = true
+    var oldPos: Long = 0
+    whileStatus(testProbe, _.isPlaying) { status =>
+      assert(status.songPosition.toMillis >= oldPos)
+      oldPos = status.songPosition.toMillis
+    }
 
+    // Get status
+    val status = getStatus(testProbe)
+    assert(!status.isPlaying)
+    assert(status.songIndex == 0)
+    assert(status.songPosition == status.songDuration)
+  }
+
+  @tailrec
+  private def whileStatus(testProbe: TestProbe[AnyRef], p: (PlayerStatus) => Boolean)(f: (PlayerStatus) => Any): Unit = {
+    val status = getStatus(testProbe)
+    if (p(status)) {
+      f(status)
+      Thread.sleep(100)
+      whileStatus(testProbe, p)(f)
+    }
+  }
+
+  private def getStatus(testProbe: TestProbe[AnyRef]): PlayerStatus = {
+    playlistPlayerRef ! PlaylistPlayer.GetStatus(testProbe.ref)
+    testProbe.expectMessageType[PlaylistPlayer.PlayerStatus](1.second)
   }
 }
 

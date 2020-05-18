@@ -8,7 +8,7 @@ import com.buransky.ostrostroj.app.common.OstrostrojException
 import com.buransky.ostrostroj.app.player.PlaylistPlayer._
 import com.buransky.ostrostroj.app.player.looper.SongPlayer
 import com.buransky.ostrostroj.app.show.Playlist
-import javax.sound.sampled.{FloatControl, Mixer, SourceDataLine}
+import javax.sound.sampled.{FloatControl, LineEvent, LineListener, Mixer, SourceDataLine}
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.Future
@@ -20,7 +20,8 @@ class PlaylistPlayerBehavior private (val playlist: Playlist,
                                       val mixer: Mixer,
                                       val sourceDataLine: SourceDataLine,
                                       val gainControl: FloatControl,
-                                      ctx: ActorContext[Command]) extends AbstractBehavior[Command](ctx) {
+                                      ctx: ActorContext[Command]) extends AbstractBehavior[Command](ctx)
+  with LineListener {
   import PlaylistPlayerBehavior._
   import ctx.executionContext
 
@@ -30,6 +31,8 @@ class PlaylistPlayerBehavior private (val playlist: Playlist,
       sourceDataLine, gainControl, ctx)
   }
   logger.debug(s"Playlist player created. [$songIndex]")
+
+  sourceDataLine.addLineListener(this)
 
   override def onMessage(msg: Command): Behavior[Command] = msg match {
     case Play =>
@@ -53,8 +56,8 @@ class PlaylistPlayerBehavior private (val playlist: Playlist,
     case Softer =>
       songPlayer.softer()
       Behaviors.same
-    case NextSong if songIndex >= playlist.songs.length - 1 => Behaviors.same
-    case NextSong => new PlaylistPlayerBehavior(playlist, songIndex + 1, mixer, sourceDataLine, gainControl, ctx)
+    case AutoplayNext(songIndex) =>
+      autoPlayNext(songIndex)
     case VolumeUp =>
       changeVolume(+1)
       Behaviors.same
@@ -71,6 +74,25 @@ class PlaylistPlayerBehavior private (val playlist: Playlist,
     case NoOp => Behaviors.same
   }
 
+  private def autoPlayNext(songIndex: Int): Behavior[Command] = {
+    if (songIndex < 0 || songIndex == this.songIndex) {
+      Behaviors.same
+    } else {
+      if (songIndex >= playlist.songs.length) {
+        // Playlist done!
+        logger.info(s"All songs in the playlist finished.")
+        Future {
+          sourceDataLine.drain()
+          sourceDataLine.stop()
+        }
+        Behaviors.same
+      } else {
+        ctx.self ! Play
+        new PlaylistPlayerBehavior(playlist, songIndex + 1, mixer, sourceDataLine, gainControl, ctx)
+      }
+    }
+  }
+
   override def onSignal: PartialFunction[Signal, Behavior[Command]] = {
     case PostStop =>
       sourceDataLine.close()
@@ -78,6 +100,12 @@ class PlaylistPlayerBehavior private (val playlist: Playlist,
       songPlayer.close()
       logger.info("Playlist player closed.")
       Behaviors.stopped
+  }
+
+  override def update(event: LineEvent): Unit = {
+    if (event != null) {
+      logger.debug(s"Line event. [${event}]")
+    }
   }
 
   def currentPlayerStatus(): PlayerStatus = {
@@ -91,18 +119,20 @@ class PlaylistPlayerBehavior private (val playlist: Playlist,
 
   def readNextBuffer(): Unit = {
     val result = Future {
-      val buffer = songPlayer.fillBuffer()
-      if (buffer.limit() < 1) {
-        logger.debug(s"Playback of song finished. Automatically proceeding to the next song. [$songIndex]")
-        NextSong
-      } else {
-        val bytesWritten = writeBuffer(buffer)
-        buffer.position(buffer.position() + bytesWritten)
-        if (bytesWritten == buffer.limit()) {
-          ReadNextBuffer
+      synchronized {
+        val buffer = songPlayer.fillBuffer()
+        if (buffer.limit() < 1) {
+          logger.debug(s"Playback of song finished. Switching to the next one. [$songIndex]")
+          AutoplayNext(songIndex + 1)
         } else {
-          logger.debug(s"$bytesWritten bytes written but ${buffer.limit() - buffer.position()} bytes read.")
-          NoOp
+          val bytesWritten = writeBuffer(buffer)
+          buffer.position(buffer.position() + bytesWritten)
+          if (bytesWritten == buffer.limit()) {
+            ReadNextBuffer
+          } else {
+            logger.debug(s"$bytesWritten bytes written but ${buffer.limit() - buffer.position()} bytes read.")
+            NoOp
+          }
         }
       }
     }

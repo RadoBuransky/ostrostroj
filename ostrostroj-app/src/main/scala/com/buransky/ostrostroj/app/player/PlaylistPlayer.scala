@@ -40,7 +40,7 @@ object PlaylistPlayer {
   final case object StopLooping extends Command
   final case object Harder extends Command
   final case object Softer extends Command
-  final case object NextSong extends Command
+  final case class AutoplayNext(songIndex: Int) extends Command
   final case object VolumeUp extends Command
   final case object VolumeDown extends Command
   final case class GetStatus(replyTo: ActorRef[AnyRef]) extends Command
