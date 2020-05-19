@@ -3,6 +3,7 @@ package com.buransky.ostrostroj.app.player.looper
 import java.nio.ByteBuffer
 
 import com.buransky.ostrostroj.app.common.OstrostrojException
+import com.buransky.ostrostroj.app.player.BytePosition
 import com.buransky.ostrostroj.app.show.Loop
 import javax.sound.sampled.AudioFormat
 import org.junit.runner.RunWith
@@ -24,7 +25,7 @@ class LoopLooperSpec extends AnyFlatSpec {
 
     // Execute
     val ex = intercept[OstrostrojException] {
-      loopLooper.fill(dst, 0)
+      loopLooper.fill(dst, BytePosition(audioFormat, 0))
     }
 
     // Assert
@@ -40,11 +41,11 @@ class LoopLooperSpec extends AnyFlatSpec {
     dst.limit(0)
 
     // Execute
-    val masterSkip = loopLooper.fill(dst, 0)
+    val masterSkip = loopLooper.fill(dst, BytePosition(audioFormat, 0))
 
     // Assert
     assert(dst.limit() == 2)
-    assert(masterSkip == 2)
+    assert(masterSkip.bytePosition == 2)
     for (i <- dst.position() until dst.limit())
       assert(dst.get(i) == 1)
   }
@@ -58,11 +59,11 @@ class LoopLooperSpec extends AnyFlatSpec {
     dst.limit(0)
 
     // Execute
-    val masterSkip = loopLooper.fill(dst, 0)
+    val masterSkip = loopLooper.fill(dst, BytePosition(audioFormat, 0))
 
     // Assert
     assert(dst.limit() == 4)
-    assert(masterSkip == 2)
+    assert(masterSkip.bytePosition == 2)
     for (i <- dst.position() until dst.limit())
       assert(dst.get(i) == 1)
   }
@@ -77,9 +78,9 @@ class LoopLooperSpec extends AnyFlatSpec {
     dst.limit(0)
 
     // 1. We're on the default level 0
-    val masterSkip1 = loopLooper.fill(dst, 0)
+    val masterSkip1 = loopLooper.fill(dst, BytePosition(audioFormat, 0))
     assert(dst.limit() == 2)
-    assert(masterSkip1 == 4)
+    assert(masterSkip1.bytePosition == 4)
     for (i <- dst.position() until dst.limit())
       assert(dst.get(i) == 1)
 
@@ -87,18 +88,18 @@ class LoopLooperSpec extends AnyFlatSpec {
     loopLooper.harder()
     dst.position(0)
     dst.limit(0)
-    val masterSkip2 = loopLooper.fill(dst, 4)
+    val masterSkip2 = loopLooper.fill(dst, BytePosition(audioFormat, 4))
     assert(dst.limit() == 2)
-    assert(masterSkip2 == 0)
+    assert(masterSkip2.bytePosition == 0)
     for (i <- dst.position() until dst.limit())
       assert(dst.get(i) == 1)
 
     // 3. Read more and see if we're on the second level already
     dst.position(0)
     dst.limit(0)
-    val masterSkip3 = loopLooper.fill(dst, 4)
+    val masterSkip3 = loopLooper.fill(dst, BytePosition(audioFormat, 4))
     assert(dst.limit() == 2)
-    assert(masterSkip3 == 0)
+    assert(masterSkip3.bytePosition == 0)
     for (i <- dst.position() until dst.limit())
       assert(dst.get(i) == 2)
   }
@@ -113,9 +114,9 @@ class LoopLooperSpec extends AnyFlatSpec {
     dst.limit(0)
 
     loopLooper.harder()
-    val masterSkip = loopLooper.fill(dst, 0)
+    val masterSkip = loopLooper.fill(dst, BytePosition(audioFormat, 0))
     assert(dst.limit() == 2)
-    assert(masterSkip == 2)
+    assert(masterSkip.bytePosition == 2)
     assert(dst.get(0) == 75)
     assert(dst.get(1) == 21)
   }
@@ -135,9 +136,9 @@ class LoopLooperSpec extends AnyFlatSpec {
     dst.limit(0)
 
     loopLooper.harder()
-    val masterSkip = loopLooper.fill(dst, 0)
+    val masterSkip = loopLooper.fill(dst, BytePosition(audioFormat, 0))
     assert(dst.limit() == bufferSize)
-    assert(masterSkip == bufferSize)
+    assert(masterSkip.bytePosition == bufferSize)
     assert(dst.getShort == 0x0001)
     assert(dst.getShort(bufferSize/16) == 0xA401.toShort)
     assert(dst.getShort(bufferSize/8) == 0xDD01.toShort)
@@ -160,7 +161,7 @@ class LoopLooperSpec extends AnyFlatSpec {
     for (i <- 0 to 2) {
       dst1.position(0)
       dst1.limit(0)
-      loopLooper.fill(dst1, 0)
+      loopLooper.fill(dst1, BytePosition(audioFormat, 0))
       assert(dst1.limit() == 2)
     }
 
@@ -168,13 +169,13 @@ class LoopLooperSpec extends AnyFlatSpec {
     loopLooper.startDraining()
     dst1.position(0)
     dst1.limit(0)
-    loopLooper.fill(dst1, 0)
+    loopLooper.fill(dst1, BytePosition(audioFormat, 0))
     assert(dst1.limit() == 2)
 
     // 3. Try to read more
     val dst2 = ByteBuffer.allocate(4)
     dst2.limit(0)
-    loopLooper.fill(dst2, 0)
+    loopLooper.fill(dst2, BytePosition(audioFormat, 0))
     assert(dst2.limit() == 0)
   }
 }

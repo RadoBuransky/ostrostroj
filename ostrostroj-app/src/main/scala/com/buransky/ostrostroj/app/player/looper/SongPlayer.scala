@@ -3,8 +3,8 @@ package com.buransky.ostrostroj.app.player.looper
 import java.nio.ByteBuffer
 
 import com.buransky.ostrostroj.app.common.OstrostrojException
-import com.buransky.ostrostroj.app.player.PlaylistPlayer
 import com.buransky.ostrostroj.app.player.PlaylistPlayer.LoopStatus
+import com.buransky.ostrostroj.app.player.{BytePosition, SamplePosition}
 import com.buransky.ostrostroj.app.show.{Loop, Song}
 import javax.sound.sampled.{AudioFileFormat, AudioFormat, AudioInputStream, AudioSystem}
 
@@ -21,7 +21,7 @@ class SongPlayer(song: Song, bufferSize: Int) extends AutoCloseable {
   }
   private val buffer: ByteBuffer = ByteBuffer.allocate(bufferSize)
   buffer.limit(0)
-  private var masterStreamPosition: Int = 0
+  private var masterStreamPosition: BytePosition = BytePosition(masterFileFormat.getFormat, 0)
   private var loopLooper: Option[LoopLooper] = None
 
   override def close(): Unit = synchronized {
@@ -58,7 +58,7 @@ class SongPlayer(song: Song, bufferSize: Int) extends AutoCloseable {
   }
 
   def fileFormat: AudioFileFormat = synchronized { masterFileFormat }
-  def streamPosition: Int = synchronized {
+  def streamPosition: BytePosition = synchronized {
     loopLooper match {
       case Some(l) => l.streamPosition
       case None => masterStreamPosition
@@ -68,8 +68,8 @@ class SongPlayer(song: Song, bufferSize: Int) extends AutoCloseable {
   def loopStatus: Option[LoopStatus] = synchronized {
     loopLooper.map {l =>
       LoopStatus(
-        start = PlaylistPlayer.framePositionToDuration(l.loop.start, fileFormat.getFormat.getSampleRate),
-        end = PlaylistPlayer.framePositionToDuration(l.loop.endExclusive, fileFormat.getFormat.getSampleRate),
+        start = SamplePosition(masterFileFormat.getFormat, l.loop.start),
+        end = SamplePosition(masterFileFormat.getFormat, l.loop.endExclusive),
         minLevel = l.loop.tracks.map(_.level).min,
         maxLevel = l.loop.tracks.map(_.level).max,
         currentLevel = l.currentLevel,
@@ -84,7 +84,7 @@ class SongPlayer(song: Song, bufferSize: Int) extends AutoCloseable {
       val bytesRead = masterStream.read(buffer.array(), buffer.limit(), buffer.capacity() - buffer.limit())
       if (bytesRead > 0) {
         buffer.limit(buffer.limit() + bytesRead)
-        masterStreamPosition += bytesRead
+        masterStreamPosition = masterStreamPosition.add(bytesRead)
       }
     }
   }
@@ -97,15 +97,17 @@ class SongPlayer(song: Song, bufferSize: Int) extends AutoCloseable {
         buffer.limit(0)
         loopLooper = None
       } else {
-        if (masterSkip > 0) {
-          masterStreamPosition += masterStream.skip(masterSkip).toInt
+        if (masterSkip.bytePosition > 0) {
+          masterStreamPosition = masterStreamPosition.add(masterStream.skip(masterSkip.bytePosition).toInt)
         }
       }
     }
   }
 
-  private def loopAtPosition(position: Int): Option[Loop] =
-    song.loops.find(l => l.start <= position && l.endExclusive > position)
+  private def loopAtPosition(position: BytePosition): Option[Loop] = {
+    val samplePosition = position.toSample.samplePosition
+    song.loops.find(l => l.start <= samplePosition && l.endExclusive > samplePosition)
+  }
 
   private def checkAudioFormat(expected: AudioFormat, actual: AudioFormat): Boolean = {
     expected.getSampleRate == actual.getSampleRate && expected.getSampleSizeInBits == actual.getSampleSizeInBits &&

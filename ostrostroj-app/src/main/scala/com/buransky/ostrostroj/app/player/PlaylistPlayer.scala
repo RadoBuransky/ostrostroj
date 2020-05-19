@@ -4,12 +4,14 @@ import java.nio.file.Path
 import java.time.Duration
 
 import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ActorRef, Behavior}
+import akka.actor.typed.{ActorRef, Behavior, LogOptions}
 import com.buransky.ostrostroj.app.common.OstrostrojException
+import com.buransky.ostrostroj.app.player.PlaylistPlayerBehavior.logger
 import com.buransky.ostrostroj.app.show.Playlist
 import com.sun.media.sound.WaveFileReader
 import javax.sound.sampled._
 import org.slf4j.LoggerFactory
+import org.slf4j.event.Level
 
 object PlaylistPlayer {
   private val logger = LoggerFactory.getLogger(PlaylistPlayer.getClass)
@@ -18,8 +20,8 @@ object PlaylistPlayer {
   //  private val mixerName = "ODROIDDAC" // Odroid HiFi Shield
   private val bufferDuration = Duration.ofMillis(50);
 
-  final case class LoopStatus(start: Duration,
-                              end: Duration,
+  final case class LoopStatus(start: SamplePosition,
+                              end: SamplePosition,
                               minLevel: Int,
                               maxLevel: Int,
                               currentLevel: Int,
@@ -27,11 +29,12 @@ object PlaylistPlayer {
                               isDraining: Boolean)
   final case class PlayerStatus(playlist: Playlist,
                                 songIndex: Int,
-                                songDuration: Duration,
-                                songPosition: Duration,
+                                songDuration: SamplePosition,
+                                songPosition: SamplePosition,
                                 loop: Option[LoopStatus],
                                 isPlaying: Boolean,
-                                masterGainDb: Double)
+                                masterGainDb: Double,
+                                audioFormat: AudioFormat)
 
   sealed trait Command
   final case object Play extends Command
@@ -57,11 +60,9 @@ object PlaylistPlayer {
       case fc: FloatControl => fc
       case other => throw new OstrostrojException(s"Master gain is not a FloatControl! [${other.getClass}]")
     }
-    new PlaylistPlayerBehavior(playlist, songIndex, mixer, sourceDataLine, gainControl, ctx)
+    Behaviors.logMessages(LogOptions().withLogger(logger).withLevel(Level.TRACE),
+      new PlaylistPlayerBehavior(playlist, songIndex, mixer, sourceDataLine, gainControl, ctx))
   }
-
-  def framePositionToDuration(framePosition: Int, sampleRate: Double): Duration =
-    Duration.ofMillis((1000.0*framePosition.toDouble/sampleRate).toInt)
 
   private def getSourceDataLine(firstSongMaster: Path, mixerInfo: Mixer.Info): SourceDataLine = {
     val waveFileReader = new WaveFileReader()

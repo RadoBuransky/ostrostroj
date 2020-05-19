@@ -39,13 +39,13 @@ class PlaylistPlayerSystemTest extends BaseSystemTest with PlaylistPlayerFixture
     assert(status.masterGainDb == 0.0)
     assert(status.playlist == playlist)
     assert(status.songIndex == 0)
-    assert(status.songPosition.toMillis == 0)
-    assert(status.songDuration.toMillis == 8000)
+    assert(status.songPosition.toTime.timePosition.toMillis == 0)
+    assert(status.songDuration.toTime.timePosition.toMillis == 8000)
   }
 
-  it should "play the whole song 1" in {
+  ignore should "play the whole song 1" in {
     val testProbe = testKit.createTestProbe[AnyRef]()
-    assert(getStatus(testProbe).songPosition.toMillis == 0, "Position should be at the beginning")
+    assert(getStatus(testProbe).songPosition.toTime.timePosition.toMillis == 0, "Position should be at the beginning")
 
     // Start playback
     startPlayback(testProbe)
@@ -53,8 +53,8 @@ class PlaylistPlayerSystemTest extends BaseSystemTest with PlaylistPlayerFixture
     // Wait until playback is done
     var oldPos: Long = 0
     whileStatus(testProbe, _.isPlaying) { status =>
-      assert(status.songPosition.toMillis >= oldPos, "Current position should be always growing.")
-      oldPos = status.songPosition.toMillis
+      assert(status.songPosition.toTime.timePosition.toMillis >= oldPos, "Current position should be always growing.")
+      oldPos = status.songPosition.toTime.timePosition.toMillis
     }
 
     // Get status
@@ -62,6 +62,23 @@ class PlaylistPlayerSystemTest extends BaseSystemTest with PlaylistPlayerFixture
     assert(!status.isPlaying)
     assert(status.songIndex == 0)
     assert(status.songPosition == status.songDuration, "Position should be at the end")
+  }
+
+  it should "loop song 1" in {
+    val testProbe = testKit.createTestProbe[AnyRef]()
+    val status = getStatus(testProbe)
+
+    // Start playback
+    startPlayback(testProbe)
+
+    // Wait until playback is done
+    val loop = playlist.songs(0).loops(0)
+    val loopStart = SamplePosition(status.audioFormat, loop.start)
+    whileStatus(testProbe, _.isPlaying) { status =>
+      if (status.loop.isEmpty && status.songPosition.samplePosition > loopStart.samplePosition) {
+        playlistPlayerRef ! PlaylistPlayer.StartLooping
+      }
+    }
   }
 
   private def startPlayback(testProbe: TestProbe[AnyRef]): Unit = {

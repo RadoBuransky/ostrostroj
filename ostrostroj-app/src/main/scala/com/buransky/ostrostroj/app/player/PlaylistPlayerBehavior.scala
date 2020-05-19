@@ -8,7 +8,7 @@ import com.buransky.ostrostroj.app.common.OstrostrojException
 import com.buransky.ostrostroj.app.player.PlaylistPlayer._
 import com.buransky.ostrostroj.app.player.looper.SongPlayer
 import com.buransky.ostrostroj.app.show.Playlist
-import javax.sound.sampled.{FloatControl, LineEvent, LineListener, Mixer, SourceDataLine}
+import javax.sound.sampled._
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.Future
@@ -34,44 +34,46 @@ class PlaylistPlayerBehavior private (val playlist: Playlist,
 
   sourceDataLine.addLineListener(this)
 
-  override def onMessage(msg: Command): Behavior[Command] = msg match {
-    case Play =>
-      sourceDataLine.start()
-      ctx.self ! ReadNextBuffer
-      Behaviors.same
-    case Pause =>
-      sourceDataLine.stop()
-      Behaviors.same
-    case StartLooping =>
-      Future {
-        songPlayer.startLooping()
-      }
-      Behaviors.same
-    case StopLooping =>
-      songPlayer.stopLooping()
-      Behaviors.same
-    case Harder =>
-      songPlayer.harder()
-      Behaviors.same
-    case Softer =>
-      songPlayer.softer()
-      Behaviors.same
-    case AutoplayNext(songIndex) =>
-      autoPlayNext(songIndex)
-    case VolumeUp =>
-      changeVolume(+1)
-      Behaviors.same
-    case VolumeDown =>
-      changeVolume(-1)
-      Behaviors.same
-    case GetStatus(replyTo) =>
-      replyTo ! currentPlayerStatus()
-      Behaviors.same
-    case ReadNextBuffer =>
-      readNextBuffer()
-      Behaviors.same
-    case FutureFailed(t) => throw t
-    case NoOp => Behaviors.same
+  override def onMessage(msg: Command): Behavior[Command] = {
+    msg match {
+      case Play =>
+        sourceDataLine.start()
+        ctx.self ! ReadNextBuffer
+        Behaviors.same
+      case Pause =>
+        sourceDataLine.stop()
+        Behaviors.same
+      case StartLooping =>
+        Future {
+          songPlayer.startLooping()
+        }
+        Behaviors.same
+      case StopLooping =>
+        songPlayer.stopLooping()
+        Behaviors.same
+      case Harder =>
+        songPlayer.harder()
+        Behaviors.same
+      case Softer =>
+        songPlayer.softer()
+        Behaviors.same
+      case AutoplayNext(songIndex) =>
+        autoPlayNext(songIndex)
+      case VolumeUp =>
+        changeVolume(+1)
+        Behaviors.same
+      case VolumeDown =>
+        changeVolume(-1)
+        Behaviors.same
+      case GetStatus(replyTo) =>
+        replyTo ! currentPlayerStatus()
+        Behaviors.same
+      case ReadNextBuffer =>
+        readNextBuffer()
+        Behaviors.same
+      case FutureFailed(t) => throw t
+      case NoOp => Behaviors.same
+    }
   }
 
   private def autoPlayNext(songIndex: Int): Behavior[Command] = {
@@ -109,12 +111,11 @@ class PlaylistPlayerBehavior private (val playlist: Playlist,
   }
 
   def currentPlayerStatus(): PlayerStatus = {
-    val songDuration = framePositionToDuration(songPlayer.fileFormat.getFrameLength,
-      songPlayer.fileFormat.getFormat.getSampleRate)
-    val songPosition = framePositionToDuration(songPlayer.streamPosition / songPlayer.fileFormat.getFormat.getFrameSize,
-      songPlayer.fileFormat.getFormat.getSampleRate)
+    val audioFormat = songPlayer.fileFormat.getFormat
+    val songDuration = SamplePosition(audioFormat, songPlayer.fileFormat.getFrameLength)
+    val songPosition = songPlayer.streamPosition.toSample
     PlayerStatus(playlist, songIndex, songDuration, songPosition, songPlayer.loopStatus, sourceDataLine.isRunning,
-      gainControl.getValue)
+      gainControl.getValue, audioFormat)
   }
 
   def readNextBuffer(): Unit = {
