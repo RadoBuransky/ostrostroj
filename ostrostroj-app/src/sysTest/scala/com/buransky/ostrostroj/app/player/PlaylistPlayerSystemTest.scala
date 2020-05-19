@@ -74,9 +74,38 @@ class PlaylistPlayerSystemTest extends BaseSystemTest with PlaylistPlayerFixture
     // Wait until playback is done
     val loop = playlist.songs(0).loops(0)
     val loopStart = SamplePosition(status.audioFormat, loop.start)
+    var oldCounter = 0
     whileStatus(testProbe, _.isPlaying) { status =>
-      if (status.loop.isEmpty && status.songPosition.samplePosition > loopStart.samplePosition) {
-        playlistPlayerRef ! PlaylistPlayer.StartLooping
+      status.loop match {
+        case Some(l) if l.counter != oldCounter =>
+          l.counter match {
+            case 1 =>
+//              playlistPlayerRef ! PlaylistPlayer.Softer
+//              playlistPlayerRef ! PlaylistPlayer.Softer
+            case 2 =>
+//              playlistPlayerRef ! PlaylistPlayer.Softer
+//              playlistPlayerRef ! PlaylistPlayer.Softer
+            case 3 =>
+//              playlistPlayerRef ! PlaylistPlayer.Softer
+//              playlistPlayerRef ! PlaylistPlayer.Softer
+            case 4 =>
+//              playlistPlayerRef ! PlaylistPlayer.Harder
+//              playlistPlayerRef ! PlaylistPlayer.Harder
+//              playlistPlayerRef ! PlaylistPlayer.Harder
+//              playlistPlayerRef ! PlaylistPlayer.Harder
+//              playlistPlayerRef ! PlaylistPlayer.Harder
+//              playlistPlayerRef ! PlaylistPlayer.Harder
+//              playlistPlayerRef ! PlaylistPlayer.Harder
+//              playlistPlayerRef ! PlaylistPlayer.Harder
+//              playlistPlayerRef ! PlaylistPlayer.Harder
+//              playlistPlayerRef ! PlaylistPlayer.Harder
+            case 5 => playlistPlayerRef ! PlaylistPlayer.StopLooping
+            case 6 => fail()
+          }
+          oldCounter = l.counter
+        case None if status.songPosition.samplePosition > loopStart.samplePosition =>
+          playlistPlayerRef ! PlaylistPlayer.StartLooping
+        case _ =>
       }
     }
   }

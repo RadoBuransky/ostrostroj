@@ -19,6 +19,11 @@ class SongPlayer(song: Song, bufferSize: Int) extends AutoCloseable {
     }
     audioInputStream
   }
+  /**
+   * Position - where to start reading
+   * Limit - where to end reading & start writing
+   * Capacity - where to end writing
+   */
   private val buffer: ByteBuffer = ByteBuffer.allocate(bufferSize)
   buffer.limit(0)
   private var masterStreamPosition: BytePosition = BytePosition(masterFileFormat.getFormat, 0)
@@ -74,7 +79,8 @@ class SongPlayer(song: Song, bufferSize: Int) extends AutoCloseable {
         maxLevel = l.loop.tracks.map(_.level).max,
         currentLevel = l.currentLevel,
         targetLevel = l.targetLevel,
-        isDraining = l.draining
+        isDraining = l.draining,
+        counter = l.counter
       )
     }
   }

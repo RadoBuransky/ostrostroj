@@ -26,7 +26,8 @@ object PlaylistPlayer {
                               maxLevel: Int,
                               currentLevel: Int,
                               targetLevel: Int,
-                              isDraining: Boolean)
+                              isDraining: Boolean,
+                              counter: Int)
   final case class PlayerStatus(playlist: Playlist,
                                 songIndex: Int,
                                 songDuration: SamplePosition,

@@ -90,7 +90,7 @@ object BufferMixer {
       val t: Double = (from.position() - startingPosition).toDouble/fromSize.toDouble
       val fromSample = readLeShort(from)
       val toSample = readLeShort(to)
-      val mixedSample = mix16bitLeSamples(fromSample, toSample, Math.sqrt(1.0 - t), Math.sqrt(t))
+      val mixedSample = mix16bitLeSamples(fromSample, toSample, 1.0 - t, t)
       to.position(to.position() - 2)
       putLeShort(mixedSample, to)
     }
@@ -101,8 +101,17 @@ object BufferMixer {
   /**
    * https://dsp.stackexchange.com/questions/14754/equal-power-crossfade
    */
-  private def mix16bitLeSamples(sample1: Short, sample2: Short, level1Sqrt: Double, level2Sqrt: Double): Short =
-    (sample1.toDouble*level1Sqrt + sample2.toDouble*level2Sqrt).toShort
+  private def mix16bitLeSamples(sample1: Short, sample2: Short, level1Sqrt: Double, level2Sqrt: Double): Short = {
+    val sum: Int = (sample1*level1Sqrt + sample2*level2Sqrt).toInt
+    if (sum < Short.MinValue)
+      Short.MinValue
+    else {
+      if (sum > Short.MaxValue)
+        Short.MaxValue
+      else
+        sum.toShort
+    }
+  }
 
   private def putLeShort(s: Short, buffer: ByteBuffer): Unit = {
     val (loByte, hiByte) = shortToLeBytes(s)
