@@ -276,7 +276,7 @@ object LoopLooper {
    */
   private def loadLevelBuffers(loop: Loop, audioFormat: AudioFormat): Map[Int, Array[Byte]] = {
     val bufferSize = SamplePosition(audioFormat, loop.endExclusive - loop.start).toByte.bytePosition
-    loop.tracks.map { track =>
+    loop.levels.map { track =>
       val stream = AudioSystem.getAudioInputStream(track.path.toFile)
       try {
         val buffer = new Array[Byte](bufferSize)

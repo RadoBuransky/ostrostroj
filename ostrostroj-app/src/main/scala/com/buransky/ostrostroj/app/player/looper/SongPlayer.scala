@@ -75,8 +75,8 @@ class SongPlayer(song: Song, bufferSize: Int) extends AutoCloseable {
       LoopStatus(
         start = SamplePosition(masterFileFormat.getFormat, l.loop.start),
         end = SamplePosition(masterFileFormat.getFormat, l.loop.endExclusive),
-        minLevel = l.loop.tracks.map(_.level).min,
-        maxLevel = l.loop.tracks.map(_.level).max,
+        minLevel = l.loop.levels.map(_.level).min,
+        maxLevel = l.loop.levels.map(_.level).max,
         currentLevel = l.currentLevel,
         targetLevel = l.targetLevel,
         isDraining = l.draining,

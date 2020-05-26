@@ -5,7 +5,7 @@
     {
       "start": 88200,
       "end": 264600,
-      "tracks": [
+      "levels": [
         {
           "level": -5,
           "path": "loop1s5.wav"
