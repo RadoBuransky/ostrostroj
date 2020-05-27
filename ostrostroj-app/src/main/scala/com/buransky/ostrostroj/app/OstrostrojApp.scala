@@ -8,7 +8,6 @@ import com.buransky.ostrostroj.app.common.OstrostrojConfig.{DEV_DESKTOP, DEV_DEV
 import com.buransky.ostrostroj.app.common.{OstrostrojConfig, OstrostrojException}
 import com.buransky.ostrostroj.app.controls.OstrostrojController
 import com.buransky.ostrostroj.app.device.{DriverCommand, OdroidGpio}
-import com.buransky.ostrostroj.app.player.PlaylistPlayer
 import com.buransky.ostrostroj.app.show.PlaylistReader
 import org.slf4j.LoggerFactory
 
@@ -75,7 +74,7 @@ object OstrostrojApp {
     }
 
     private def initDesktopPart(ctx: ActorContext[_]): Unit = {
-      ctx.watch(ctx.spawn(PlaylistPlayer(playlist), "player"))
+      // TODO: ctx.watch(ctx.spawn(PlaylistPlayer(playlist), "player"))
     }
   }
 }
