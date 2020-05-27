@@ -1,16 +1,15 @@
 package com.buransky.ostrostroj.app.audio
 
-import com.buransky.ostrostroj.app.audio.impl.OstrostrojPlayerImpl
+import com.buransky.ostrostroj.app.audio.impl.JavaSoundOstrostrojPlayer
 import com.buransky.ostrostroj.app.show.Playlist
 
 /**
  * Main interface for playback control.
  */
 trait OstrostrojPlayer extends AutoCloseable {
-  def selectSong(songIndex: Int): Unit
-
-  def start(): Unit
-  def stop(): Unit
+  def start(songIndex: Int): Unit
+  def pause(): Unit
+  def resume(): Unit
 
   def startLooping(): Unit
   def stopLooping(): Unit
@@ -24,7 +23,7 @@ trait OstrostrojPlayer extends AutoCloseable {
 }
 
 object OstrostrojPlayer {
-  def apply(playlist: Playlist): OstrostrojPlayer = new OstrostrojPlayerImpl(playlist)
+  def apply(playlist: Playlist): OstrostrojPlayer = new JavaSoundOstrostrojPlayer(playlist)
 }
 
 case class OstrostrojPlayerStatus()

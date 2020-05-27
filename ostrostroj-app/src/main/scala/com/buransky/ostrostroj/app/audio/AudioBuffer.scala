@@ -2,10 +2,10 @@ package com.buransky.ostrostroj.app.audio
 
 import java.nio.ByteBuffer
 
-import javax.sound.sampled.AudioFormat
-
 final case class ByteCount(index: Int) extends AnyVal
 final case class SampleCount(index: Int) extends AnyVal
+
+final case class PlaybackPosition(songIndex: Int, position: SampleCount)
 
 sealed trait AudioSample extends Any {
   def value: Int
@@ -16,7 +16,7 @@ sealed trait AudioSample extends Any {
  * @param underlying Raw value as present in the audio stream.
  */
 final class AudioSample16Le(val underlying: Short) extends AnyVal with AudioSample {
-  def value: Int = ??? // TODO: Swap
+  def value: Int = ??? // TODO: Swap bytes I guess
 }
 
 sealed trait BitsPerSample
@@ -33,18 +33,24 @@ sealed trait AudioBuffer {
   def limit: SampleCount
   def capacity: SampleCount
 
+  /**
+   * Position of the first sample of this buffer within the audio stream.
+   */
+  def startPosition: PlaybackPosition
+
+  /**
+   * Position of the last sample of this buffer within the audio stream.
+   */
+  def endPosition: PlaybackPosition
+
   def clear(): Unit
   def sample(index: SampleCount, channel: Int): AudioSample
 }
 
-object AudioBuffer {
-  def apply(audioFormat: AudioFormat, bufferLength: ByteCount): AudioBuffer = {
-    ???
-  }
-}
-
 final class AudioBuffer16Le(val channels: Int,
-                            val raw: ByteBuffer) extends AudioBuffer {
+                            val raw: ByteBuffer,
+                            val startPosition: PlaybackPosition,
+                            val endPosition: PlaybackPosition) extends AudioBuffer {
   override val bitsPerSample: BitsPerSample = SixteenBits
   override def position: SampleCount = ???
   override def limit: SampleCount = ???
