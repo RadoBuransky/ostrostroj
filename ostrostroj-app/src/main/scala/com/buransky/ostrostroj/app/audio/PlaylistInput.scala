@@ -7,6 +7,6 @@ private[audio] trait PlaylistInput extends AutoCloseable {
 }
 
 private[audio] object PlaylistInput {
-  def apply(initSong: Int, javaSoundOutput: JavaSoundOutput): PlaylistInput = new AsyncListeningPlaylistInput(initSong,
+  def apply(initSong: Int, javaSoundOutput: AudioOutput): PlaylistInput = new AsyncListeningPlaylistInput(initSong,
     javaSoundOutput)
 }

@@ -3,10 +3,12 @@ package com.buransky.ostrostroj.app.audio
 import java.nio.ByteBuffer
 import java.util.concurrent.Semaphore
 
-import com.buransky.ostrostroj.app.audio.impl.JavaSoundOutputThread
+import com.buransky.ostrostroj.app.audio.impl.AsyncJavaSoundOutput
 import javax.sound.sampled.AudioFormat
 
-private[audio] trait JavaSoundOutput extends AutoCloseable {
+private[audio] trait AudioOutput extends AutoCloseable {
+  def run(): Unit
+
   def write(buffer: AudioBuffer): Unit
   def nextEmpty(): Option[ByteBuffer]
   def emptyAvailable: Semaphore
@@ -16,6 +18,6 @@ private[audio] trait JavaSoundOutput extends AutoCloseable {
   def bufferingPosition: Option[PlaybackPosition]
 }
 
-private[audio] object JavaSoundOutput {
-  def apply(audioFormat: AudioFormat): JavaSoundOutput = new JavaSoundOutputThread(audioFormat)
+private[audio] object AudioOutput {
+  def apply(audioFormat: AudioFormat): AudioOutput = new AsyncJavaSoundOutput(audioFormat)
 }

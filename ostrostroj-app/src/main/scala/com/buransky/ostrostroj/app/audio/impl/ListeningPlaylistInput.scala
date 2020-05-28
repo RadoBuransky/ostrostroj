@@ -5,7 +5,7 @@ import org.slf4j.{Logger, LoggerFactory}
 
 import scala.annotation.tailrec
 
-private[audio] class AsyncListeningPlaylistInput(initSong: Int, javaSoundOutput: JavaSoundOutput)
+private[audio] class AsyncListeningPlaylistInput(initSong: Int, javaSoundOutput: AudioOutput)
   extends SyncListeningPlaylistInput(initSong, javaSoundOutput) { self =>
 
   import SyncListeningPlaylistInput._
@@ -34,11 +34,12 @@ private[audio] class AsyncListeningPlaylistInput(initSong: Int, javaSoundOutput:
   }
 
   override def close(): Unit = {
+    logger.debug(s"Interrupting playlist input thread...")
     thread.interrupt()
   }
 }
 
-private[audio] class SyncListeningPlaylistInput(initSong: Int, javaSoundOutput: JavaSoundOutput)
+private[audio] class SyncListeningPlaylistInput(initSong: Int, javaSoundOutput: AudioOutput)
   extends PlaylistInput {
   import SyncListeningPlaylistInput._
 

@@ -4,16 +4,50 @@ import java.nio.ByteBuffer
 import java.util.concurrent.Semaphore
 
 import com.buransky.ostrostroj.app.audio._
+import com.buransky.ostrostroj.app.audio.impl.JavaSoundOutput.logger
 import javax.sound.sampled.{AudioFormat, Mixer, SourceDataLine}
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
 
-private[audio] class JavaSoundOutputThread(audioFormat: AudioFormat) extends JavaSoundOutput {
-  import JavaSoundOutputThread._
+private[audio] class AsyncJavaSoundOutput(audioFormat: AudioFormat) extends SyncJavaSoundOutput(audioFormat) {
+  self =>
 
-  logger.info("Java sound output execution context created.")
+  private val thread = new Thread {
+    override def run(): Unit = {
+      self.run()
+    }
+  }
+
+  @tailrec
+  final override def run(): Unit = {
+    try {
+      super.run()
+    }
+    catch {
+      case _: InterruptedException =>
+        logger.info(s"Java sound output thread interrupted by InterruptedException.")
+      case t: Throwable =>
+        logger.error("Java sound output thread failed!", t)
+        throw t
+    }
+    if (!thread.isInterrupted) {
+      run()
+    } else {
+      logger.info(s"Java sound output thread stopped because it was interrupted.")
+    }
+  }
+
+  override def close(): Unit = {
+    thread.interrupt()
+    super.close()
+    logger.info("Async Java sound output closed.")
+  }
+}
+
+private[audio] class SyncJavaSoundOutput(audioFormat: AudioFormat) extends AudioOutput {
+  import JavaSoundOutput._
 
   private val mixer: Mixer = ??? // TODO: ...
   private val sourceDataLine: SourceDataLine = ??? // TODO: ...
@@ -32,47 +66,29 @@ private[audio] class JavaSoundOutputThread(audioFormat: AudioFormat) extends Jav
    */
   private var _bufferingPosition: Option[PlaybackPosition] = None
 
-  private val thread = new Thread {
-    @tailrec
-    override def run(): Unit = {
-      try {
-        logger.trace("Acquiring semaphore for filled buffers...")
-        filledSemaphore.acquire()
-        val buffer = synchronized {
-          filledBuffers.dequeue()
-        }
-        logger.trace("Filled buffer dequeued.")
-        val bytesWritten = sourceDataLine.write(buffer.raw.array(), buffer.raw.position(),
-          buffer.raw.limit() - buffer.raw.position())
-        logger.trace(s"Data written to source data line. [$bytesWritten]")
 
-        // TODO: bytesWritten?
+  override def run(): Unit = {
+    logger.trace("Acquiring semaphore for filled buffers...")
+    filledSemaphore.acquire()
+    val buffer = synchronized {
+      filledBuffers.dequeue()
+    }
+    logger.trace("Filled buffer dequeued.")
+    val bytesWritten = sourceDataLine.write(buffer.raw.array(), buffer.raw.position(),
+      buffer.raw.limit() - buffer.raw.position())
+    logger.trace(s"Data written to source data line. [$bytesWritten]")
 
-        _playbackPosition = Some(buffer.endPosition)
-        synchronized {
-          enqueueEmpty(buffer)
-        }
-      }
-      catch {
-        case _: InterruptedException =>
-          logger.info(s"Java sound output thread interrupted by InterruptedException.")
-        case t: Throwable =>
-          logger.error("Java sound output thread failed!", t)
-          throw t
-      }
-      if (!isInterrupted) {
-        run()
-      } else {
-        logger.info(s"Java sound output thread stopped because it was interrupted.")
-      }
+    // TODO: bytesWritten?
+
+    _playbackPosition = Some(buffer.endPosition)
+    synchronized {
+      enqueueEmpty(buffer)
     }
   }
 
   override def close(): Unit = synchronized {
-    thread.interrupt()
     sourceDataLine.close()
     mixer.close()
-    logger.info("Java sound output closed.")
   }
 
   override def write(buffer: AudioBuffer): Unit = synchronized {
@@ -108,7 +124,7 @@ private[audio] class JavaSoundOutputThread(audioFormat: AudioFormat) extends Jav
   override def bufferingPosition: Option[PlaybackPosition] = _bufferingPosition
 }
 
-private object JavaSoundOutputThread {
-  private val logger = LoggerFactory.getLogger(classOf[JavaSoundOutputThread])
-  private val prebuffers = 5
+private object JavaSoundOutput {
+  val logger: Logger = LoggerFactory.getLogger(classOf[SyncJavaSoundOutput])
+  val prebuffers: Int = 5
 }

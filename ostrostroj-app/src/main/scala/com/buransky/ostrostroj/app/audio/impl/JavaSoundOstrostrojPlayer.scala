@@ -1,13 +1,13 @@
 package com.buransky.ostrostroj.app.audio.impl
 
-import com.buransky.ostrostroj.app.audio.{JavaSoundOutput, OstrostrojPlayer, OstrostrojPlayerStatus, PlaylistInput}
+import com.buransky.ostrostroj.app.audio.{AudioOutput, OstrostrojPlayer, OstrostrojPlayerStatus, PlaylistInput}
 import com.buransky.ostrostroj.app.show.Playlist
 import javax.sound.sampled.{AudioFormat, AudioSystem}
 import org.slf4j.LoggerFactory
 
 private[audio] class JavaSoundOstrostrojPlayer(playlist: Playlist) extends OstrostrojPlayer {
   private lazy val audioFormat: AudioFormat = AudioSystem.getAudioFileFormat(playlist.songs.head.path.toFile).getFormat
-  private val javaSoundOutput = JavaSoundOutput(audioFormat)
+  private val javaSoundOutput = AudioOutput(audioFormat)
 
   override def start(songIndex: Int): Unit = {
     PlaylistInput(songIndex, javaSoundOutput)
