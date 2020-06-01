@@ -1,14 +1,12 @@
 package com.buransky.ostrostroj.app.audio
 
-import java.nio.ByteBuffer
-
 private[audio] trait AudioInput {
   /**
    * Synchronously reads next audio data into provided byte buffer.
    * @param buffer Buffer to read audio data into.
    * @return Fill
    */
-  def read(buffer: ByteBuffer): AudioEvent
+  def read(buffer: AudioBuffer): AudioEvent
 }
 
 /**

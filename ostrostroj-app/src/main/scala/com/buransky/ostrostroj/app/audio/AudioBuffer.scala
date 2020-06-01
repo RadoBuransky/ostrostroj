@@ -2,8 +2,8 @@ package com.buransky.ostrostroj.app.audio
 
 import java.nio.ByteBuffer
 
-final case class ByteCount(index: Int) extends AnyVal
-final case class SampleCount(index: Int) extends AnyVal
+final case class ByteCount(value: Int) extends AnyVal
+final case class SampleCount(value: Int) extends AnyVal
 
 final case class PlaybackPosition(songIndex: Int, position: SampleCount)
 
@@ -31,12 +31,13 @@ class AudioBuffer(byteBuffer: ByteBuffer,
                   val bitsPerSample: BitsPerSample,
                   val position: SampleCount,
                   val limit: SampleCount,
-                  val capacity: SampleCount,
                   val endOfStream: Boolean) {
   def byteArray: Array[Byte] = byteBuffer.array()
   def bytePosition: Int = ???
   def byteLimit: Int = ???
+  def byteSize: Int = byteLimit - bytePosition
   def clear(): Unit = ???
+  def size: SampleCount = ???
   def sample(index: SampleCount, channel: Int): AudioSample = ???
 }
 
@@ -49,13 +50,12 @@ class AudioEvent(byteBuffer: ByteBuffer,
                  bitsPerSample: BitsPerSample,
                  position: SampleCount,
                  limit: SampleCount,
-                 capacity: SampleCount,
                  endOfStream: Boolean,
                  val startPosition: PlaybackPosition) extends AudioBuffer(byteBuffer, channels, bitsPerSample, position,
-  limit, capacity, endOfStream) {
+  limit, endOfStream) {
   /**
    * Position of the last sample of this buffer within the audio stream.
    */
   def endPosition: PlaybackPosition = PlaybackPosition(startPosition.songIndex,
-    SampleCount(startPosition.position.index + limit.index - position.index))
+    SampleCount(startPosition.position.value + limit.value - position.value))
 }
