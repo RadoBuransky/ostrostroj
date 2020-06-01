@@ -27,7 +27,6 @@ private[audio] class JavaSoundOutput(sourceDataLine: SourceDataLine) extends Aud
     logger.trace(s"Data written to source data line. [$bytesWritten]")
 
     // TODO: Add unwritten data back to the queue when stop/pause?
-    // TODO: Stop running when stopped
 
     synchronized {
       enqueueEmpty(buffer)
