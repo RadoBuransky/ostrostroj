@@ -1,6 +1,5 @@
 package com.buransky.ostrostroj.app.audio.impl
 
-import java.nio.ByteBuffer
 import java.util.concurrent.Semaphore
 
 import com.buransky.ostrostroj.app.audio._
@@ -53,34 +52,21 @@ private[audio] class SyncJavaSoundOutput(audioFormat: AudioFormat) extends Audio
   private val sourceDataLine: SourceDataLine = ??? // TODO: ...
 
   private val filledBuffers: mutable.Queue[AudioBuffer] = mutable.Queue.empty
-  private val emptyBuffers: mutable.Queue[ByteBuffer] =
-    mutable.Queue.fill(prebuffers)(ByteBuffer.allocate(sourceDataLine.getBufferSize))
+  private val emptyBuffers: mutable.Queue[Array[Byte]] =
+    mutable.Queue.fill(prebuffers)(new Array[Byte](sourceDataLine.getBufferSize))
   private val filledSemaphore: Semaphore = new Semaphore(0)
   private val emptySemaphore: Semaphore = new Semaphore(prebuffers)
-  /**
-   * End position of the last buffer written to the source data line.
-   */
-  private var _playbackPosition: Option[PlaybackPosition] = None
-  /**
-   * End position of the last buffer queued to prebuffering queue.
-   */
-  private var _bufferingPosition: Option[PlaybackPosition] = None
 
-
-  override def run(): Unit = {
+  def run(): Unit = {
     logger.trace("Acquiring semaphore for filled buffers...")
     filledSemaphore.acquire()
     val buffer = synchronized {
       filledBuffers.dequeue()
     }
     logger.trace("Filled buffer dequeued.")
-    val bytesWritten = sourceDataLine.write(buffer.raw.array(), buffer.raw.position(),
-      buffer.raw.limit() - buffer.raw.position())
+    val bytesWritten = sourceDataLine.write(buffer.byteArray, buffer.bytePosition,
+      buffer.byteLimit - buffer.bytePosition)
     logger.trace(s"Data written to source data line. [$bytesWritten]")
-
-    // TODO: bytesWritten?
-
-    _playbackPosition = Some(buffer.endPosition)
     synchronized {
       enqueueEmpty(buffer)
     }
@@ -91,37 +77,26 @@ private[audio] class SyncJavaSoundOutput(audioFormat: AudioFormat) extends Audio
     mixer.close()
   }
 
-  override def write(buffer: AudioBuffer): Unit = synchronized {
-    write(buffer)
+  override def queueFull(buffer: AudioBuffer): Unit = synchronized {
+    queueFull(buffer)
     filledSemaphore.release()
     logger.trace("Full buffer enqueued.")
   }
 
-  override def nextEmpty(): Option[ByteBuffer] = synchronized {
-    if (emptyBuffers.isEmpty) {
+  override def dequeued: Semaphore = emptySemaphore
+
+  override def dequeueEmpty(): Option[Array[Byte]] = synchronized {
+    if (emptyBuffers.isEmpty)
       None
-    } else {
-      emptySemaphore.acquire()
+    else
       Some(emptyBuffers.dequeue())
-    }
-  }
-
-  override def emptyAvailable: Semaphore = emptySemaphore
-
-  override def flush(): Unit = synchronized {
-    while (filledBuffers.nonEmpty) {
-      enqueueEmpty(filledBuffers.dequeue())
-    }
   }
 
   private def enqueueEmpty(buffer: AudioBuffer): Unit = {
     buffer.clear()
-    emptyBuffers.enqueue(buffer.raw)
+    emptyBuffers.enqueue(buffer.byteArray)
     emptySemaphore.release()
   }
-
-  override def playbackPosition: Option[PlaybackPosition] = _playbackPosition
-  override def bufferingPosition: Option[PlaybackPosition] = _bufferingPosition
 }
 
 private object JavaSoundOutput {

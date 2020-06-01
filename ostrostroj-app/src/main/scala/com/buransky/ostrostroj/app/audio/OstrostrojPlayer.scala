@@ -7,9 +7,8 @@ import com.buransky.ostrostroj.app.show.Playlist
  * Main interface for playback control.
  */
 trait OstrostrojPlayer extends AutoCloseable {
-  def start(songIndex: Int): Unit
+  def play(): Unit
   def pause(): Unit
-  def resume(): Unit
 
   def startLooping(): Unit
   def stopLooping(): Unit

@@ -9,11 +9,8 @@ private[audio] class JavaSoundOstrostrojPlayer(playlist: Playlist) extends Ostro
   private lazy val audioFormat: AudioFormat = AudioSystem.getAudioFileFormat(playlist.songs.head.path.toFile).getFormat
   private val javaSoundOutput = AudioOutput(audioFormat)
 
-  override def start(songIndex: Int): Unit = {
-    PlaylistInput(songIndex, javaSoundOutput)
-  }
+  override def play(): Unit = ???
   override def pause(): Unit = ???
-  override def resume(): Unit = ???
   override def startLooping(): Unit = ???
   override def stopLooping(): Unit = ???
   override def harder(): Unit = ???

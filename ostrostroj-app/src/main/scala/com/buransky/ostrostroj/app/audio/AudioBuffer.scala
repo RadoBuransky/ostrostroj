@@ -23,38 +23,39 @@ sealed trait BitsPerSample
 case object SixteenBits extends BitsPerSample
 case object EightBits extends BitsPerSample
 
-sealed trait AudioBuffer {
-  def raw: ByteBuffer
+/**
+ * Wrapper for ByteBuffer containing audio data.
+ */
+class AudioBuffer(byteBuffer: ByteBuffer,
+                  val channels: Int,
+                  val bitsPerSample: BitsPerSample,
+                  val position: SampleCount,
+                  val limit: SampleCount,
+                  val capacity: SampleCount,
+                  val endOfStream: Boolean) {
+  def byteArray: Array[Byte] = byteBuffer.array()
+  def bytePosition: Int = ???
+  def byteLimit: Int = ???
+  def clear(): Unit = ???
+  def sample(index: SampleCount, channel: Int): AudioSample = ???
+}
 
-  def channels: Int
-  def bitsPerSample: BitsPerSample
-
-  def position: SampleCount
-  def limit: SampleCount
-  def capacity: SampleCount
-
-  /**
-   * Position of the first sample of this buffer within the audio stream.
-   */
-  def startPosition: PlaybackPosition
-
+/**
+ * AudioBuffer with position within an audio stream.
+ * @param startPosition Position of the first sample of this buffer within the audio stream.
+ */
+class AudioEvent(byteBuffer: ByteBuffer,
+                 channels: Int,
+                 bitsPerSample: BitsPerSample,
+                 position: SampleCount,
+                 limit: SampleCount,
+                 capacity: SampleCount,
+                 endOfStream: Boolean,
+                 val startPosition: PlaybackPosition) extends AudioBuffer(byteBuffer, channels, bitsPerSample, position,
+  limit, capacity, endOfStream) {
   /**
    * Position of the last sample of this buffer within the audio stream.
    */
-  def endPosition: PlaybackPosition
-
-  def clear(): Unit
-  def sample(index: SampleCount, channel: Int): AudioSample
-}
-
-final class AudioBuffer16Le(val channels: Int,
-                            val raw: ByteBuffer,
-                            val startPosition: PlaybackPosition,
-                            val endPosition: PlaybackPosition) extends AudioBuffer {
-  override val bitsPerSample: BitsPerSample = SixteenBits
-  override def position: SampleCount = ???
-  override def limit: SampleCount = ???
-  override def capacity: SampleCount = ???
-  override def clear(): Unit = raw.clear()
-  override def sample(index: SampleCount, channel: Int): AudioSample = ???
+  def endPosition: PlaybackPosition = PlaybackPosition(startPosition.songIndex,
+    SampleCount(startPosition.position.index + limit.index - position.index))
 }
