@@ -1,6 +1,6 @@
 package com.buransky.ostrostroj.app.audio.impl.input
 
-import com.buransky.ostrostroj.app.audio.{AudioBuffer, AudioEvent, PlaylistInput, SongInput}
+import com.buransky.ostrostroj.app.audio.{AudioBuffer, PlaylistInput, SongInput}
 import com.buransky.ostrostroj.app.show.{Playlist, Song}
 import org.slf4j.LoggerFactory
 
@@ -11,7 +11,7 @@ private[audio] class PlaylistInputImpl(playlist: Playlist,
   private var _songInput: SongInput = createSongInput(songIndex)
 
   override def songInput: SongInput = synchronized { _songInput }
-  override def read(buffer: AudioBuffer): AudioEvent = synchronized {
+  override def read(buffer: AudioBuffer): AudioBuffer = synchronized {
     val result = songInput.read(buffer)
     if (result.endOfStream) {
       logger.debug("End of stream.")

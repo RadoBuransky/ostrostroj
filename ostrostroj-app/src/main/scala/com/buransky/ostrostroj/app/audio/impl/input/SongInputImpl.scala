@@ -1,17 +1,14 @@
 package com.buransky.ostrostroj.app.audio.impl.input
 
-import java.nio.file.Path
-
 import com.buransky.ostrostroj.app.audio._
-import com.buransky.ostrostroj.app.show.{Loop, Song}
+import com.buransky.ostrostroj.app.show.Loop
 import javax.sound.sampled.AudioInputStream
 import org.slf4j.LoggerFactory
 
-private[audio] class SongInputImpl(song: Song,
-                                   audioInputStreamFactory: (Path) => AudioInputStream) extends SongInput {
+private[audio] class SongInputImpl(loops: Seq[Loop],
+                                   masterTrackInputStream: AudioInputStream) extends SongInput {
   import SongInputImpl._
 
-  private val masterTrackInputStream = audioInputStreamFactory(song.path)
   private var _loopInput: Option[LoopInput] = ???
 
   override def startLooping(): Unit = synchronized {
@@ -42,7 +39,7 @@ private[audio] class SongInputImpl(song: Song,
 
   override def loopInput: Option[LoopInput] = synchronized { _loopInput }
 
-  override def read(buffer: AudioBuffer): AudioEvent = synchronized {
+  override def read(buffer: AudioBuffer): AudioBuffer = synchronized {
     _loopInput match {
       case Some(_) => readFromLoop(buffer)
       case None => readFromMaster(buffer)
@@ -53,7 +50,7 @@ private[audio] class SongInputImpl(song: Song,
 
   private def createLoopInput(loop: Loop): LoopInput = ???
 
-  private def readFromLoop(buffer: AudioBuffer): AudioEvent = {
+  private def readFromLoop(buffer: AudioBuffer): AudioBuffer = {
     val result = _loopInput.get.read(buffer)
     if (result.endOfStream) {
       _loopInput.get.close()
@@ -63,7 +60,7 @@ private[audio] class SongInputImpl(song: Song,
     ???
   }
 
-  private def readFromMaster(buffer: AudioBuffer): AudioEvent = {
+  private def readFromMaster(buffer: AudioBuffer): AudioBuffer = {
     val bytesRead = masterTrackInputStream.read(buffer.byteArray)
 
     // TODO: End of stream

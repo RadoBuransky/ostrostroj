@@ -1,6 +1,6 @@
 package com.buransky.ostrostroj.app.audio.impl
 
-import com.buransky.ostrostroj.app.audio.{AudioBuffer, AudioEvent, AudioInput, AudioOutput}
+import com.buransky.ostrostroj.app.audio.{AudioBuffer, AudioInput, AudioOutput}
 import org.slf4j.LoggerFactory
 
 import scala.annotation.tailrec
@@ -45,8 +45,8 @@ private[audio] class AsyncAudioProvider(audioInput: AudioInput, audioOutput: Aud
     }
   }
 
-  private def readAndQueue(emptyBuffer: AudioBuffer): AudioEvent = {
-    val fullBuffer: AudioEvent = audioInput.read(emptyBuffer)
+  private def readAndQueue(emptyBuffer: AudioBuffer): AudioBuffer = {
+    val fullBuffer: AudioBuffer = audioInput.read(emptyBuffer)
     if (fullBuffer.size.value > 0) {
       audioOutput.queueFull(fullBuffer)
     } else {

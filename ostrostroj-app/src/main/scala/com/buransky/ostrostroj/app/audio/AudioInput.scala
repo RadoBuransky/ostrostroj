@@ -6,7 +6,7 @@ private[audio] trait AudioInput extends AutoCloseable {
    * @param buffer Buffer to read audio data into.
    * @return Fill
    */
-  def read(buffer: AudioBuffer): AudioEvent
+  def read(buffer: AudioBuffer): AudioBuffer
 }
 
 /**

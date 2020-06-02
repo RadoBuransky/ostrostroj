@@ -40,22 +40,3 @@ class AudioBuffer(byteBuffer: ByteBuffer,
   def size: SampleCount = ???
   def sample(index: SampleCount, channel: Int): AudioSample = ???
 }
-
-/**
- * AudioBuffer with position within an audio stream.
- * @param startPosition Position of the first sample of this buffer within the audio stream.
- */
-class AudioEvent(byteBuffer: ByteBuffer,
-                 channels: Int,
-                 bitsPerSample: BitsPerSample,
-                 position: SampleCount,
-                 limit: SampleCount,
-                 endOfStream: Boolean,
-                 val startPosition: PlaybackPosition) extends AudioBuffer(byteBuffer, channels, bitsPerSample, position,
-  limit, endOfStream) {
-  /**
-   * Position of the last sample of this buffer within the audio stream.
-   */
-  def endPosition: PlaybackPosition = PlaybackPosition(startPosition.songIndex,
-    SampleCount(startPosition.position.value + limit.value - position.value))
-}

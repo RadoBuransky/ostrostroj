@@ -7,8 +7,8 @@ import play.api.libs.json.{JsValue, Json}
 
 final case class Playlist(songs: Seq[Song])
 final case class Song(title: String, path: Path, loops: Seq[Loop])
-final case class Loop(start: Int, endExclusive: Int, levels: Seq[Level])
-final case class Level(level: Int, path: Path)
+final case class Loop(start: Int, endExclusive: Int, tracks: Seq[Track])
+final case class Track(rangeMin: Int, rangeMax: Int, fade: Int, path: Path)
 
 /**
  * https://github.com/playframework/play-json
@@ -39,17 +39,19 @@ object PlaylistReader {
         Loop(
           start = (loop \ "start").as[Int],
           endExclusive = (loop \ "end").as[Int],
-          levels = readLevels(songDir, loop)
+          tracks = readTracks(songDir, loop)
         )
       }
     }.getOrElse(Nil)
   }
 
-  private def readLevels(songDir: Path, loopJson: JsValue): Seq[Level] = {
-    (loopJson \ "levels").asOpt[Seq[JsValue]].map { optTracks =>
+  private def readTracks(songDir: Path, loopJson: JsValue): Seq[Track] = {
+    (loopJson \ "tracks").asOpt[Seq[JsValue]].map { optTracks =>
       optTracks.map { track =>
-        Level(
-          level = (track \ "level").as[Int],
+        Track(
+          rangeMin = ???,
+          rangeMax = ???,
+          fade = ???,
           path = songDir.resolve((track \ "path").as[String])
         )
       }
