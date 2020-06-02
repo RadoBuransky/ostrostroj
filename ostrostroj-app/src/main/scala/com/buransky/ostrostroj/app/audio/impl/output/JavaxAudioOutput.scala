@@ -8,13 +8,13 @@ import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.mutable
 
-private[audio] class JavaxAudioOutput(sourceDataLine: SourceDataLine) extends AudioOutput {
+private[audio] class JavaxAudioOutput(sourceDataLine: SourceDataLine, bufferCount: Int) extends AudioOutput {
   import JavaxAudioOutput._
 
-  private val filledBuffers: mutable.Queue[AudioBuffer] = mutable.Queue.empty
-  private val emptyBuffers: mutable.Queue[AudioBuffer] = ???
-  private val filledSemaphore: Semaphore = new Semaphore(0)
-  private val emptySemaphore: Semaphore = new Semaphore(prebuffers)
+  private val filledBuffers = mutable.Queue.empty[AudioBuffer]
+  private val emptyBuffers = createEmptyBuffers(bufferCount)
+  private val filledSemaphore = new Semaphore(0)
+  private val emptySemaphore = new Semaphore(bufferCount)
 
   override def write(): FrameCount = {
     logger.trace("Acquiring semaphore for filled buffers...")
@@ -24,15 +24,11 @@ private[audio] class JavaxAudioOutput(sourceDataLine: SourceDataLine) extends Au
     }
     logger.trace("Filled buffer dequeued.")
     val bytesWritten = sourceDataLine.write(buffer.byteArray, buffer.bytePosition, buffer.byteSize)
-    logger.trace(s"Data written to source data line. [$bytesWritten]")
-
-    // TODO: Add unwritten data back to the queue when stop/pause?
-
+    logger.trace(s"Data written to source data line. [$bytesWritten, ${buffer.byteSize}]")
     synchronized {
       enqueueEmpty(buffer)
+      FrameCount(bytesWritten/sourceDataLine.getFormat.getFrameSize)
     }
-
-    FrameCount(???) // TODO: Use bytes written
   }
 
   override def close(): Unit = synchronized {
@@ -55,13 +51,15 @@ private[audio] class JavaxAudioOutput(sourceDataLine: SourceDataLine) extends Au
   }
 
   private def enqueueEmpty(buffer: AudioBuffer): Unit = {
-    val recycledBuffer: AudioBuffer = ???
+    val recycledBuffer = buffer.copy(position = FrameCount(0), limit = FrameCount(0), endOfStream = false)
     emptyBuffers.enqueue(recycledBuffer)
     emptySemaphore.release()
   }
+
+  private def createEmptyBuffers(bufferCount: Int): mutable.Queue[AudioBuffer] =
+    mutable.Queue.fill(bufferCount)(AudioBuffer(sourceDataLine.getFormat, sourceDataLine.getBufferSize))
 }
 
 private object JavaxAudioOutput {
   val logger: Logger = LoggerFactory.getLogger(classOf[JavaxAudioOutput])
-  val prebuffers: Int = 10
 }

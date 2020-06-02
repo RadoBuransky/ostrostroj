@@ -6,7 +6,8 @@ import org.slf4j.LoggerFactory
 
 import scala.annotation.tailrec
 
-private[audio] class AsyncJavaxAudioOutput(sourceDataLine: SourceDataLine) extends JavaxAudioOutput(sourceDataLine)
+private[audio] class AsyncJavaxAudioOutput(sourceDataLine: SourceDataLine, bufferCount: Int)
+  extends JavaxAudioOutput(sourceDataLine, bufferCount)
   with LineListener { self =>
   import AsyncJavaxAudioOutput._
 
