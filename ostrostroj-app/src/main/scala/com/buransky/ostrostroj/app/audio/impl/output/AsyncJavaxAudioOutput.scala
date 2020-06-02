@@ -17,6 +17,8 @@ private[audio] class AsyncJavaxAudioOutput(sourceDataLine: SourceDataLine) exten
       self.write()
     }
   }
+  thread.setName("audio-output")
+  logger.debug(s"Javax audio output thread started. [${thread.getId} - ${thread.getName}]")
 
   @tailrec
   final override def write(): SampleCount = {
@@ -31,15 +33,15 @@ private[audio] class AsyncJavaxAudioOutput(sourceDataLine: SourceDataLine) exten
     }
     catch {
       case _: InterruptedException =>
-        logger.info(s"Java sound output thread interrupted by InterruptedException.")
+        logger.info(s"Javax audio output thread interrupted by InterruptedException.")
       case t: Throwable =>
-        logger.error("Java sound output thread failed!", t)
+        logger.error("Javax audio output thread failed!", t)
         throw t
     }
     if (!thread.isInterrupted) {
       write()
     } else {
-      logger.info(s"Java sound output thread stopped because it was interrupted.")
+      logger.debug(s"Javax audio output thread stopped because it was interrupted.")
       SampleCount(0)
     }
   }
@@ -47,7 +49,7 @@ private[audio] class AsyncJavaxAudioOutput(sourceDataLine: SourceDataLine) exten
   override def close(): Unit = {
     thread.interrupt()
     super.close()
-    logger.info("Async Java sound output closed.")
+    logger.info("Javax audio output closed.")
   }
 
   override def update(event: LineEvent): Unit = synchronized {

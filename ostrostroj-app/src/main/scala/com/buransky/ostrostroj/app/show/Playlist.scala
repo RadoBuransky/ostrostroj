@@ -5,7 +5,9 @@ import java.nio.file.Path
 
 import play.api.libs.json.{JsValue, Json}
 
-final case class Playlist(songs: Seq[Song])
+final case class Playlist(songs: Seq[Song]) {
+  def subplaylist(fromSong: Int): Playlist = this.copy(songs = songs.slice(fromSong, songs.length - 1))
+}
 final case class Song(title: String, path: Path, loops: Seq[Loop])
 final case class Loop(start: Int, endExclusive: Int, tracks: Seq[Track])
 final case class Track(rangeMin: Int, rangeMax: Int, fade: Int, path: Path)
