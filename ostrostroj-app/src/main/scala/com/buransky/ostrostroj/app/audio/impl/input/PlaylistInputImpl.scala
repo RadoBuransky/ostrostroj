@@ -23,6 +23,11 @@ private[audio] class PlaylistInputImpl(playlist: Playlist,
     result
   }
 
+  override def close(): Unit = synchronized {
+    _songInput.close()
+    logger.debug("Playlist input closed.")
+  }
+
   private def createSongInput(songIndex: Int): SongInput = {
     if (_songInput != null) {
       _songInput.close()
@@ -30,10 +35,6 @@ private[audio] class PlaylistInputImpl(playlist: Playlist,
 
     logger.debug(s"Creating song input... [$songIndex]")
     songInputFactory(playlist.songs(songIndex))
-  }
-
-  override def close(): Unit = {
-    _songInput.close()
   }
 }
 

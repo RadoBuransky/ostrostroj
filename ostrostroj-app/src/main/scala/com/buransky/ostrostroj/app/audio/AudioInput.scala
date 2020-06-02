@@ -15,6 +15,10 @@ private[audio] trait AudioInput extends AutoCloseable {
 private[audio] trait LoopInput extends AudioInput {
   def harder(): Unit
   def softer(): Unit
+
+  def startDraining(): Unit
+  def stopDraining(): Unit
+  def toggleDraining(): Unit
 }
 
 /**
@@ -23,6 +27,7 @@ private[audio] trait LoopInput extends AudioInput {
 private[audio] trait SongInput extends AudioInput {
   def startLooping(): Unit
   def stopLooping(): Unit
+  def toggleLooping(): Unit
   def loopInput: Option[LoopInput]
 }
 
