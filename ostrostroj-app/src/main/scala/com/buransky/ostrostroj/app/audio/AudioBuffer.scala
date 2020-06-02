@@ -1,23 +1,12 @@
 package com.buransky.ostrostroj.app.audio
 
 import java.nio.ByteBuffer
+import java.nio.file.Path
+
+import javax.sound.sampled.spi.AudioFileReader
 
 final case class ByteCount(value: Int) extends AnyVal
 final case class SampleCount(value: Int) extends AnyVal
-
-final case class PlaybackPosition(songIndex: Int, position: SampleCount)
-
-sealed trait AudioSample extends Any {
-  def value: Int
-}
-
-/**
- * 16-bit little endian sample.
- * @param underlying Raw value as present in the audio stream.
- */
-final class AudioSample16Le(val underlying: Short) extends AnyVal with AudioSample {
-  def value: Int = ??? // TODO: Swap bytes I guess
-}
 
 sealed trait BitsPerSample
 case object SixteenBits extends BitsPerSample
@@ -38,5 +27,10 @@ class AudioBuffer(byteBuffer: ByteBuffer,
   def byteSize: Int = byteLimit - bytePosition
   def clear(): Unit = ???
   def size: SampleCount = ???
-  def sample(index: SampleCount, channel: Int): AudioSample = ???
+}
+
+object AudioBuffer {
+  def apply(path: Path, audioFileReader: AudioFileReader): AudioBuffer = {
+    ???
+  }
 }

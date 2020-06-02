@@ -1,14 +1,13 @@
 package com.buransky.ostrostroj.app.audio.impl
 
-import com.buransky.ostrostroj.app.audio.impl.provider.AsyncAudioProvider
-import com.buransky.ostrostroj.app.audio.{AudioOutput, AudioPlayer, AudioPlayerStatus, PlaylistInput}
+import com.buransky.ostrostroj.app.audio._
 import javax.sound.sampled.SourceDataLine
 import org.slf4j.LoggerFactory
 
 private[audio] class OstrostrojPlayer(sourceDataLine: SourceDataLine,
                                       audioOutput: AudioOutput,
                                       playlistInput: PlaylistInput,
-                                      asyncAudioProvider: AsyncAudioProvider) extends AudioPlayer {
+                                      audioProvider: AudioProvider) extends AudioPlayer {
   import OstrostrojPlayer._
 
   override def play(): Unit = sourceDataLine.start()
@@ -18,11 +17,11 @@ private[audio] class OstrostrojPlayer(sourceDataLine: SourceDataLine,
   override def harder(): Unit = playlistInput.songInput.loopInput.foreach(_.harder())
   override def softer(): Unit = playlistInput.songInput.loopInput.foreach(_.softer())
   override def setVolume(volume: Int): Unit = ???
-  override def status(): AudioPlayerStatus = ???
+  override def status: AudioPlayerStatus = ???
 
   override def close(): Unit = {
     logger.debug("Closing Ostrostroj player...")
-    asyncAudioProvider.close()
+    audioProvider.close()
     audioOutput.close()
     sourceDataLine.close()
     playlistInput.close()

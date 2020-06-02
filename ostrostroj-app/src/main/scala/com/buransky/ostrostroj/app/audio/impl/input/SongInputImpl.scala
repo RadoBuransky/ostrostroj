@@ -3,10 +3,12 @@ package com.buransky.ostrostroj.app.audio.impl.input
 import com.buransky.ostrostroj.app.audio._
 import com.buransky.ostrostroj.app.show.Loop
 import javax.sound.sampled.AudioInputStream
+import javax.sound.sampled.spi.AudioFileReader
 import org.slf4j.LoggerFactory
 
 private[audio] class SongInputImpl(loops: Seq[Loop],
-                                   masterTrackInputStream: AudioInputStream) extends SongInput {
+                                   masterTrackInputStream: AudioInputStream,
+                                   loopInputFactory: (Loop, SampleCount, AudioFileReader) => LoopInput) extends SongInput {
   import SongInputImpl._
 
   private var _loopInput: Option[LoopInput] = ???
