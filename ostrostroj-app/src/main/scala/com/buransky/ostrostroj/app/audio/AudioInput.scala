@@ -1,6 +1,6 @@
 package com.buransky.ostrostroj.app.audio
 
-private[audio] trait AudioInput {
+private[audio] trait AudioInput extends AutoCloseable {
   /**
    * Synchronously reads next audio data into provided byte buffer.
    * @param buffer Buffer to read audio data into.
@@ -30,5 +30,5 @@ private[audio] trait SongInput extends AudioInput {
  * Reads audio data of a playlist. Handles skipping to the next song after the current song is done.
  */
 private[audio] trait PlaylistInput extends AudioInput {
-  def songInput: Option[SongInput]
+  def songInput: SongInput
 }

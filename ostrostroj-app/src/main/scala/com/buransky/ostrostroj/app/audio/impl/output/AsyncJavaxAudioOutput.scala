@@ -1,4 +1,4 @@
-package com.buransky.ostrostroj.app.audio.impl
+package com.buransky.ostrostroj.app.audio.impl.output
 
 import com.buransky.ostrostroj.app.audio.SampleCount
 import javax.sound.sampled.{LineEvent, LineListener, SourceDataLine}
@@ -6,9 +6,9 @@ import org.slf4j.LoggerFactory
 
 import scala.annotation.tailrec
 
-private[audio] class AsyncJavaSoundOutput(sourceDataLine: SourceDataLine) extends JavaSoundOutput(sourceDataLine)
+private[audio] class AsyncJavaxAudioOutput(sourceDataLine: SourceDataLine) extends JavaxAudioOutput(sourceDataLine)
   with LineListener { self =>
-  import AsyncJavaSoundOutput._
+  import AsyncJavaxAudioOutput._
 
   sourceDataLine.addLineListener(this)
 
@@ -60,6 +60,6 @@ private[audio] class AsyncJavaSoundOutput(sourceDataLine: SourceDataLine) extend
   }
 }
 
-private object AsyncJavaSoundOutput {
-  private val logger = LoggerFactory.getLogger(classOf[AsyncJavaSoundOutput])
+private object AsyncJavaxAudioOutput {
+  private val logger = LoggerFactory.getLogger(classOf[AsyncJavaxAudioOutput])
 }

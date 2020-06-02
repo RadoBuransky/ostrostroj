@@ -1,4 +1,4 @@
-package com.buransky.ostrostroj.app.audio.impl
+package com.buransky.ostrostroj.app.audio.impl.output
 
 import java.util.concurrent.Semaphore
 
@@ -8,8 +8,8 @@ import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.mutable
 
-private[audio] class JavaSoundOutput(sourceDataLine: SourceDataLine) extends AudioOutput {
-  import JavaSoundOutput._
+private[audio] class JavaxAudioOutput(sourceDataLine: SourceDataLine) extends AudioOutput {
+  import JavaxAudioOutput._
 
   private val filledBuffers: mutable.Queue[AudioBuffer] = mutable.Queue.empty
   private val emptyBuffers: mutable.Queue[AudioBuffer] = ???
@@ -62,7 +62,7 @@ private[audio] class JavaSoundOutput(sourceDataLine: SourceDataLine) extends Aud
   }
 }
 
-private object JavaSoundOutput {
-  val logger: Logger = LoggerFactory.getLogger(classOf[JavaSoundOutput])
+private object JavaxAudioOutput {
+  val logger: Logger = LoggerFactory.getLogger(classOf[JavaxAudioOutput])
   val prebuffers: Int = 10
 }
