@@ -16,7 +16,7 @@ private[audio] class JavaxAudioOutput(sourceDataLine: SourceDataLine) extends Au
   private val filledSemaphore: Semaphore = new Semaphore(0)
   private val emptySemaphore: Semaphore = new Semaphore(prebuffers)
 
-  override def write(): SampleCount = {
+  override def write(): FrameCount = {
     logger.trace("Acquiring semaphore for filled buffers...")
     filledSemaphore.acquire()
     val buffer = synchronized {
@@ -32,7 +32,7 @@ private[audio] class JavaxAudioOutput(sourceDataLine: SourceDataLine) extends Au
       enqueueEmpty(buffer)
     }
 
-    SampleCount(???) // TODO: Use bytes written
+    FrameCount(???) // TODO: Use bytes written
   }
 
   override def close(): Unit = synchronized {
@@ -54,10 +54,9 @@ private[audio] class JavaxAudioOutput(sourceDataLine: SourceDataLine) extends Au
       Some(emptyBuffers.dequeue())
   }
 
-
   private def enqueueEmpty(buffer: AudioBuffer): Unit = {
-    buffer.clear()
-    emptyBuffers.enqueue(buffer)
+    val recycledBuffer: AudioBuffer = ???
+    emptyBuffers.enqueue(recycledBuffer)
     emptySemaphore.release()
   }
 }

@@ -1,19 +1,19 @@
 package com.buransky.ostrostroj.app.audio.impl.input
 
-import com.buransky.ostrostroj.app.audio.{AudioBuffer, LoopInput, SampleCount}
+import com.buransky.ostrostroj.app.audio.{AudioBuffer, LoopInput, FrameCount}
 import com.buransky.ostrostroj.app.show.Track
 import org.slf4j.LoggerFactory
 
 private[audio] class LoopInputImpl(tracks: Seq[Track],
                                    trackAudioBuffers: Seq[AudioBuffer],
-                                   startingPosition: SampleCount) extends LoopInput {
+                                   startingPosition: FrameCount) extends LoopInput {
   import LoopInputImpl._
 
   private var level = 0
   private val minLevel = tracks.map(_.rangeMin).min
   private val maxLevel = tracks.map(_.rangeMax).max
   private var isDraining = false
-  private var position: SampleCount = startingPosition
+  private var position: FrameCount = startingPosition
 
   override def harder(): Unit = synchronized {
     if (level < maxLevel) {

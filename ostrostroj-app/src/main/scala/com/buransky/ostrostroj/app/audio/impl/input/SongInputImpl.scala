@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory
 
 private[audio] class SongInputImpl(loops: Seq[Loop],
                                    masterTrackInputStream: AudioInputStream,
-                                   loopInputFactory: (Loop, SampleCount, AudioFileReader) => LoopInput) extends SongInput {
+                                   loopInputFactory: (Loop, FrameCount, AudioFileReader) => LoopInput) extends SongInput {
   import SongInputImpl._
 
   private var _loopInput: Option[LoopInput] = ???
@@ -17,7 +17,7 @@ private[audio] class SongInputImpl(loops: Seq[Loop],
     _loopInput match {
       case Some(li) => li.stopDraining()
       case None =>
-        val currentPosition: SampleCount = ???
+        val currentPosition: FrameCount = ???
         loopAtPosition(currentPosition) match {
           case Some(loop) =>
             _loopInput = Some(createLoopInput(loop))
@@ -48,7 +48,7 @@ private[audio] class SongInputImpl(loops: Seq[Loop],
     }
   }
 
-  private def loopAtPosition(position: SampleCount): Option[Loop] = ???
+  private def loopAtPosition(position: FrameCount): Option[Loop] = ???
 
   private def createLoopInput(loop: Loop): LoopInput = ???
 

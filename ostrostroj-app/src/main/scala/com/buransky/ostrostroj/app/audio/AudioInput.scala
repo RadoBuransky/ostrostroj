@@ -44,7 +44,7 @@ private[audio] trait PlaylistInput extends AudioInput {
 }
 
 private[audio] object LoopInput {
-  def apply(loop: Loop, startingPosition: SampleCount, audioFileReader: AudioFileReader): LoopInput = {
+  def apply(loop: Loop, startingPosition: FrameCount, audioFileReader: AudioFileReader): LoopInput = {
     val trackAudioBuffers = loop.tracks.map(t => AudioBuffer(t.path, audioFileReader))
     new LoopInputImpl(loop.tracks, trackAudioBuffers, startingPosition)
   }

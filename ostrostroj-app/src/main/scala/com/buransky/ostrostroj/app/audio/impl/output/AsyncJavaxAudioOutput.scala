@@ -1,6 +1,6 @@
 package com.buransky.ostrostroj.app.audio.impl.output
 
-import com.buransky.ostrostroj.app.audio.SampleCount
+import com.buransky.ostrostroj.app.audio.FrameCount
 import javax.sound.sampled.{LineEvent, LineListener, SourceDataLine}
 import org.slf4j.LoggerFactory
 
@@ -21,7 +21,7 @@ private[audio] class AsyncJavaxAudioOutput(sourceDataLine: SourceDataLine) exten
   logger.debug(s"Javax audio output thread started. [${thread.getId} - ${thread.getName}]")
 
   @tailrec
-  final override def write(): SampleCount = {
+  final override def write(): FrameCount = {
     try {
       synchronized {
         if (!sourceDataLine.isActive) {
@@ -42,7 +42,7 @@ private[audio] class AsyncJavaxAudioOutput(sourceDataLine: SourceDataLine) exten
       write()
     } else {
       logger.debug(s"Javax audio output thread stopped because it was interrupted.")
-      SampleCount(0)
+      FrameCount(0)
     }
   }
 
