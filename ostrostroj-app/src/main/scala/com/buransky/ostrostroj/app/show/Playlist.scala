@@ -10,7 +10,18 @@ final case class Playlist(songs: Seq[Song]) {
 }
 final case class Song(title: String, path: Path, loops: Seq[Loop])
 final case class Loop(start: Int, endExclusive: Int, tracks: Seq[Track])
-final case class Track(rangeMin: Int, rangeMax: Int, fade: Int, path: Path)
+final case class Track(rangeMin: Int, rangeMax: Int, fade: Int, path: Path) {
+  def channelLevel(level: Int): Double = {
+    if ((fade == 0) || (level >= rangeMin && level <= rangeMax))
+      1.0
+    else {
+      if (level < rangeMin)
+        1.0 - ((rangeMin - level) / fade)
+      else
+        1.0 - ((level - rangeMax) / fade)
+    }
+  }
+}
 
 /**
  * https://github.com/playframework/play-json

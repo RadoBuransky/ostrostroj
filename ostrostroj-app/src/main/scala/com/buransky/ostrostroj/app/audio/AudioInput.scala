@@ -1,6 +1,6 @@
 package com.buransky.ostrostroj.app.audio
 
-import com.buransky.ostrostroj.app.audio.impl.input.{LoopInputImpl, SongInputImpl}
+import com.buransky.ostrostroj.app.audio.impl.input.{LoadedTrack, LoopInputImpl, SongInputImpl}
 import com.buransky.ostrostroj.app.common.OstrostrojException
 import com.buransky.ostrostroj.app.show.{Loop, Song}
 import javax.sound.sampled.spi.AudioFileReader
@@ -44,19 +44,21 @@ private[audio] trait PlaylistInput extends AudioInput {
 }
 
 private[audio] object LoopInput {
-  def apply(loop: Loop, startingPosition: FrameCount, audioFileReader: AudioFileReader): LoopInput = {
+  def apply(loop: Loop, startingPosition: FrameCount, audioFileReader: AudioFileReader,
+            audioMixer: AudioMixer): LoopInput = {
     val trackAudioBuffers = loop.tracks.map(t => AudioBuffer(t.path, audioFileReader))
-    new LoopInputImpl(loop.tracks, trackAudioBuffers, startingPosition)
+    val loadedTracks = loop.tracks.zip(trackAudioBuffers).map(i => LoadedTrack(i._1, i._2))
+    new LoopInputImpl(loop, loadedTracks, startingPosition, audioMixer)
   }
 }
 
 private[audio] object SongInput {
-  def apply(song: Song, audioFileReader: AudioFileReader): SongInput = {
+  def apply(song: Song, audioFileReader: AudioFileReader, audioMixer: AudioMixer): SongInput = {
     val masterTrackInputStream = try {
       audioFileReader.getAudioInputStream(song.path.toFile)
     } catch {
       case ex: Throwable => throw new OstrostrojException(s"Can't get audio input stream! [${song.path}]", ex)
     }
-    new SongInputImpl(song.loops, masterTrackInputStream, LoopInput.apply)
+    new SongInputImpl(song.loops, masterTrackInputStream, LoopInput.apply(_, _, _, audioMixer))
   }
 }
