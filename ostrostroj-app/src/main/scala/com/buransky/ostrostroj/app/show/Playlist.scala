@@ -61,10 +61,11 @@ object PlaylistReader {
   private def readTracks(songDir: Path, loopJson: JsValue): Seq[Track] = {
     (loopJson \ "tracks").asOpt[Seq[JsValue]].map { optTracks =>
       optTracks.map { track =>
+        val range = (track \ "range").as[Seq[Int]]
         Track(
-          rangeMin = ???,
-          rangeMax = ???,
-          fade = ???,
+          rangeMin = range.min,
+          rangeMax = range.max,
+          fade = (track \ "fade").asOpt[Int].getOrElse(0),
           path = songDir.resolve((track \ "path").as[String])
         )
       }
