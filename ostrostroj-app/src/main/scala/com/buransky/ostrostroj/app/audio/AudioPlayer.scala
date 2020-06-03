@@ -44,7 +44,7 @@ object AudioPlayer {
     val audioFileReader = new WaveFileReader()
     val sourceDataLine = getSourceDataLine(playlist.songs.head.path, mixer.getMixerInfo, bufferLength, audioFileReader)
     val audioOutput = new AsyncJavaxAudioOutput(sourceDataLine, audioConfig.getInt("bufferCount"))
-    val audioMixer = AudioMixer()
+    val audioMixer = AudioMixer(sourceDataLine.getFormat)
     val playlistInput = new PlaylistInputImpl(playlist, SongInput.apply(_, _, audioMixer), audioFileReader)
     val audioProvider = new AsyncAudioProvider(playlistInput, audioOutput)
     new OstrostrojPlayer(sourceDataLine, audioOutput, playlistInput, audioProvider)
