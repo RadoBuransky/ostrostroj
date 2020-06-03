@@ -14,61 +14,68 @@ import org.scalatestplus.mockito.MockitoSugar
 
 @RunWith(classOf[JUnitRunner])
 class AudioBufferSpec extends AnyFlatSpec with MockitoSugar {
-  private val audioBuffer = new AudioBuffer(new Array[Byte](12), 4, FrameCount(1), FrameCount(2), false)
+  private val audioBuffer = new AudioBuffer(new Array[Byte](12), 4, 2, FrameCount(1), FrameCount(2), false)
 
   behavior of "constructor"
 
   it should "fail if byteArray is empty" in {
     val ex = intercept[IllegalArgumentException] {
-      new AudioBuffer(Array.empty[Byte], 4, FrameCount(0), FrameCount(0), false)
+      new AudioBuffer(Array.empty[Byte], 4, 2, FrameCount(0), FrameCount(0), false)
     }
     assert(ex.getMessage == "byteArray is empty.")
   }
 
   it should "fail if frameSize is weird" in {
     val ex = intercept[IllegalArgumentException] {
-      new AudioBuffer(new Array[Byte](4), 3, FrameCount(0), FrameCount(0), false)
+      new AudioBuffer(new Array[Byte](4), 3, 2, FrameCount(0), FrameCount(0), false)
     }
     assert(ex.getMessage == "Unsupported frameSize. [3]")
   }
 
+  it should "fail if channels is weird" in {
+    val ex = intercept[IllegalArgumentException] {
+      new AudioBuffer(new Array[Byte](4), 4, 3, FrameCount(0), FrameCount(0), false)
+    }
+    assert(ex.getMessage == "Unsupported channels. [3]")
+  }
+
   it should "fail if position is negative" in {
     val ex = intercept[IllegalArgumentException] {
-      new AudioBuffer(new Array[Byte](4), 4, FrameCount(-1), FrameCount(0), false)
+      new AudioBuffer(new Array[Byte](4), 4, 2, FrameCount(-1), FrameCount(0), false)
     }
     assert(ex.getMessage == "Negative position. [-1]")
   }
 
   it should "fail if limit is negative" in {
     val ex = intercept[IllegalArgumentException] {
-      new AudioBuffer(new Array[Byte](4), 4, FrameCount(0), FrameCount(-1), false)
+      new AudioBuffer(new Array[Byte](4), 4, 2, FrameCount(0), FrameCount(-1), false)
     }
     assert(ex.getMessage == "Negative limit. [-1]")
   }
 
   it should "fail if limit is smaller than position" in {
     val ex = intercept[IllegalArgumentException] {
-      new AudioBuffer(new Array[Byte](4), 4, FrameCount(2), FrameCount(1), false)
+      new AudioBuffer(new Array[Byte](4), 4, 2, FrameCount(2), FrameCount(1), false)
     }
     assert(ex.getMessage == "Limit smaller than position. [2, 1]")
   }
 
   it should "fail if position is outside of byteBuffer" in {
     val ex = intercept[IllegalArgumentException] {
-      new AudioBuffer(new Array[Byte](4), 4, FrameCount(1), FrameCount(1), false)
+      new AudioBuffer(new Array[Byte](4), 4, 2, FrameCount(1), FrameCount(1), false)
     }
     assert(ex.getMessage == "Position outside of byteBuffer. [1, 1]")
   }
 
   it should "fail if limit is outside of byteBuffer" in {
     val ex = intercept[IllegalArgumentException] {
-      new AudioBuffer(new Array[Byte](4), 4, FrameCount(0), FrameCount(2), false)
+      new AudioBuffer(new Array[Byte](4), 4, 2, FrameCount(0), FrameCount(2), false)
     }
     assert(ex.getMessage == "Limit outside of byteBuffer. [2, 1]")
   }
 
   it should "not fail if limit equals to capacity of byteBuffer" in {
-    new AudioBuffer(new Array[Byte](4), 4, FrameCount(0), FrameCount(1), false)
+    new AudioBuffer(new Array[Byte](4), 4, 2, FrameCount(0), FrameCount(1), false)
   }
 
   behavior of "size"
@@ -160,5 +167,41 @@ class AudioBufferSpec extends AnyFlatSpec with MockitoSugar {
     verify(audioInputStream).available()
     verify(audioFileReader).getAudioInputStream(file)
     verify(path).toFile
+  }
+
+  behavior of "readLeShort"
+
+  it should "read 16-bit little endian sample" in {
+    // Prepare
+    val audioBuffer = new AudioBuffer(new Array[Byte](4), 4, 2, FrameCount(0), FrameCount(1), false)
+    audioBuffer.byteArray.update(0, 0x1A)
+    audioBuffer.byteArray.update(1, 0x2B)
+    audioBuffer.byteArray.update(2, 0x3C)
+    audioBuffer.byteArray.update(3, 0x4D)
+
+    // Execute
+    val result0 = audioBuffer.readLeShort(FrameCount(0), 0)
+    val result1 = audioBuffer.readLeShort(FrameCount(0), 1)
+
+    // Assert
+    assert(result0 == 0x2B1A)
+    assert(result1 == 0x4D3C)
+  }
+
+  behavior of "putLeShort"
+
+  it should "write 16-bit little endian sample" in {
+    // Prepare
+    val audioBuffer = new AudioBuffer(new Array[Byte](4), 4, 2, FrameCount(0), FrameCount(1), false)
+
+    // Execute
+    audioBuffer.putLeShort(0x4433, FrameCount(0), 0)
+    audioBuffer.putLeShort(0x6655, FrameCount(0), 1)
+
+    // Assert
+    assert(audioBuffer.byteArray(0) == 0x33)
+    assert(audioBuffer.byteArray(1) == 0x44)
+    assert(audioBuffer.byteArray(2) == 0x55)
+    assert(audioBuffer.byteArray(3) == 0x66)
   }
 }

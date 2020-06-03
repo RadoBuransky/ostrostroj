@@ -16,7 +16,7 @@ private[audio] class AudioMixerImpl(audioFormat: AudioFormat) extends AudioMixer
         for (channel <- 0 until audioFormat.getChannels) {
           val samples = audioMixerChannels.map(readLeShort(frameCount, channel, _))
           val mixedSample = mix16bitLeSamples(samples)
-          putLeShort(mixedSample, frameCount, channel, dst)
+          dst.putLeShort(mixedSample, frameCount, channel)
         }
       }
       dst
@@ -37,31 +37,10 @@ private[audio] class AudioMixerImpl(audioFormat: AudioFormat) extends AudioMixer
     }
   }
 
-  private def putLeShort(s: Short, position: FrameCount, channel: Int, buffer: AudioBuffer): Unit = {
-    val (loByte, hiByte) = shortToLeBytes(s)
-    val samplePosition = frameChannelToSample(position, channel)
-    buffer.byteArray.update(samplePosition, loByte)
-    buffer.byteArray.update(samplePosition + 1, hiByte)
-  }
-
   private def readLeShort(frame: FrameCount, channel: Int, audioMixerChannel: AudioMixerChannel): AudioMixerSample = {
-    val sample = readLeShort(audioMixerChannel.audioBuffer.position + frame, channel, audioMixerChannel.audioBuffer)
+    val sample = audioMixerChannel.audioBuffer.readLeShort(audioMixerChannel.audioBuffer.position + frame, channel)
     AudioMixerSample(audioMixerChannel.level, sample)
   }
-
-  private def readLeShort(position: FrameCount, channel: Int, buffer: AudioBuffer): Short = {
-    val samplePosition = frameChannelToSample(position, channel)
-    val loByte = buffer.byteArray(samplePosition)
-    val hiByte = buffer.byteArray(samplePosition + 1)
-    leBytesToShort(loByte, hiByte)
-  }
-
-  private def shortToLeBytes(s: Short): (Byte, Byte) = ((s & 0xFF).toByte, ((s >>> 8) & 0xFF).toByte)
-
-  private def leBytesToShort(loByte: Byte, hiByte: Byte): Short = (((hiByte & 0xFF) << 8) | (loByte & 0xFF)).toShort
-
-  private def frameChannelToSample(position: FrameCount, channel: Int): Int =
-    position.value*audioFormat.getFrameSize + channel*audioFormat.getSampleSizeInBits/8
 
   private def checkArgs(channels: Iterable[AudioMixerChannel], dst: AudioBuffer): Unit = {
     val first = channels.head
