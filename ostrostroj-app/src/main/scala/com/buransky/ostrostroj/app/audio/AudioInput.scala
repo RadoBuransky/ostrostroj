@@ -59,6 +59,6 @@ private[audio] object SongInput {
     } catch {
       case ex: Throwable => throw new OstrostrojException(s"Can't get audio input stream! [${song.path}]", ex)
     }
-    new SongInputImpl(song.loops, masterTrackInputStream, LoopInput.apply(_, _, _, audioMixer))
+    new SongInputImpl(song.loops, masterTrackInputStream, LoopInput.apply(_, _, audioFileReader, audioMixer))
   }
 }

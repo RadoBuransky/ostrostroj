@@ -2,6 +2,7 @@ package com.buransky.ostrostroj.app.audio
 
 import java.nio.file.Path
 
+import com.google.common.base.Preconditions._
 import javax.sound.sampled.AudioFormat
 import javax.sound.sampled.spi.AudioFileReader
 import org.slf4j.LoggerFactory
@@ -14,18 +15,32 @@ final case class FrameCount(value: Int) extends AnyVal {
   def +(other: FrameCount): FrameCount = FrameCount(value + other.value)
   def -(other: FrameCount): FrameCount = FrameCount(value - other.value)
 }
+
 /**
  * Buffer for audio data.
+ * @param byteArray Actual audio data buffer.
+ * @param frameSize Size of single audio frame in bytes (4 for 16-bit stereo)
+ * @param position Start of audio data in the buffer (in number of frames).
+ * @param limit End of audio data (exclusive) in the buffer (in number of frames).
+ * @param endOfStream true if this is the last data available in the source, false otherwise.
  */
 case class AudioBuffer(byteArray: Array[Byte],
                        frameSize: Int,
                        position: FrameCount,
                        limit: FrameCount,
                        endOfStream: Boolean) {
+  checkArgument(byteArray.length > 0)
+  checkArgument(frameSize == 2 || frameSize == 4)
+  checkArgument(position.value >= 0)
+  checkArgument(limit.value >= 0)
+  checkArgument(limit.value >= position.value)
+
+  def size: FrameCount = FrameCount(limit.value - position.value)
+  def capacity: FrameCount = FrameCount(byteArray.length / frameSize)
   def bytePosition: Int = position.value*frameSize
   def byteLimit: Int = limit.value*frameSize
   def byteSize: Int = byteLimit - bytePosition
-  def size: FrameCount = FrameCount(limit.value - position.value)
+  def byteCapacity: Int = byteArray.length
 }
 
 object AudioBuffer {

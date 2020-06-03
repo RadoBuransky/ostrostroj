@@ -23,20 +23,21 @@ private[audio] class LoopInputImpl(loop: Loop,
   private var position: FrameCount = startingPosition
 
   override def harder(): Unit = synchronized {
+    logger.debug(s"Harder. [$level, $maxLevel]")
     if (level < maxLevel) {
       level += 1
-      logger.debug(s"Harder level. [$level]")
     }
   }
 
   override def softer(): Unit = synchronized {
+    logger.debug(s"Softer. [$level, $minLevel]")
     if (level > minLevel) {
       level -= 1
-      logger.debug(s"Softer level. [$level]")
     }
   }
 
   override def read(buffer: AudioBuffer): AudioBuffer = synchronized {
+    logger.trace(s"Read. [${buffer.position}, ${buffer.limit}]")
     if (position.value == loop.endExclusive) {
       if (isDraining) {
         logger.debug(s"Draining done. [$position, ${loop.endExclusive}]")
@@ -50,16 +51,6 @@ private[audio] class LoopInputImpl(loop: Loop,
     } else {
       safeRead(buffer)
     }
-  }
-
-  private def safeRead(buffer: AudioBuffer): AudioBuffer = {
-    val channels = tracks
-      .filter(t => isInRange(level, t.track))
-      .map(trackToMixerChannel(level, _))
-      .map(limitChannelView(position, buffer.size, _))
-    val mixedResult = audioMixer.mix(channels, buffer)
-    position += mixedResult.size
-    mixedResult
   }
 
   override def close(): Unit = {}
@@ -76,13 +67,23 @@ private[audio] class LoopInputImpl(loop: Loop,
     isDraining = !isDraining
   }
 
+  private def safeRead(buffer: AudioBuffer): AudioBuffer = {
+    val channels = tracks
+      .filter(t => isInRange(level, t.track))
+      .map(trackToMixerChannel(level, _))
+      .map(limitChannelView(position, buffer.capacity, _))
+    val mixedResult = audioMixer.mix(channels, buffer)
+    position += mixedResult.size
+    mixedResult
+  }
+
   private def isInRange(level: Int, track: Track): Boolean =
     (level >= (track.rangeMin - track.fade)) && (level <= (track.rangeMax + track.fade))
 
-  private def limitChannelView(position: FrameCount, bufferSize: FrameCount,
+  private def limitChannelView(position: FrameCount, bufferCapacity: FrameCount,
                                mixerChannel: AudioMixerChannel): AudioMixerChannel = {
     val viewPosition = position - FrameCount(loop.start)
-    val viewLimit = FrameCount(Math.min(position.value + bufferSize.value, loop.endExclusive))
+    val viewLimit = FrameCount(Math.min(position.value + bufferCapacity.value, loop.endExclusive))
     val limitedAudioBuffer = mixerChannel.audioBuffer.copy(position = viewPosition, limit = viewLimit)
     AudioMixerChannel(mixerChannel.level, limitedAudioBuffer)
   }
