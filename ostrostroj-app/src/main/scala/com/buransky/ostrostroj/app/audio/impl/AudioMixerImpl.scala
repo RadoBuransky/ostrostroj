@@ -1,10 +1,9 @@
 package com.buransky.ostrostroj.app.audio.impl
 
-import com.buransky.ostrostroj.app.audio.{AudioBuffer, AudioMixer, AudioMixerChannel, FrameCount}
+import com.buransky.ostrostroj.app.audio._
 import com.google.common.base.Preconditions._
 import javax.sound.sampled.AudioFormat
 
-private case class AudioMixerSample(level: Double, sample: Short)
 
 private[audio] class AudioMixerImpl(audioFormat: AudioFormat) extends AudioMixer {
   override def mix(audioMixerChannels: Iterable[AudioMixerChannel], dst: AudioBuffer): AudioBuffer = {
@@ -14,7 +13,7 @@ private[audio] class AudioMixerImpl(audioFormat: AudioFormat) extends AudioMixer
       for (frame <- 0 until first.audioBuffer.size.value) {
         val frameCount = FrameCount(frame)
         for (channel <- 0 until audioFormat.getChannels) {
-          val samples = audioMixerChannels.map(readLeShort(frameCount, channel, _))
+          val samples = audioMixerChannels.map(_.readLeShort(frameCount, channel))
           val mixedSample = mix16bitLeSamples(samples)
           dst.putLeShort(mixedSample, frameCount, channel)
         }
@@ -37,15 +36,12 @@ private[audio] class AudioMixerImpl(audioFormat: AudioFormat) extends AudioMixer
     }
   }
 
-  private def readLeShort(frame: FrameCount, channel: Int, audioMixerChannel: AudioMixerChannel): AudioMixerSample = {
-    val sample = audioMixerChannel.audioBuffer.readLeShort(audioMixerChannel.audioBuffer.position + frame, channel)
-    AudioMixerSample(audioMixerChannel.level, sample)
-  }
-
   private def checkArgs(channels: Iterable[AudioMixerChannel], dst: AudioBuffer): Unit = {
     val first = channels.head
-    checkArgument(channels.forall(_.audioBuffer.position == first.audioBuffer.position))
-    checkArgument(channels.forall(_.audioBuffer.limit == first.audioBuffer.limit))
-    checkArgument(first.audioBuffer.size.value <= dst.size.value)
+    checkArgument(channels.forall(_.audioBuffer.position == first.audioBuffer.position),
+      "Position is not the same.".asInstanceOf[AnyRef])
+    checkArgument(channels.forall(_.audioBuffer.limit == first.audioBuffer.limit),
+      "Limit is not the same.".asInstanceOf[AnyRef])
+    checkArgument(first.audioBuffer.size.value <= dst.size.value, "Buffer is small.".asInstanceOf[AnyRef])
   }
 }
