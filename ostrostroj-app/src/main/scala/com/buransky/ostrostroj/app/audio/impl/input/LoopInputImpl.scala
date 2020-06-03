@@ -90,6 +90,14 @@ private[audio] class LoopInputImpl(loop: Loop,
 
   private def trackToMixerChannel(level: Int, track: LoadedTrack): AudioMixerChannel =
     AudioMixerChannel(track.track.channelLevel(level), track.audioBuffer)
+
+  override def status: LoopStatus = LoopStatus(
+    loop = loop,
+    level = level,
+    minLevel = minLevel,
+    maxLevel = maxLevel,
+    isDraining = isDraining,
+    position = position)
 }
 
 private object LoopInputImpl {

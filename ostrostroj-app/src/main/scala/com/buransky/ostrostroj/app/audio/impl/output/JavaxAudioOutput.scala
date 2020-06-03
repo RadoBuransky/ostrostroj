@@ -56,6 +56,8 @@ private[audio] class JavaxAudioOutput(sourceDataLine: SourceDataLine, bufferCoun
 
   override def volumeDown(): Unit = changeVolume(-1)
 
+  override def volume: Double = gainControl.getValue / gainControl.getMaximum
+
   private def changeVolume(stepDelta: Int): Unit =
     gainControl.setValue(((gainControl.getValue.toInt / volumeStepDb) + stepDelta)*volumeStepDb)
 

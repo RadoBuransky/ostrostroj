@@ -17,7 +17,24 @@ private[audio] class OstrostrojPlayer(sourceDataLine: SourceDataLine,
   override def softer(): Unit = playlistInput.songInput.loopInput.foreach(_.softer())
   override def volumeUp(): Unit = audioOutput.volumeUp()
   override def volumeDown(): Unit = audioOutput.volumeDown()
-  override def status: AudioPlayerStatus = ???
+  override def status: AudioPlayerStatus = {
+    val playlistStatus = playlistInput.status
+    AudioPlayerStatus(
+      song = playlistStatus.songStatus.song,
+      position = playlistStatus.songStatus.position,
+      volume = audioOutput.volume,
+      isPaused = !sourceDataLine.isRunning,
+      looping = playlistStatus.songStatus.loopStatus.map { loopStatus =>
+        AudioPlayerLoopingStatus(
+          loop = loopStatus.loop,
+          level = loopStatus.level,
+          minLevel = loopStatus.minLevel,
+          maxLevel = loopStatus.maxLevel,
+          isDraining = loopStatus.isDraining
+        )
+      }
+    )
+  }
 
   override def close(): Unit = {
     logger.debug("Closing Ostrostroj player...")

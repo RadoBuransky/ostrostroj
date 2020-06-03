@@ -1,6 +1,6 @@
 package com.buransky.ostrostroj.app.audio.impl.input
 
-import com.buransky.ostrostroj.app.audio.{AudioBuffer, PlaylistInput, SongInput}
+import com.buransky.ostrostroj.app.audio.{AudioBuffer, PlaylistInput, PlaylistStatus, SongInput}
 import com.buransky.ostrostroj.app.show.{Playlist, Song}
 import javax.sound.sampled.spi.AudioFileReader
 import org.slf4j.LoggerFactory
@@ -29,6 +29,8 @@ private[audio] class PlaylistInputImpl(playlist: Playlist,
     _songInput.close()
     logger.debug("Playlist input closed.")
   }
+
+  override def status: PlaylistStatus = PlaylistStatus(_songInput.status)
 
   private def createSongInput(songIndex: Int): SongInput = {
     if (_songInput != null) {

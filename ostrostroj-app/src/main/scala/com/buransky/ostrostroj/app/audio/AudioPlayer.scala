@@ -8,14 +8,23 @@ import com.buransky.ostrostroj.app.audio.impl.input.PlaylistInputImpl
 import com.buransky.ostrostroj.app.audio.impl.output.AsyncJavaxAudioOutput
 import com.buransky.ostrostroj.app.audio.impl.provider.AsyncAudioProvider
 import com.buransky.ostrostroj.app.common.OstrostrojException
-import com.buransky.ostrostroj.app.show.Playlist
+import com.buransky.ostrostroj.app.show.{Loop, Playlist, Song}
 import com.sun.media.sound.WaveFileReader
 import com.typesafe.config.Config
 import javax.sound.sampled.spi.AudioFileReader
 import javax.sound.sampled.{AudioSystem, Mixer, SourceDataLine}
 import org.slf4j.LoggerFactory
 
-case class AudioPlayerStatus()
+case class AudioPlayerStatus(song: Song,
+                             position: FrameCount,
+                             volume: Double,
+                             isPaused: Boolean,
+                             looping: Option[AudioPlayerLoopingStatus])
+case class AudioPlayerLoopingStatus(loop: Loop,
+                                    level: Int,
+                                    minLevel: Int,
+                                    maxLevel: Int,
+                                    isDraining: Boolean)
 
 /**
  * Main interface for playback control.

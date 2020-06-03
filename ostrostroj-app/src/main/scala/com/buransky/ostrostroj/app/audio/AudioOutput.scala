@@ -11,4 +11,5 @@ private[audio] trait AudioOutput extends AutoCloseable {
 
   def volumeUp(): Unit
   def volumeDown(): Unit
+  def volume: Double
 }

@@ -1,11 +1,11 @@
 package com.buransky.ostrostroj.app.audio.impl.input
 
 import com.buransky.ostrostroj.app.audio._
-import com.buransky.ostrostroj.app.show.Loop
+import com.buransky.ostrostroj.app.show.{Loop, Song}
 import javax.sound.sampled.AudioInputStream
 import org.slf4j.LoggerFactory
 
-private[audio] class SongInputImpl(loops: Seq[Loop],
+private[audio] class SongInputImpl(song: Song,
                                    masterTrackInputStream: AudioInputStream,
                                    loopInputFactory: (Loop, FrameCount) => LoopInput) extends SongInput {
   import SongInputImpl._
@@ -61,7 +61,7 @@ private[audio] class SongInputImpl(loops: Seq[Loop],
   }
 
   private def loopAtPosition(position: FrameCount): Option[Loop] =
-    loops.find(l => (position.value >= l.start) && (position.value < l.endExclusive))
+    song.loops.find(l => (position.value >= l.start) && (position.value < l.endExclusive))
 
   private def readFromLoop(buffer: AudioBuffer): AudioBuffer = {
     val result = _loopInput.get.read(buffer)
@@ -90,6 +90,12 @@ private[audio] class SongInputImpl(loops: Seq[Loop],
     loopInput.foreach(_.close())
     logger.debug("Song input closed.")
   }
+
+  override def status: SongStatus = SongStatus(
+    song = song,
+    loopStatus = _loopInput.map(_.status),
+    position = _loopInput.map(_.status.position).getOrElse(masterTrackPosition)
+  )
 }
 private object SongInputImpl {
   private val logger = LoggerFactory.getLogger(classOf[SongInputImpl])
