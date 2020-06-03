@@ -37,7 +37,7 @@ object PlaylistReader {
   }
 
   private def readSong(songDir: Path): Song = {
-    processJsonFile(songDir.resolve(songDir.getFileName + ".json")) { songJson =>
+    processJsonFile(songDir.resolve(songDir.getFileName.toString + ".json")) { songJson =>
       Song(
         title = (songJson \ "title").as[String],
         path = songDir.resolve((songJson \ "path").as[String]),

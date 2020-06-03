@@ -4,7 +4,6 @@ import com.buransky.ostrostroj.app.audio._
 import com.google.common.base.Preconditions._
 import javax.sound.sampled.AudioFormat
 
-
 private[audio] class AudioMixerImpl(audioFormat: AudioFormat) extends AudioMixer {
   override def mix(audioMixerChannels: Iterable[AudioMixerChannel], dst: AudioBuffer): AudioBuffer = {
     if (audioMixerChannels.nonEmpty) {
@@ -18,14 +17,14 @@ private[audio] class AudioMixerImpl(audioFormat: AudioFormat) extends AudioMixer
           dst.putLeShort(mixedSample, frameCount, channel)
         }
       }
-      dst
+      dst.copy(limit = first.audioBuffer.size)
     } else {
       dst
     }
   }
 
   private def mix16bitLeSamples(samples: Iterable[AudioMixerSample]): Short = {
-    val sum = samples.map(s => s.level*s.sample).sum
+    val sum = samples.map(s => s.level*s.sample.toDouble).sum
     if (sum < Short.MinValue)
       Short.MinValue
     else {
@@ -42,6 +41,7 @@ private[audio] class AudioMixerImpl(audioFormat: AudioFormat) extends AudioMixer
       "Position is not the same.".asInstanceOf[AnyRef])
     checkArgument(channels.forall(_.audioBuffer.limit == first.audioBuffer.limit),
       "Limit is not the same.".asInstanceOf[AnyRef])
-    checkArgument(first.audioBuffer.size.value <= dst.size.value, "Buffer is small.".asInstanceOf[AnyRef])
+    checkArgument(first.audioBuffer.size.value <= dst.capacity.value, (s"Buffer is small. " +
+      s"[${first.audioBuffer.capacity.value}, ${dst.capacity.value}]").asInstanceOf[AnyRef])
   }
 }
