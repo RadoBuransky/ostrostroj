@@ -8,4 +8,7 @@ private[audio] trait AudioOutput extends AutoCloseable {
   def queueFull(buffer: AudioBuffer): Unit
   def dequeueEmpty(): Option[AudioBuffer]
   def dequeued: Semaphore
+
+  def volumeUp(): Unit
+  def volumeDown(): Unit
 }

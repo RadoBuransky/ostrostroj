@@ -24,13 +24,13 @@ trait AudioPlayer extends AutoCloseable {
   def play(): Unit
   def pause(): Unit
 
-  def startLooping(): Unit
-  def stopLooping(): Unit
+  def toggleLooping(): Unit
 
   def harder(): Unit
   def softer(): Unit
 
-  def setVolume(volume: Int): Unit
+  def volumeUp(): Unit
+  def volumeDown(): Unit
 
   def status: AudioPlayerStatus
 }

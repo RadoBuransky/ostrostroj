@@ -3,8 +3,9 @@ package com.buransky.ostrostroj.app.audio.impl.output
 import java.util.concurrent.Semaphore
 
 import com.buransky.ostrostroj.app.audio._
-import javax.sound.sampled.SourceDataLine
-import org.slf4j.{Logger, LoggerFactory}
+import com.buransky.ostrostroj.app.common.OstrostrojException
+import javax.sound.sampled.{FloatControl, SourceDataLine}
+import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
 
@@ -15,6 +16,7 @@ private[audio] class JavaxAudioOutput(sourceDataLine: SourceDataLine, bufferCoun
   private val emptyBuffers = createEmptyBuffers(bufferCount)
   private val filledSemaphore = new Semaphore(0)
   private val emptySemaphore = new Semaphore(bufferCount)
+  private val gainControl = getGainControl(sourceDataLine)
 
   override def write(): FrameCount = {
     logger.trace("Acquiring semaphore for filled buffers...")
@@ -50,6 +52,13 @@ private[audio] class JavaxAudioOutput(sourceDataLine: SourceDataLine, bufferCoun
       Some(emptyBuffers.dequeue())
   }
 
+  override def volumeUp(): Unit = changeVolume(1)
+
+  override def volumeDown(): Unit = changeVolume(-1)
+
+  private def changeVolume(stepDelta: Int): Unit =
+    gainControl.setValue(((gainControl.getValue.toInt / volumeStepDb) + stepDelta)*volumeStepDb)
+
   private def enqueueEmpty(buffer: AudioBuffer): Unit = {
     val recycledBuffer = buffer.copy(position = FrameCount(0), limit = FrameCount(0), endOfStream = false)
     emptyBuffers.enqueue(recycledBuffer)
@@ -58,8 +67,16 @@ private[audio] class JavaxAudioOutput(sourceDataLine: SourceDataLine, bufferCoun
 
   private def createEmptyBuffers(bufferCount: Int): mutable.Queue[AudioBuffer] =
     mutable.Queue.fill(bufferCount)(AudioBuffer(sourceDataLine.getFormat, sourceDataLine.getBufferSize))
+
+  private def getGainControl(sourceDataLine: SourceDataLine): FloatControl = {
+    sourceDataLine.getControl(FloatControl.Type.MASTER_GAIN) match {
+      case fc: FloatControl => fc
+      case other => throw new OstrostrojException(s"Master gain is not a FloatControl! [${other.getClass}]")
+    }
+  }
 }
 
 private object JavaxAudioOutput {
-  val logger: Logger = LoggerFactory.getLogger(classOf[JavaxAudioOutput])
+  private val logger = LoggerFactory.getLogger(classOf[JavaxAudioOutput])
+  private val volumeStepDb = 3
 }
