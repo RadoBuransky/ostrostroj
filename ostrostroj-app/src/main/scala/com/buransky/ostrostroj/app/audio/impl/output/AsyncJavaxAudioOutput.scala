@@ -1,5 +1,7 @@
 package com.buransky.ostrostroj.app.audio.impl.output
 
+import java.util.concurrent.Semaphore
+
 import com.buransky.ostrostroj.app.audio.FrameCount
 import javax.sound.sampled.{LineEvent, LineListener, SourceDataLine}
 import org.slf4j.LoggerFactory
@@ -7,7 +9,7 @@ import org.slf4j.LoggerFactory
 import scala.annotation.tailrec
 
 private[audio] class AsyncJavaxAudioOutput(sourceDataLine: SourceDataLine, bufferCount: Int)
-  extends JavaxAudioOutput(sourceDataLine, bufferCount)
+  extends JavaxAudioOutput(sourceDataLine, bufferCount, new Semaphore(_))
   with LineListener { self =>
   import AsyncJavaxAudioOutput._
 

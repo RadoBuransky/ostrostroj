@@ -7,15 +7,9 @@ private[audio] class AudioProviderImpl extends AudioProvider {
   import AudioProviderImpl._
 
   def waitReadAndQueue(audioInput: AudioInput, audioOutput: AudioOutput): Boolean = {
-    audioOutput.dequeued.acquire()
-    audioOutput.dequeueEmpty() match {
-      case Some(emptyBuffer) =>
-        val fullBuffer = readAndQueue(emptyBuffer, audioInput, audioOutput)
-        !fullBuffer.endOfStream
-      case None =>
-        logger.warn(s"No buffer?")
-        true
-    }
+    val emptyBuffer = audioOutput.dequeueEmpty()
+    val fullBuffer = readAndQueue(emptyBuffer, audioInput, audioOutput)
+    !fullBuffer.endOfStream
   }
 
   private def readAndQueue(emptyBuffer: AudioBuffer, audioInput: AudioInput, audioOutput: AudioOutput): AudioBuffer = {

@@ -1,15 +1,13 @@
 package com.buransky.ostrostroj.app.audio
 
-import java.util.concurrent.Semaphore
-
 private[audio] trait AudioOutput extends AutoCloseable {
   def write(): FrameCount
 
   def queueFull(buffer: AudioBuffer): Unit
-  def dequeueEmpty(): Option[AudioBuffer]
-  def dequeued: Semaphore
+  def dequeueEmpty(): AudioBuffer
+  def tryDequeueEmpty(): Option[AudioBuffer]
 
-  def volumeUp(): Unit
-  def volumeDown(): Unit
+  def volumeUp(): Double
+  def volumeDown(): Double
   def volume: Double
 }

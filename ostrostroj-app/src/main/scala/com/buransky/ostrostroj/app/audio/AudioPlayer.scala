@@ -38,8 +38,8 @@ trait AudioPlayer extends AutoCloseable {
   def harder(): Unit
   def softer(): Unit
 
-  def volumeUp(): Unit
-  def volumeDown(): Unit
+  def volumeUp(): Double
+  def volumeDown(): Double
 
   def status: AudioPlayerStatus
 }

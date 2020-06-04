@@ -7,15 +7,18 @@ import com.buransky.ostrostroj.app.common.OstrostrojException
 import javax.sound.sampled.{FloatControl, SourceDataLine}
 import org.slf4j.LoggerFactory
 
+import scala.annotation.tailrec
 import scala.collection.mutable
 
-private[audio] class JavaxAudioOutput(sourceDataLine: SourceDataLine, bufferCount: Int) extends AudioOutput {
+private[audio] class JavaxAudioOutput(sourceDataLine: SourceDataLine,
+                                      bufferCount: Int,
+                                      semaphoreFactory: (Int) => Semaphore) extends AudioOutput {
   import JavaxAudioOutput._
 
   private val filledBuffers = mutable.Queue.empty[AudioBuffer]
   private val emptyBuffers = createEmptyBuffers(bufferCount)
-  private val filledSemaphore = new Semaphore(0)
-  private val emptySemaphore = new Semaphore(bufferCount)
+  private val filledSemaphore = semaphoreFactory(0)
+  private val emptySemaphore = semaphoreFactory(bufferCount)
   private val gainControl = getGainControl(sourceDataLine)
 
   override def write(): FrameCount = {
@@ -38,28 +41,49 @@ private[audio] class JavaxAudioOutput(sourceDataLine: SourceDataLine, bufferCoun
   }
 
   override def queueFull(buffer: AudioBuffer): Unit = synchronized {
-    queueFull(buffer)
+    filledBuffers.enqueue(buffer)
     filledSemaphore.release()
     logger.trace("Full buffer enqueued.")
   }
 
-  override def dequeued: Semaphore = emptySemaphore
+  @tailrec
+  override final def dequeueEmpty(): AudioBuffer = {
+    emptySemaphore.acquire()
+    tryDequeueEmpty() match {
+      case Some(audioBuffer) => audioBuffer
+      case None => dequeueEmpty()
+    }
+  }
 
-  override def dequeueEmpty(): Option[AudioBuffer] = synchronized {
+  override def tryDequeueEmpty(): Option[AudioBuffer] = synchronized {
     if (emptyBuffers.isEmpty)
       None
     else
       Some(emptyBuffers.dequeue())
   }
 
-  override def volumeUp(): Unit = changeVolume(1)
+  override def volumeUp(): Double = changeVolume(1)
 
-  override def volumeDown(): Unit = changeVolume(-1)
+  override def volumeDown(): Double = changeVolume(-1)
 
-  override def volume: Double = gainControl.getValue / gainControl.getMaximum
+  override def volume: Double = volume(gainControl.getValue)
 
-  private def changeVolume(stepDelta: Int): Unit =
-    gainControl.setValue(((gainControl.getValue.toInt / volumeStepDb) + stepDelta)*volumeStepDb)
+  private def changeVolume(stepDelta: Int): Double = {
+    val newValue = ((gainControl.getValue.toInt / volumeStepDb) + stepDelta)*volumeStepDb
+    val valueToSet = if (newValue > gainControl.getMaximum) {
+      gainControl.getMaximum
+    } else {
+      if (newValue < gainControl.getMinimum)
+        gainControl.getMinimum
+      else
+        newValue
+    }
+    gainControl.setValue(valueToSet)
+    volume(valueToSet)
+  }
+
+  private def volume(currentValue: Double): Double =
+    Math.abs((currentValue - gainControl.getMinimum) / (gainControl.getMaximum - gainControl.getMinimum))
 
   private def enqueueEmpty(buffer: AudioBuffer): Unit = {
     val recycledBuffer = buffer.copy(position = FrameCount(0), limit = FrameCount(0), endOfStream = false)
