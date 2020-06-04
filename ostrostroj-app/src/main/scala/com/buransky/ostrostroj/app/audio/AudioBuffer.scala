@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory
  * Typed wrapper for values measured in number of audio frames.
  * @param value Number of audio frames.
  */
-final case class FrameCount(value: Int) extends AnyVal {
+final case class FrameCount(value: Int) {
   def +(other: FrameCount): FrameCount = FrameCount(value + other.value)
   def -(other: FrameCount): FrameCount = FrameCount(value - other.value)
 }
