@@ -52,6 +52,7 @@ class PlaylistInputImplSpec extends AnyFlatSpec with MockitoSugar {
     def songInputFactory(song: Song, audioFileReader: AudioFileReader): SongInput = song match {
       case `song1` => songInput1
       case `song2` => songInput2
+      case _ => fail()
     }
     val audioFileReader = mock[AudioFileReader]
     val emptyBuffer = mock[AudioBuffer]

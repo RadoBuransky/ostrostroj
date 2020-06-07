@@ -43,16 +43,29 @@ private[audio] class SongInputImpl(song: Song,
   override def loopInput: Option[LoopInput] = synchronized { _loopInput }
 
   override def read(buffer: AudioBuffer): AudioBuffer = synchronized {
-    logger.trace("Toggle looping.")
     _loopInput match {
       case Some(_) => readFromLoop(buffer)
       case None => readFromMaster(buffer)
     }
   }
 
+  override def close(): Unit = synchronized {
+    _loopInput.foreach(_.close())
+    _loopInput = None
+    logger.debug("Song input closed.")
+  }
+
+  override def status: SongStatus = SongStatus(
+    song = song,
+    loopStatus = _loopInput.map(_.status),
+    position = _loopInput.map(_.status.position).getOrElse(masterTrackPosition)
+  )
+
   private def skipToEndOfLoop(audioInputStream: AudioInputStream, loop: Loop): Unit = {
-    val bytesToSkip = (loop.endExclusive - masterTrackPosition.value)*audioInputStream.getFormat.getFrameSize
+    val frameSize = audioInputStream.getFormat.getFrameSize
+    val bytesToSkip = (loop.endExclusive - masterTrackPosition.value)*frameSize
     val bytesSkipped = audioInputStream.skip(bytesToSkip)
+    masterTrackPosition += FrameCount(bytesSkipped.toInt/frameSize)
     if (bytesSkipped != bytesToSkip) {
       logger.warn(s"Unexpected bytes skipped! [$bytesToSkip, $bytesSkipped]")
     } else {
@@ -64,38 +77,31 @@ private[audio] class SongInputImpl(song: Song,
     song.loops.find(l => (position.value >= l.start) && (position.value < l.endExclusive))
 
   private def readFromLoop(buffer: AudioBuffer): AudioBuffer = {
+    logger.trace(s"Reading from loop. [${buffer.capacity}")
     val result = _loopInput.get.read(buffer)
     if (result.endOfStream) {
+      logger.debug("Loop draining completed.")
       _loopInput.get.close()
       _loopInput = None
-      logger.debug("Loop draining completed.")
+      result.copy(endOfStream = false)
+    } else {
+      result
     }
-    result
   }
 
   private def readFromMaster(buffer: AudioBuffer): AudioBuffer = {
+    logger.trace(s"Reading from master track. [${buffer.capacity}, $masterTrackPosition]")
     val bytesRead = masterTrackInputStream.read(buffer.byteArray)
     if (bytesRead == -1) {
       logger.debug(s"End of master track.")
       buffer.copy(position = FrameCount(0), limit = FrameCount(0), endOfStream = true)
     } else {
       logger.debug(s"Master track read. [$bytesRead]")
-      val framesRead = FrameCount(bytesRead / buffer.frameSize)
+      val framesRead = FrameCount(bytesRead / masterTrackInputStream.getFormat.getFrameSize)
       masterTrackPosition += framesRead
       buffer.copy(position = FrameCount(0), limit = framesRead)
     }
   }
-
-  override def close(): Unit = synchronized {
-    loopInput.foreach(_.close())
-    logger.debug("Song input closed.")
-  }
-
-  override def status: SongStatus = SongStatus(
-    song = song,
-    loopStatus = _loopInput.map(_.status),
-    position = _loopInput.map(_.status.position).getOrElse(masterTrackPosition)
-  )
 }
 private object SongInputImpl {
   private val logger = LoggerFactory.getLogger(classOf[SongInputImpl])
