@@ -8,44 +8,49 @@ import org.slf4j.LoggerFactory
 private[audio] case class LoadedTrack(track: Track, audioBuffer: AudioBuffer)
 
 private[audio] class LoopInputImpl(loop: Loop,
-                                   tracks: Seq[LoadedTrack],
+                                   loadedTracks: Seq[LoadedTrack],
                                    startingPosition: FrameCount,
                                    audioMixer: AudioMixer) extends LoopInput {
   import LoopInputImpl._
 
-  checkArgument(startingPosition.value >= loop.start)
-  checkArgument(startingPosition.value < loop.endExclusive)
+  checkArgument(startingPosition.value >= loop.start, (s"Position outside of loop! [${startingPosition.value}, " +
+    s"${loop.start}]").asInstanceOf[AnyRef])
+  checkArgument(startingPosition.value < loop.endExclusive, (s"Position outside of loop! [${startingPosition.value}, " +
+    s"${loop.endExclusive}]").asInstanceOf[AnyRef])
+  checkArgument(loadedTracks.map(_.track).toSet == loop.tracks.toSet, "Not all tracks loaded!".asInstanceOf[AnyRef])
 
   private var level = 0
-  private val minLevel = tracks.map(_.track.rangeMin).min
-  private val maxLevel = tracks.map(_.track.rangeMax).max
+  private val minLevel = loop.tracks.map(_.rangeMin).min
+  private val maxLevel = loop.tracks.map(_.rangeMax).max
   private var isDraining = false
-  private var position: FrameCount = startingPosition
+  private var songPosition: FrameCount = startingPosition
 
-  override def harder(): Unit = synchronized {
+  override def harder(): Int = synchronized {
     logger.debug(s"Harder. [$level, $maxLevel]")
     if (level < maxLevel) {
       level += 1
     }
+    level
   }
 
-  override def softer(): Unit = synchronized {
+  override def softer(): Int = synchronized {
     logger.debug(s"Softer. [$level, $minLevel]")
     if (level > minLevel) {
       level -= 1
     }
+    level
   }
 
   override def read(buffer: AudioBuffer): AudioBuffer = synchronized {
     logger.trace(s"Read. [${buffer.position}, ${buffer.limit}]")
-    if (position.value == loop.endExclusive) {
+    if (songPosition.value == loop.endExclusive) {
       if (isDraining) {
-        logger.debug(s"Draining done. [$position, ${loop.endExclusive}]")
+        logger.debug(s"Draining done. [$songPosition, ${loop.endExclusive}]")
         buffer.copy(position = FrameCount(0), limit = FrameCount(0), endOfStream = true)
       }
       else {
         logger.debug(s"Next loop.")
-        position = FrameCount(0)
+        songPosition = FrameCount(loop.start)
         safeRead(buffer)
       }
     } else {
@@ -68,22 +73,25 @@ private[audio] class LoopInputImpl(loop: Loop,
   }
 
   private def safeRead(buffer: AudioBuffer): AudioBuffer = {
-    val channels = tracks
+    val channels = loadedTracks
       .filter(t => isInRange(level, t.track))
       .map(trackToMixerChannel(level, _))
-      .map(limitChannelView(position, buffer.capacity, _))
+      .map(limitChannelView(songPosition, buffer.capacity, _))
     val mixedResult = audioMixer.mix(channels, buffer)
-    position += mixedResult.size
+    songPosition += mixedResult.size
+    if (songPosition.value > loop.endExclusive) {
+      songPosition = FrameCount(loop.endExclusive)
+    }
     mixedResult
   }
 
-  private def isInRange(level: Int, track: Track): Boolean =
-    (level >= (track.rangeMin - track.fade)) && (level <= (track.rangeMax + track.fade))
+  private def isInRange(level: Int, track: Track): Boolean = track.channelLevel(level) != 0
 
-  private def limitChannelView(position: FrameCount, bufferCapacity: FrameCount,
+  private def limitChannelView(songPosition: FrameCount, bufferCapacity: FrameCount,
                                mixerChannel: AudioMixerChannel): AudioMixerChannel = {
-    val viewPosition = position - FrameCount(loop.start)
-    val viewLimit = FrameCount(Math.min(position.value + bufferCapacity.value, loop.endExclusive))
+    val viewPosition = songPosition - FrameCount(loop.start)
+    val viewLimit = FrameCount(Math.min(songPosition.value + bufferCapacity.value, loop.endExclusive)) -
+      FrameCount(loop.start)
     val limitedAudioBuffer = mixerChannel.audioBuffer.copy(position = viewPosition, limit = viewLimit)
     AudioMixerChannel(mixerChannel.level, limitedAudioBuffer)
   }
@@ -97,7 +105,7 @@ private[audio] class LoopInputImpl(loop: Loop,
     minLevel = minLevel,
     maxLevel = maxLevel,
     isDraining = isDraining,
-    position = position)
+    position = songPosition)
 }
 
 private object LoopInputImpl {

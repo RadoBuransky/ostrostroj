@@ -13,8 +13,8 @@ private[audio] class OstrostrojPlayer(sourceDataLine: SourceDataLine,
   override def play(): Unit = sourceDataLine.start()
   override def pause(): Unit = sourceDataLine.stop()
   override def toggleLooping(): Unit = playlistInput.songInput.toggleLooping()
-  override def harder(): Unit = playlistInput.songInput.loopInput.foreach(_.harder())
-  override def softer(): Unit = playlistInput.songInput.loopInput.foreach(_.softer())
+  override def harder(): Option[Int] = playlistInput.songInput.loopInput.map(_.harder())
+  override def softer(): Option[Int] = playlistInput.songInput.loopInput.map(_.softer())
   override def volumeUp(): Double = audioOutput.volumeUp()
   override def volumeDown(): Double = audioOutput.volumeDown()
   override def status: AudioPlayerStatus = {

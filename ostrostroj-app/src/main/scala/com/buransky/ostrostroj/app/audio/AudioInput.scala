@@ -25,8 +25,8 @@ private[audio] case class LoopStatus(loop: Loop,
  * Reads audio data of a loop within a song. Handles changing of velocity levels.
  */
 private[audio] trait LoopInput extends AudioInput {
-  def harder(): Unit
-  def softer(): Unit
+  def harder(): Int
+  def softer(): Int
 
   def startDraining(): Unit
   def stopDraining(): Unit

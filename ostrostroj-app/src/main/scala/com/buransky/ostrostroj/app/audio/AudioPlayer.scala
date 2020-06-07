@@ -35,8 +35,8 @@ trait AudioPlayer extends AutoCloseable {
 
   def toggleLooping(): Unit
 
-  def harder(): Unit
-  def softer(): Unit
+  def harder(): Option[Int]
+  def softer(): Option[Int]
 
   def volumeUp(): Double
   def volumeDown(): Double

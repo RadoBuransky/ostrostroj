@@ -7,8 +7,7 @@
       "end": 156321,
       "tracks": [
         {
-          "range": [-1, 1],
-          "fade": 1,
+          "range": [-1, 1]
           "path": "loop1s2.wav"
         },
         {

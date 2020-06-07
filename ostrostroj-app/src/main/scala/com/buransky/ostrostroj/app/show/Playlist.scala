@@ -10,16 +10,12 @@ case class Playlist(songs: Seq[Song]) {
 }
 case class Song(title: String, path: Path, loops: Seq[Loop])
 case class Loop(start: Int, endExclusive: Int, tracks: Seq[Track])
-case class Track(rangeMin: Int, rangeMax: Int, fade: Int, path: Path) {
+case class Track(rangeMin: Int, rangeMax: Int, path: Path) {
   def channelLevel(level: Int): Double = {
-    if ((fade == 0) || (level >= rangeMin && level <= rangeMax))
+    if (level >= rangeMin && level <= rangeMax)
       1.0
-    else {
-      if (level < rangeMin)
-        1.0 - ((rangeMin - level) / fade)
-      else
-        1.0 - ((level - rangeMax) / fade)
-    }
+    else
+      0.0
   }
 }
 
@@ -65,7 +61,6 @@ object PlaylistReader {
         Track(
           rangeMin = range.min,
           rangeMax = range.max,
-          fade = (track \ "fade").asOpt[Int].getOrElse(0),
           path = songDir.resolve((track \ "path").as[String])
         )
       }
