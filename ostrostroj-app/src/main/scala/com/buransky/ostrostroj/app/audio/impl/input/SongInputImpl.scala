@@ -19,7 +19,7 @@ private[audio] class SongInputImpl(song: Song,
     _loopInput match {
       case Some(li) => li.stopDraining()
       case None =>
-        loopAtPosition(masterTrackPosition) match {
+        song.loopAtPosition(masterTrackPosition) match {
           case Some(loop) =>
             _loopInput = Some(loopInputFactory(loop, masterTrackPosition))
             skipToEndOfLoop(masterTrackInputStream, loop)
@@ -74,9 +74,6 @@ private[audio] class SongInputImpl(song: Song,
       logger.debug(s"Master track skipped. [$bytesSkipped]")
     }
   }
-
-  private def loopAtPosition(position: FrameCount): Option[Loop] =
-    song.loops.find(l => (position.value >= l.start) && (position.value < l.endExclusive))
 
   private def readFromLoop(buffer: AudioBuffer): AudioBuffer = {
     logger.trace(s"Reading from loop. [${buffer.capacity}")

@@ -3,6 +3,7 @@ package com.buransky.ostrostroj.app.show
 import java.io.FileInputStream
 import java.nio.file.Path
 
+import com.buransky.ostrostroj.app.audio.FrameCount
 import com.google.common.base.Preconditions._
 import play.api.libs.json.{JsValue, Json}
 
@@ -11,6 +12,9 @@ case class Playlist(songs: Seq[Song]) {
 }
 case class Song(title: String, path: Path, loops: Seq[Loop]) {
   checkArgument(path.toFile.exists())
+
+  def loopAtPosition(position: FrameCount): Option[Loop] =
+    loops.find(l => (position.value >= l.start) && (position.value < l.endExclusive))
 }
 case class Loop(start: Int, endExclusive: Int, tracks: Seq[Track]) {
   checkArgument(endExclusive > start)

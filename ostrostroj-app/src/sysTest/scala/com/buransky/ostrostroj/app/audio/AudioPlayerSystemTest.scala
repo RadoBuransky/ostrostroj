@@ -53,7 +53,7 @@ class AudioPlayerSystemTest extends BaseSystemTest with ParallelTestExecution {
     }
   }
 
-  it should "loop normal, softer and then harder" in {
+  ignore should "loop normal, softer and then harder" in {
     withAudioPlayer(playlist.copy(songs = List(playlist.songs.head))) { audioPlayer =>
       audioPlayer.play()
       val loop = playlist.songs.head.loops.head
@@ -76,6 +76,24 @@ class AudioPlayerSystemTest extends BaseSystemTest with ParallelTestExecution {
         loopCount >= 2
       }
       audioPlayer.toggleLooping()
+      waitUntilPlaybackIsDone(audioPlayer)
+    }
+  }
+
+  it should "be able to gradually decrease and increase volume" in {
+    withAudioPlayer(playlist.subplaylist(1)) { audioPlayer =>
+      audioPlayer.play()
+      var i = 0
+      waitUntil(audioPlayer) { status =>
+        i match {
+          case 0 => audioPlayer.volumeDown()
+          case 1 => audioPlayer.volumeUp()
+        }
+        if (status.volume == 0) {
+          i = 1
+        }
+        status.volume >= 0.99
+      }
       waitUntilPlaybackIsDone(audioPlayer)
     }
   }

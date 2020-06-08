@@ -105,7 +105,9 @@ private[audio] class JavaxAudioOutput(sourceDataLine: SourceDataLine,
         newValue
     }
     gainControl.setValue(valueToSet)
-    volume(valueToSet)
+    val result = volume(valueToSet)
+    logger.debug(s"Change volume. [${result}, $valueToSet, ${gainControl.getMinimum}, ${gainControl.getMaximum}]")
+    result
   }
 
   private def volume(currentValue: Double): Double =
