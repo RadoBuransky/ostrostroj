@@ -19,7 +19,8 @@ private[audio] case class LoopStatus(loop: Loop,
                                      minLevel: Int,
                                      maxLevel: Int,
                                      isDraining: Boolean,
-                                     position: FrameCount)
+                                     position: FrameCount,
+                                     done: Boolean)
 
 /**
  * Reads audio data of a loop within a song. Handles changing of velocity levels.
@@ -36,7 +37,8 @@ private[audio] trait LoopInput extends AudioInput {
 
 private[audio] case class SongStatus(song: Song,
                                      loopStatus: Option[LoopStatus],
-                                     position: FrameCount)
+                                     position: FrameCount,
+                                     done: Boolean)
 
 /**
  * Reads audio data of a song within a playlist. Handles starting and stopping of looping.
@@ -49,7 +51,8 @@ private[audio] trait SongInput extends AudioInput {
   def status: SongStatus
 }
 
-private[audio] case class PlaylistStatus(songStatus: SongStatus)
+private[audio] case class PlaylistStatus(songStatus: SongStatus,
+                                         done: Boolean)
 
 /**
  * Reads audio data of a playlist. Handles skipping to the next song after the current song is done.

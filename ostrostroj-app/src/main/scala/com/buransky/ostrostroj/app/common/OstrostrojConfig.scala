@@ -25,7 +25,7 @@ object OstrostrojConfig {
     val configMap = Map("akka.cluster.roles" -> clusterRoles().asJava)
     val dynamicConfig = ConfigFactory.parseMap(configMap.asJava)
     val defaultConfig = ConfigFactory.load()
-    val devConfig = defaultConfig.getConfig("ostrostroj.dev")
+    val devConfig = defaultConfig.getConfig("dev")
 
     val mergedConfig = if (develeoperMode) {
       val hostname = if (isDevDesktop) {
@@ -53,6 +53,9 @@ object OstrostrojConfig {
     Paths.get(playlistPathEnv)
   }
   val develeoperMode: Boolean = isDevDesktop || isDevDevice
+
+  val ostrostroj: Config = config.getConfig("ostrostroj")
+  val audio: Config = ostrostroj.getConfig("audio")
 
   if (logger.isDebugEnabled) {
     logger.debug(s"isDevDesktop = $isDevDesktop")

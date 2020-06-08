@@ -105,7 +105,8 @@ private[audio] class LoopInputImpl(loop: Loop,
     minLevel = minLevel,
     maxLevel = maxLevel,
     isDraining = isDraining,
-    position = songPosition)
+    position = songPosition,
+    done = isDraining && songPosition.value == loop.endExclusive)
 }
 
 private object LoopInputImpl {

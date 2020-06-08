@@ -30,7 +30,12 @@ private[audio] class PlaylistInputImpl(playlist: Playlist,
     logger.debug("Playlist input closed.")
   }
 
-  override def status: PlaylistStatus = PlaylistStatus(_songInput.status)
+  override def status: PlaylistStatus = {
+    val songStatus = _songInput.status
+    PlaylistStatus(
+      songStatus = songStatus,
+      done = (songIndex == playlist.songs.length - 1) && songStatus.done)
+  }
 
   private def createSongInput(songIndex: Int): SongInput = {
     if (_songInput != null) {

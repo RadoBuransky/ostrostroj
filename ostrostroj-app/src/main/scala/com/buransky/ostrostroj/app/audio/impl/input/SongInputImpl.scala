@@ -12,6 +12,7 @@ private[audio] class SongInputImpl(song: Song,
 
   private var _loopInput: Option[LoopInput] = None
   private var masterTrackPosition: FrameCount = FrameCount(0)
+  private var _done: Boolean = false
 
   override def startLooping(): Unit = synchronized {
     logger.debug("Start looping.")
@@ -58,7 +59,8 @@ private[audio] class SongInputImpl(song: Song,
   override def status: SongStatus = SongStatus(
     song = song,
     loopStatus = _loopInput.map(_.status),
-    position = _loopInput.map(_.status.position).getOrElse(masterTrackPosition)
+    position = _loopInput.map(_.status.position).getOrElse(masterTrackPosition),
+    done =_done
   )
 
   private def skipToEndOfLoop(audioInputStream: AudioInputStream, loop: Loop): Unit = {
@@ -93,6 +95,7 @@ private[audio] class SongInputImpl(song: Song,
     logger.trace(s"Reading from master track. [${buffer.capacity}, $masterTrackPosition]")
     val bytesRead = masterTrackInputStream.read(buffer.byteArray)
     if (bytesRead == -1) {
+      _done = true
       logger.debug(s"End of master track.")
       buffer.copy(position = FrameCount(0), limit = FrameCount(0), endOfStream = true)
     } else {

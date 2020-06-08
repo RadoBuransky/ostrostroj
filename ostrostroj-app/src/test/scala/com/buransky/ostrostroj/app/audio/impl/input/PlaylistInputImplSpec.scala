@@ -126,9 +126,9 @@ class PlaylistInputImplSpec extends AnyFlatSpec with MockitoSugar {
     val result = playlistInput.status
 
     // Assert & verify
-    assert(result == PlaylistStatus(songStatus))
+    assert(result == PlaylistStatus(songStatus, false))
     verify(songInput).status
-    verify(playlist).songs
+    verify(playlist, times(2)).songs
     verifyNoMoreInteractions(audioFileReader)
     verifyNoMoreInteractions(songInput)
   }
