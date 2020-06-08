@@ -15,27 +15,25 @@ class AudioPlayerSystemTest extends BaseSystemTest with ParallelTestExecution {
 
   behavior of "audio player"
 
-  ignore should "" in {
-    it should "not fail during construction" in {
-      AudioPlayer(playlist, OstrostrojConfig.audio).close()
-    }
+  ignore should "not fail during construction" in {
+    AudioPlayer(playlist, OstrostrojConfig.audio).close()
+  }
 
-    it should "play a single song and then stop" in {
-      withAudioPlayer(playlist.subplaylist(1)) { audioPlayer =>
-        audioPlayer.play()
-        waitUntilPlaybackIsDone(audioPlayer)
-      }
-    }
-
-    it should "be able to automatically switch to the next song" in {
-      withAudioPlayer(playlist) { audioPlayer =>
-        audioPlayer.play()
-        waitUntilPlaybackIsDone(audioPlayer)
-      }
+  ignore should "play a single song and then stop" in {
+    withAudioPlayer(playlist.subplaylist(1)) { audioPlayer =>
+      audioPlayer.play()
+      waitUntilPlaybackIsDone(audioPlayer)
     }
   }
 
-  it should "loop a couple of times" in {
+  ignore should "be able to automatically switch to the next song" in {
+    withAudioPlayer(playlist) { audioPlayer =>
+      audioPlayer.play()
+      waitUntilPlaybackIsDone(audioPlayer)
+    }
+  }
+
+  ignore should "loop a couple of times" in {
     withAudioPlayer(playlist.copy(songs = List(playlist.songs.head))) { audioPlayer =>
       audioPlayer.play()
       val loop = playlist.songs.head.loops.head
@@ -49,6 +47,33 @@ class AudioPlayerSystemTest extends BaseSystemTest with ParallelTestExecution {
         }
         prevPosition = status.position
         loopCount >= 3
+      }
+      audioPlayer.toggleLooping()
+      waitUntilPlaybackIsDone(audioPlayer)
+    }
+  }
+
+  it should "loop normal, softer and then harder" in {
+    withAudioPlayer(playlist.copy(songs = List(playlist.songs.head))) { audioPlayer =>
+      audioPlayer.play()
+      val loop = playlist.songs.head.loops.head
+      waitUntil(audioPlayer)(_.position.value >= loop.start)
+      audioPlayer.toggleLooping()
+      var loopCount = 0
+      var prevPosition = audioPlayer.status.position
+      waitUntil(audioPlayer) { status =>
+        if (status.position.value < prevPosition.value) {
+          loopCount match {
+            case 0 => audioPlayer.softer()
+            case 1 =>
+              audioPlayer.harder()
+              audioPlayer.harder()
+            case _ =>
+          }
+          loopCount += 1
+        }
+        prevPosition = status.position
+        loopCount >= 2
       }
       audioPlayer.toggleLooping()
       waitUntilPlaybackIsDone(audioPlayer)

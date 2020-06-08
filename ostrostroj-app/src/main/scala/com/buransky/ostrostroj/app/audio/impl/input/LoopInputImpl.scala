@@ -27,18 +27,18 @@ private[audio] class LoopInputImpl(loop: Loop,
   private var songPosition: FrameCount = startingPosition
 
   override def harder(): Int = synchronized {
-    logger.debug(s"Harder. [$level, $maxLevel]")
     if (level < maxLevel) {
       level += 1
     }
+    logger.debug(s"Harder. [$level, $maxLevel]")
     level
   }
 
   override def softer(): Int = synchronized {
-    logger.debug(s"Softer. [$level, $minLevel]")
     if (level > minLevel) {
       level -= 1
     }
+    logger.debug(s"Softer. [$level, $minLevel]")
     level
   }
 

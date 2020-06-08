@@ -85,7 +85,11 @@ private[audio] class SongInputImpl(song: Song,
       logger.debug("Loop draining completed.")
       _loopInput.get.close()
       _loopInput = None
-      result.copy(endOfStream = false)
+      if (result.size.value == 0) {
+        read(buffer)
+      } else {
+        result.copy(endOfStream = false)
+      }
     } else {
       result
     }
