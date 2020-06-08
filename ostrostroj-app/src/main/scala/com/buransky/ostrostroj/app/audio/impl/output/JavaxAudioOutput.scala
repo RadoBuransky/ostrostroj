@@ -41,8 +41,8 @@ private[audio] class JavaxAudioOutput(sourceDataLine: SourceDataLine,
     }
     logger.trace("Filled buffer dequeued.")
     val bytesWritten = sourceDataLine.write(buffer.byteArray, buffer.bytePosition, buffer.byteSize)
-    if (logger.isDebugEnabled()) {
-      logger.debug(s"Data written to source data line. [$bytesWritten, ${buffer.byteSize}, " +
+    if (logger.isTraceEnabled()) {
+      logger.trace(s"Data written to source data line. [$bytesWritten, ${buffer.byteSize}, " +
         s"${sourceDataLine.available()}]")
     }
     synchronized {
@@ -67,9 +67,9 @@ private[audio] class JavaxAudioOutput(sourceDataLine: SourceDataLine,
   override final def dequeueEmpty(): AudioBuffer = {
     logger.trace(s"Waiting for an empty buffer...")
     emptySemaphore.acquire()
-    if (logger.isDebugEnabled) {
+    if (logger.isTraceEnabled) {
       val bufferingStatus = 100 - (100*(emptySemaphore.availablePermits())/bufferCount)
-      logger.debug(s"Empty buffer acquired. [$bufferingStatus% buffers full]")
+      logger.trace(s"Empty buffer acquired. [$bufferingStatus% buffers full]")
     }
     tryDequeueEmpty() match {
       case Some(audioBuffer) => audioBuffer

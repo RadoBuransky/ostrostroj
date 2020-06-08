@@ -94,13 +94,16 @@ private[audio] class SongInputImpl(song: Song,
   private def readFromMaster(buffer: AudioBuffer): AudioBuffer = {
     logger.trace(s"Reading from master track. [${buffer.capacity}, $masterTrackPosition]")
     val bytesRead = masterTrackInputStream.read(buffer.byteArray)
-    if (bytesRead == -1) {
+    if (bytesRead <= 0) {
       _done = true
       logger.debug(s"End of master track.")
       buffer.copy(position = FrameCount(0), limit = FrameCount(0), endOfStream = true)
     } else {
-      logger.debug(s"Master track read. [$bytesRead]")
+      logger.trace(s"Master track read. [$bytesRead]")
       val framesRead = FrameCount(bytesRead / masterTrackInputStream.getFormat.getFrameSize)
+      if (framesRead.value == 0) {
+        logger.warn(s"Weird number of frames read from master track! [${framesRead}]")
+      }
       masterTrackPosition += framesRead
       buffer.copy(position = FrameCount(0), limit = framesRead)
     }

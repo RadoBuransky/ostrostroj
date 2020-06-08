@@ -14,13 +14,22 @@ private[audio] class PlaylistInputImpl(playlist: Playlist,
 
   override def songInput: SongInput = synchronized { _songInput }
   override def read(buffer: AudioBuffer): AudioBuffer = synchronized {
-    val result = songInput.read(buffer)
-    if (result.endOfStream) {
+    val readResult = _songInput.read(buffer)
+    val result = if (readResult.endOfStream) {
       logger.debug("End of stream.")
       if (songIndex < playlist.songs.length - 1) {
         songIndex += 1
         _songInput = createSongInput(songIndex)
+        if (readResult.size.value == 0) {
+          read(buffer)
+        } else {
+          readResult.copy(endOfStream = false)
+        }
+      } else {
+        readResult
       }
+    } else {
+      readResult
     }
     result
   }
@@ -30,7 +39,7 @@ private[audio] class PlaylistInputImpl(playlist: Playlist,
     logger.debug("Playlist input closed.")
   }
 
-  override def status: PlaylistStatus = {
+  override def status: PlaylistStatus = synchronized {
     val songStatus = _songInput.status
     PlaylistStatus(
       songStatus = songStatus,

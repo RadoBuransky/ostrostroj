@@ -25,7 +25,7 @@ private[audio] class AsyncAudioProvider(audioInput: AudioInput, audioOutput: Aud
     }
     catch {
       case _: InterruptedException =>
-        logger.info(s"Async audio provider thread interrupted by InterruptedException.")
+        logger.debug(s"Async audio provider thread interrupted by InterruptedException.")
         false
       case t: Throwable =>
         logger.error("Async audio provider thread failed!", t)
@@ -34,7 +34,7 @@ private[audio] class AsyncAudioProvider(audioInput: AudioInput, audioOutput: Aud
     if (continue && !thread.isInterrupted) {
       run()
     } else {
-      logger.debug(s"Async audio provider thread stopped. [$continue, ${thread.isInterrupted}]")
+      logger.info(s"Async audio provider thread stopped. [$continue, ${thread.isInterrupted}]")
     }
   }
 

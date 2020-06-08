@@ -21,7 +21,7 @@ private[audio] class OstrostrojPlayer(sourceDataLine: SourceDataLine,
     val playlistStatus = playlistInput.status
     AudioPlayerStatus(
       song = playlistStatus.songStatus.song,
-      position = playlistStatus.songStatus.position, // TODO: Don't use playlist position
+      position = playlistStatus.songStatus.position,
       volume = audioOutput.volume,
       done = playlistStatus.done && audioOutput.framesBuffered.value == 0,
       isPlaying = sourceDataLine.isRunning,

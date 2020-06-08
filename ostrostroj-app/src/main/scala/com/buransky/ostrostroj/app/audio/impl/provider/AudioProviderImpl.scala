@@ -8,23 +8,23 @@ private[audio] class AudioProviderImpl extends AudioProvider {
 
   def waitReadAndQueue(audioInput: AudioInput, audioOutput: AudioOutput): Boolean = {
     val emptyBuffer = audioOutput.dequeueEmpty()
-    val fullBuffer = readAndQueue(emptyBuffer, audioInput, audioOutput)
-    !fullBuffer.endOfStream
+    readAndQueue(emptyBuffer, audioInput, audioOutput)
   }
 
-  private def readAndQueue(emptyBuffer: AudioBuffer, audioInput: AudioInput, audioOutput: AudioOutput): AudioBuffer = {
+  private def readAndQueue(emptyBuffer: AudioBuffer, audioInput: AudioInput, audioOutput: AudioOutput): Boolean = {
     val fullBuffer: AudioBuffer = audioInput.read(emptyBuffer)
-    if (fullBuffer.size.value > 0) {
-      logger.debug(s"Data read. [${fullBuffer.size}]")
-      audioOutput.queueFull(fullBuffer)
+    logger.trace(s"Data read. [${fullBuffer.size}]")
+    val endOfStream = fullBuffer.endOfStream
+    val dataSize = fullBuffer.size.value
+    audioOutput.queueFull(fullBuffer)
+    if (endOfStream) {
+      logger.info(s"End of playlist.")
     } else {
-      if (fullBuffer.endOfStream) {
-        logger.info(s"End of playlist stream - we're done. Stopping audio provider thread.")
-      } else {
+      if (dataSize == 0) {
         logger.warn("No data but also not end of stream?")
       }
     }
-    fullBuffer
+    !endOfStream
   }
 
   override def close(): Unit = {}

@@ -29,7 +29,7 @@ private[audio] class AsyncJavaxAudioOutput(sourceDataLine: SourceDataLine, buffe
 
   @tailrec
   final override def write(): FrameCount = {
-    try {
+    val continue: Boolean = try {
       synchronized {
         if (!sourceDataLine.isRunning) {
           logger.debug("Waiting for active source data line...")
@@ -37,18 +37,20 @@ private[audio] class AsyncJavaxAudioOutput(sourceDataLine: SourceDataLine, buffe
         }
       }
       super.write()
+      true
     }
     catch {
       case _: InterruptedException =>
         logger.info(s"Javax audio output thread interrupted by InterruptedException.")
+        false
       case t: Throwable =>
         logger.error("Javax audio output thread failed!", t)
         throw t
     }
-    if (!thread.isInterrupted) {
+    if (continue && !thread.isInterrupted) {
       write()
     } else {
-      logger.debug(s"Javax audio output thread stopped because it was interrupted.")
+      logger.info(s"Javax audio output thread stopped. [$continue, ${thread.isInterrupted}]")
       FrameCount(0)
     }
   }
