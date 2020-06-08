@@ -15,25 +15,25 @@ class AudioPlayerSystemTest extends BaseSystemTest with ParallelTestExecution {
 
   behavior of "audio player"
 
-  ignore should "not fail during construction" in {
+  it should "not fail during construction" in {
     AudioPlayer(playlist, OstrostrojConfig.audio).close()
   }
 
-  ignore should "play a single song and then stop" in {
+  it should "play a single song and then stop" in {
     withAudioPlayer(playlist.subplaylist(1)) { audioPlayer =>
       audioPlayer.play()
       waitUntilPlaybackIsDone(audioPlayer)
     }
   }
 
-  ignore should "be able to automatically switch to the next song" in {
+  it should "be able to automatically switch to the next song" in {
     withAudioPlayer(playlist) { audioPlayer =>
       audioPlayer.play()
       waitUntilPlaybackIsDone(audioPlayer)
     }
   }
 
-  ignore should "loop a couple of times" in {
+  it should "loop a couple of times" in {
     withAudioPlayer(playlist.copy(songs = List(playlist.songs.head))) { audioPlayer =>
       audioPlayer.play()
       val loop = playlist.songs.head.loops.head
@@ -53,7 +53,7 @@ class AudioPlayerSystemTest extends BaseSystemTest with ParallelTestExecution {
     }
   }
 
-  ignore should "loop normal, softer and then harder" in {
+  it should "loop normal, softer and then harder" in {
     withAudioPlayer(playlist.copy(songs = List(playlist.songs.head))) { audioPlayer =>
       audioPlayer.play()
       val loop = playlist.songs.head.loops.head

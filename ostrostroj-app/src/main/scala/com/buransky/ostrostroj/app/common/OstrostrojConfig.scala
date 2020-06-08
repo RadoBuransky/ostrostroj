@@ -15,8 +15,8 @@ object OstrostrojConfig {
   val ACTOR_SYSTEM_NAME = "ostrostroj"
 
   // Akka cluster roles:
-  val DEV_DESKTOP = "dev-desktop"
-  val DEV_DEVICE = "dev-device"
+  val DEV_DESKTOP = "DEV_DESKTOP"
+  val DEV_DEVICE = "DEV_DEVICE"
 
   // Path to playlist
   val OSTROSTROJ_PLAYLIST = "OSTROSTROJ_PLAYLIST"
@@ -45,8 +45,8 @@ object OstrostrojConfig {
     mergedConfig.withFallback(defaultConfig)
   }
 
-  val isDevDesktop: Boolean = System.getProperty(DEV_DESKTOP) != null
-  val isDevDevice: Boolean = System.getProperty(DEV_DEVICE) != null
+  val isDevDesktop: Boolean = System.getenv(DEV_DESKTOP) != null
+  val isDevDevice: Boolean = System.getenv(DEV_DEVICE) != null
   val playlistPath: Path = {
     val playlistPathEnv = Preconditions.checkNotNull(System.getenv(OSTROSTROJ_PLAYLIST),
       OSTROSTROJ_PLAYLIST.asInstanceOf[AnyRef])
