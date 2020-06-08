@@ -21,6 +21,18 @@ private[audio] class JavaxAudioOutput(sourceDataLine: SourceDataLine,
   private val emptySemaphore = semaphoreFactory(bufferCount)
   private val gainControl = getGainControl(sourceDataLine)
 
+  private var totalFramesWritten = FrameCount(0)
+
+  override def start(): Unit = {
+    sourceDataLine.start()
+    logger.debug("Playback started.")
+  }
+
+  override def stop(): Unit = {
+    sourceDataLine.stop()
+    logger.debug("Playback stopped.")
+  }
+
   override def write(): FrameCount = {
     logger.trace("Acquiring semaphore for filled buffers...")
     filledSemaphore.acquire()
@@ -29,10 +41,15 @@ private[audio] class JavaxAudioOutput(sourceDataLine: SourceDataLine,
     }
     logger.trace("Filled buffer dequeued.")
     val bytesWritten = sourceDataLine.write(buffer.byteArray, buffer.bytePosition, buffer.byteSize)
-    logger.trace(s"Data written to source data line. [$bytesWritten, ${buffer.byteSize}]")
+    if (logger.isDebugEnabled()) {
+      logger.debug(s"Data written to source data line. [$bytesWritten, ${buffer.byteSize}, " +
+        s"${sourceDataLine.available()}]")
+    }
     synchronized {
+      val framesWritten = FrameCount(bytesWritten/sourceDataLine.getFormat.getFrameSize)
+      totalFramesWritten += framesWritten
       enqueueEmpty(buffer)
-      FrameCount(bytesWritten/sourceDataLine.getFormat.getFrameSize)
+      framesWritten
     }
   }
 
@@ -48,7 +65,12 @@ private[audio] class JavaxAudioOutput(sourceDataLine: SourceDataLine,
 
   @tailrec
   override final def dequeueEmpty(): AudioBuffer = {
+    logger.trace(s"Waiting for an empty buffer...")
     emptySemaphore.acquire()
+    if (logger.isDebugEnabled) {
+      val bufferingStatus = 100 - (100*(emptySemaphore.availablePermits())/bufferCount)
+      logger.debug(s"Empty buffer acquired. [$bufferingStatus% buffers full]")
+    }
     tryDequeueEmpty() match {
       case Some(audioBuffer) => audioBuffer
       case None => dequeueEmpty()
@@ -67,6 +89,10 @@ private[audio] class JavaxAudioOutput(sourceDataLine: SourceDataLine,
   override def volumeDown(): Double = changeVolume(-1)
 
   override def volume: Double = volume(gainControl.getValue)
+
+  override def framesBuffered: FrameCount = synchronized {
+    FrameCount(totalFramesWritten.value - sourceDataLine.getFramePosition)
+  }
 
   private def changeVolume(stepDelta: Int): Double = {
     val newValue = ((gainControl.getValue.toInt / volumeStepDb) + stepDelta)*volumeStepDb

@@ -15,6 +15,7 @@ private[audio] class AsyncAudioProvider(audioInput: AudioInput, audioOutput: Aud
     }
   }
   thread.setName("audio-provider")
+  thread.start()
   logger.debug(s"Async audio provider thread started. [${thread.getId} - ${thread.getName}]")
 
   @tailrec

@@ -3,17 +3,14 @@ package com.buransky.ostrostroj.app.audio.impl.output
 import java.util.concurrent.Semaphore
 
 import com.buransky.ostrostroj.app.audio.FrameCount
-import javax.sound.sampled.{LineEvent, LineListener, SourceDataLine}
+import javax.sound.sampled.SourceDataLine
 import org.slf4j.LoggerFactory
 
 import scala.annotation.tailrec
 
 private[audio] class AsyncJavaxAudioOutput(sourceDataLine: SourceDataLine, bufferCount: Int)
-  extends JavaxAudioOutput(sourceDataLine, bufferCount, new Semaphore(_))
-  with LineListener { self =>
+  extends JavaxAudioOutput(sourceDataLine, bufferCount, new Semaphore(_)) { self =>
   import AsyncJavaxAudioOutput._
-
-  sourceDataLine.addLineListener(this)
 
   private val thread = new Thread {
     override def run(): Unit = {
@@ -21,13 +18,20 @@ private[audio] class AsyncJavaxAudioOutput(sourceDataLine: SourceDataLine, buffe
     }
   }
   thread.setName("audio-output")
+  thread.start()
   logger.debug(s"Javax audio output thread started. [${thread.getId} - ${thread.getName}]")
+
+  override def start(): Unit = synchronized {
+    super.start()
+    notifyAll()
+    logger.debug("Notifying waiting threads that playback has started...")
+  }
 
   @tailrec
   final override def write(): FrameCount = {
     try {
       synchronized {
-        if (!sourceDataLine.isActive) {
+        if (!sourceDataLine.isRunning) {
           logger.debug("Waiting for active source data line...")
           wait()
         }
@@ -53,15 +57,6 @@ private[audio] class AsyncJavaxAudioOutput(sourceDataLine: SourceDataLine, buffe
     thread.interrupt()
     super.close()
     logger.info("Javax audio output closed.")
-  }
-
-  override def update(event: LineEvent): Unit = synchronized {
-    event match {
-      case LineEvent.Type.START =>
-        logger.debug("Notifying waiting threads that playback has started...")
-        notifyAll()
-      case _ =>
-    }
   }
 }
 

@@ -10,8 +10,8 @@ private[audio] class OstrostrojPlayer(sourceDataLine: SourceDataLine,
                                       audioProvider: AudioProvider) extends AudioPlayer {
   import OstrostrojPlayer._
 
-  override def play(): Unit = sourceDataLine.start()
-  override def pause(): Unit = sourceDataLine.stop()
+  override def play(): Unit = audioOutput.start()
+  override def pause(): Unit = audioOutput.stop()
   override def toggleLooping(): Unit = playlistInput.songInput.toggleLooping()
   override def harder(): Option[Int] = playlistInput.songInput.loopInput.map(_.harder())
   override def softer(): Option[Int] = playlistInput.songInput.loopInput.map(_.softer())
@@ -21,9 +21,10 @@ private[audio] class OstrostrojPlayer(sourceDataLine: SourceDataLine,
     val playlistStatus = playlistInput.status
     AudioPlayerStatus(
       song = playlistStatus.songStatus.song,
-      position = playlistStatus.songStatus.position,
+      position = playlistStatus.songStatus.position, // TODO: Don't use playlist position
       volume = audioOutput.volume,
-      isPaused = !sourceDataLine.isRunning,
+      done = playlistStatus.done && audioOutput.framesBuffered.value == 0,
+      isPlaying = sourceDataLine.isRunning,
       looping = playlistStatus.songStatus.loopStatus.map { loopStatus =>
         AudioPlayerLoopingStatus(
           loop = loopStatus.loop,
@@ -38,6 +39,7 @@ private[audio] class OstrostrojPlayer(sourceDataLine: SourceDataLine,
 
   override def close(): Unit = {
     logger.debug("Closing Ostrostroj player...")
+    sourceDataLine.drain()
     audioProvider.close()
     audioOutput.close()
     sourceDataLine.close()

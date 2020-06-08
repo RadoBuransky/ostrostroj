@@ -18,7 +18,8 @@ import org.slf4j.LoggerFactory
 case class AudioPlayerStatus(song: Song,
                              position: FrameCount,
                              volume: Double,
-                             isPaused: Boolean,
+                             isPlaying: Boolean,
+                             done: Boolean,
                              looping: Option[AudioPlayerLoopingStatus])
 case class AudioPlayerLoopingStatus(loop: Loop,
                                     level: Int,

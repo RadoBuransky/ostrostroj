@@ -15,6 +15,7 @@ private[audio] class AudioProviderImpl extends AudioProvider {
   private def readAndQueue(emptyBuffer: AudioBuffer, audioInput: AudioInput, audioOutput: AudioOutput): AudioBuffer = {
     val fullBuffer: AudioBuffer = audioInput.read(emptyBuffer)
     if (fullBuffer.size.value > 0) {
+      logger.debug(s"Data read. [${fullBuffer.size}]")
       audioOutput.queueFull(fullBuffer)
     } else {
       if (fullBuffer.endOfStream) {
