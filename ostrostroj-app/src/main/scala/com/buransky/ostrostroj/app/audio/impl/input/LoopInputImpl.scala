@@ -17,6 +17,7 @@ private[audio] class LoopInputImpl(loop: Loop,
     s"${loop.start}]").asInstanceOf[AnyRef])
   checkArgument(startingPosition.value < loop.endExclusive, (s"Position outside of loop! [${startingPosition.value}, " +
     s"${loop.endExclusive}]").asInstanceOf[AnyRef])
+  checkArgument(loop.tracks.nonEmpty, "At least one track is needed!".asInstanceOf[AnyRef])
   checkArgument(loadedTracks.map(_.track).toSet == loop.tracks.toSet, "Not all tracks loaded!".asInstanceOf[AnyRef])
 
   private var level = 0

@@ -3,14 +3,22 @@ package com.buransky.ostrostroj.app.show
 import java.io.FileInputStream
 import java.nio.file.Path
 
+import com.google.common.base.Preconditions._
 import play.api.libs.json.{JsValue, Json}
 
 case class Playlist(songs: Seq[Song]) {
-  def subplaylist(fromSong: Int): Playlist = this.copy(songs = songs.slice(fromSong, songs.length - 1))
+  def subplaylist(fromSong: Int): Playlist = this.copy(songs = songs.slice(fromSong, songs.length))
 }
-case class Song(title: String, path: Path, loops: Seq[Loop])
-case class Loop(start: Int, endExclusive: Int, tracks: Seq[Track])
+case class Song(title: String, path: Path, loops: Seq[Loop]) {
+  checkArgument(path.toFile.exists())
+}
+case class Loop(start: Int, endExclusive: Int, tracks: Seq[Track]) {
+  checkArgument(endExclusive > start)
+  checkArgument(tracks.nonEmpty)
+}
 case class Track(rangeMin: Int, rangeMax: Int, path: Path) {
+  checkArgument(rangeMin <= rangeMax)
+  checkArgument(path.toFile.exists())
   def channelLevel(level: Int): Double = {
     if (level >= rangeMin && level <= rangeMax)
       1.0
