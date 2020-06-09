@@ -88,30 +88,32 @@ private[audio] class JavaxAudioOutput(sourceDataLine: SourceDataLine,
 
   override def volumeDown(): Double = changeVolume(-1)
 
-  override def volume: Double = volume(gainControl.getValue)
+  override def volume: Double = volume(gainControl.getValue, gainControl.getMinimum, gainControl.getMaximum)
 
   override def framesBuffered: FrameCount = synchronized {
     FrameCount(totalFramesWritten.value - sourceDataLine.getFramePosition)
   }
 
   private def changeVolume(stepDelta: Int): Double = {
+    val max = gainControl.getMaximum
+    val min = gainControl.getMinimum
     val newValue = ((gainControl.getValue.toInt / volumeStepDb) + stepDelta)*volumeStepDb
-    val valueToSet = if (newValue > gainControl.getMaximum) {
-      gainControl.getMaximum
+    val valueToSet = if (newValue > max) {
+      max
     } else {
-      if (newValue < gainControl.getMinimum)
-        gainControl.getMinimum
+      if (newValue < min)
+        min
       else
         newValue
     }
     gainControl.setValue(valueToSet)
-    val result = volume(valueToSet)
-    logger.debug(s"Change volume. [${result}, $valueToSet, ${gainControl.getMinimum}, ${gainControl.getMaximum}]")
+    val result = volume(valueToSet, min, max)
+    logger.debug(s"Change volume. [${result}, $valueToSet, $min, $max]")
     result
   }
 
-  private def volume(currentValue: Double): Double =
-    Math.abs((currentValue - gainControl.getMinimum) / (gainControl.getMaximum - gainControl.getMinimum))
+  private def volume(currentValue: Double, min: Double, max: Double): Double =
+    Math.abs((currentValue - min) / (max - min))
 
   private def enqueueEmpty(buffer: AudioBuffer): Unit = {
     val recycledBuffer = buffer.copy(position = FrameCount(0), limit = FrameCount(0), endOfStream = false)

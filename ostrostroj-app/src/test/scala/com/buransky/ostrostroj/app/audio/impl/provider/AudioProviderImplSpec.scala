@@ -29,7 +29,7 @@ class AudioProviderImplSpec extends AnyFlatSpec with MockitoSugar {
     // Assert & verify
     assert(result)
     verify(fullBuffer).endOfStream
-    verify(fullBuffer).size
+    verify(fullBuffer, times(2)).size
     verify(audioOutput).queueFull(fullBuffer)
     verify(audioInput).read(emptyBuffer)
     verify(audioOutput).dequeueEmpty()
@@ -39,7 +39,7 @@ class AudioProviderImplSpec extends AnyFlatSpec with MockitoSugar {
     verifyNoMoreInteractions(fullBuffer)
   }
 
-  it should "wait and read but not queue if no data are returned" in {
+  it should "wait, read and queue even if no data is returned" in {
     // Prepare
     val audioProvider = new AudioProviderImpl()
     val audioInput = mock[AudioInput]
@@ -56,10 +56,11 @@ class AudioProviderImplSpec extends AnyFlatSpec with MockitoSugar {
 
     // Assert & verify
     assert(!result)
-    verify(fullBuffer, times(2)).endOfStream
-    verify(fullBuffer).size
+    verify(fullBuffer).endOfStream
+    verify(fullBuffer, times(2)).size
     verify(audioInput).read(emptyBuffer)
     verify(audioOutput).dequeueEmpty()
+    verify(audioOutput).queueFull(fullBuffer)
     verifyNoMoreInteractions(audioInput)
     verifyNoMoreInteractions(audioOutput)
     verifyNoMoreInteractions(emptyBuffer)

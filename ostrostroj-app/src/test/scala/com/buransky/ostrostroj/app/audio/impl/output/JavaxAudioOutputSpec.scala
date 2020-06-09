@@ -86,8 +86,8 @@ class JavaxAudioOutputSpec extends AnyFlatSpec with MockitoSugar {
 
     // Assert & verify
     assert(result == 0.6)
-    verify(gainControl, times(2)).getMaximum
-    verify(gainControl, times(3)).getMinimum
+    verify(gainControl).getMaximum
+    verify(gainControl).getMinimum
     verify(gainControl).getValue
     verify(gainControl).setValue(6)
     verifyNoMoreInteractions(gainControl)
@@ -105,8 +105,8 @@ class JavaxAudioOutputSpec extends AnyFlatSpec with MockitoSugar {
 
     // Assert & verify
     assert(result == 1.0)
-    verify(gainControl, times(3)).getMaximum
-    verify(gainControl, times(2)).getMinimum
+    verify(gainControl).getMaximum
+    verify(gainControl).getMinimum
     verify(gainControl).getValue
     verify(gainControl).setValue(10)
     verifyNoMoreInteractions(gainControl)
@@ -126,8 +126,8 @@ class JavaxAudioOutputSpec extends AnyFlatSpec with MockitoSugar {
 
     // Assert & verify
     assert(result == 0.0)
-    verify(gainControl, times(2)).getMaximum
-    verify(gainControl, times(4)).getMinimum
+    verify(gainControl).getMaximum
+    verify(gainControl).getMinimum
     verify(gainControl).getValue
     verify(gainControl).setValue(0)
     verifyNoMoreInteractions(gainControl)
@@ -148,7 +148,7 @@ class JavaxAudioOutputSpec extends AnyFlatSpec with MockitoSugar {
     // Assert & verify
     assert(result == 0.75)
     verify(gainControl).getMaximum
-    verify(gainControl, times(2)).getMinimum
+    verify(gainControl).getMinimum
     verify(gainControl).getValue
     verifyNoMoreInteractions(gainControl)
   }
