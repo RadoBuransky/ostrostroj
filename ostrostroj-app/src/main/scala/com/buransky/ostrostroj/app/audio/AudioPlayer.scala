@@ -119,9 +119,9 @@ object AudioPlayer {
   }
 
   private def getMixer(mixerName: String): Mixer = {
-    if (logger.isTraceEnabled) {
+    if (logger.isDebugEnabled) {
       AudioSystem.getMixerInfo.foreach { mixerInfo =>
-        logger.trace(s"${mixerInfo.getName}; ${mixerInfo.getDescription}; ${mixerInfo.getVendor}")
+        logger.debug(s"${mixerInfo.getName}; ${mixerInfo.getDescription}; ${mixerInfo.getVendor}")
       }
     }
 
