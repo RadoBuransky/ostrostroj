@@ -3,10 +3,11 @@ package com.buransky.ostrostroj.app.audio
 import com.buransky.ostrostroj.app.common.OstrostrojConfig
 import com.buransky.ostrostroj.app.show.{Playlist, PlaylistReader}
 import com.buransky.ostrostroj.app.sysTest.BaseSystemTest
+import org.scalatest.SequentialNestedSuiteExecution
 
 import scala.annotation.tailrec
 
-class AudioPlayerSystemTest extends BaseSystemTest {
+class AudioPlayerSystemTest extends BaseSystemTest with SequentialNestedSuiteExecution {
   private val playlist = PlaylistReader.read(OstrostrojConfig.playlistPath)
 
   behavior of "audio player"
