@@ -1,6 +1,6 @@
 package com.buransky.ostrostroj.app.audio.impl.input
 
-import com.buransky.ostrostroj.app.audio.{AudioBuffer, PlaylistStatus, SongInput, SongStatus}
+import com.buransky.ostrostroj.app.audio._
 import com.buransky.ostrostroj.app.show.{Playlist, Song}
 import javax.sound.sampled.spi.AudioFileReader
 import org.junit.runner.RunWith
@@ -56,21 +56,21 @@ class PlaylistInputImplSpec extends AnyFlatSpec with MockitoSugar {
     }
     val audioFileReader = mock[AudioFileReader]
     val emptyBuffer = mock[AudioBuffer]
-    val fullBuffer1 = mock[AudioBuffer]
-    val fullBuffer2 = mock[AudioBuffer]
+    val byteArray1 = new Array[Byte](16)
+    val fullBuffer1 = AudioBuffer(byteArray1, 2, 1, FrameCount(0), FrameCount(1), true)
+    val byteArray2 = new Array[Byte](16)
+    val fullBuffer2 = AudioBuffer(byteArray2, 2, 1, FrameCount(0), FrameCount(1), false)
     when(songInput1.read(emptyBuffer)).thenReturn(fullBuffer1)
     when(songInput2.read(emptyBuffer)).thenReturn(fullBuffer2)
-    when(fullBuffer1.endOfStream).thenReturn(true)
-    when(fullBuffer2.endOfStream).thenReturn(false)
     when(playlist.songs).thenReturn(songs)
     val playlistInput = new PlaylistInputImpl(playlist, songInputFactory, audioFileReader)
 
     // Step 1: read from song 1
     val result1 = playlistInput.read(emptyBuffer)
-    assert(result1 == fullBuffer1)
+    assert(result1.byteArray == byteArray1)
+    assert(!result1.endOfStream)
     verify(songInput1).read(emptyBuffer)
     verify(songInput1).close()
-    verify(fullBuffer1).endOfStream
     verifyZeroInteractions(songInput2)
 
     // Step 2: read from song 2
@@ -83,7 +83,73 @@ class PlaylistInputImplSpec extends AnyFlatSpec with MockitoSugar {
     verifyNoMoreInteractions(songInput1)
     verifyNoMoreInteractions(songInput2)
     verifyNoMoreInteractions(emptyBuffer)
-    verifyNoMoreInteractions(fullBuffer1)
+  }
+
+  it should "switch to the next song after reading last data if previous song returned nothing" in {
+    // Prepare
+    val playlist = mock[Playlist]
+    val song1 = mock[Song]
+    val song2 = mock[Song]
+    val songs = List(song1, song2)
+    val songInput1 = mock[SongInput]
+    val songInput2 = mock[SongInput]
+    def songInputFactory(song: Song, audioFileReader: AudioFileReader): SongInput = song match {
+      case `song1` => songInput1
+      case `song2` => songInput2
+      case _ => fail()
+    }
+    val audioFileReader = mock[AudioFileReader]
+    val emptyBuffer = mock[AudioBuffer]
+    val byteArray1 = new Array[Byte](16)
+    val fullBuffer1 = AudioBuffer(byteArray1, 2, 1, FrameCount(0), FrameCount(0), true)
+    val byteArray2 = new Array[Byte](16)
+    val fullBuffer2 = AudioBuffer(byteArray2, 2, 1, FrameCount(0), FrameCount(1), false)
+    when(songInput1.read(emptyBuffer)).thenReturn(fullBuffer1)
+    when(songInput2.read(emptyBuffer)).thenReturn(fullBuffer2)
+    when(playlist.songs).thenReturn(songs)
+    val playlistInput = new PlaylistInputImpl(playlist, songInputFactory, audioFileReader)
+
+    // Step 1: read from song 1 and also straight from song 2
+    val result1 = playlistInput.read(emptyBuffer)
+    assert(result1.byteArray == byteArray2)
+    assert(!result1.endOfStream)
+    verify(songInput1).read(emptyBuffer)
+    verify(songInput1).close()
+    verify(songInput2).read(emptyBuffer)
+    verify(playlist, times(3)).songs
+    verifyNoMoreInteractions(audioFileReader)
+    verifyNoMoreInteractions(songInput1)
+    verifyNoMoreInteractions(songInput2)
+    verifyNoMoreInteractions(emptyBuffer)
+  }
+
+  it should "return result if the last song is at the end" in {
+    // Prepare
+    val playlist = mock[Playlist]
+    val song1 = mock[Song]
+    val songs = List(song1)
+    val songInput1 = mock[SongInput]
+    def songInputFactory(song: Song, audioFileReader: AudioFileReader): SongInput = song match {
+      case `song1` => songInput1
+      case _ => fail()
+    }
+    val audioFileReader = mock[AudioFileReader]
+    val emptyBuffer = mock[AudioBuffer]
+    val byteArray1 = new Array[Byte](16)
+    val fullBuffer1 = AudioBuffer(byteArray1, 2, 1, FrameCount(0), FrameCount(0), true)
+    when(songInput1.read(emptyBuffer)).thenReturn(fullBuffer1)
+    when(playlist.songs).thenReturn(songs)
+    val playlistInput = new PlaylistInputImpl(playlist, songInputFactory, audioFileReader)
+
+    // Step 1: read from song 1 and also straight from song 2
+    val result1 = playlistInput.read(emptyBuffer)
+    assert(result1.byteArray == byteArray1)
+    assert(result1.endOfStream)
+    verify(songInput1).read(emptyBuffer)
+    verify(playlist, times(2)).songs
+    verifyNoMoreInteractions(audioFileReader)
+    verifyNoMoreInteractions(songInput1)
+    verifyNoMoreInteractions(emptyBuffer)
   }
 
   behavior of "close"

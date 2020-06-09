@@ -9,10 +9,14 @@ import play.api.libs.json.{JsValue, Json}
 
 case class Playlist(songs: Seq[Song]) {
   def subplaylist(fromSong: Int): Playlist = this.copy(songs = songs.slice(fromSong, songs.length))
+  def checkFilesExist(): Unit = {
+    val songPaths = songs.map(_.path).toList
+    val trackPaths = songs.flatMap(_.loops.flatMap(_.tracks.map(_.path))).toList
+    val allPaths = songPaths ::: trackPaths
+    allPaths.foreach(path => assert(path.toFile.exists()))
+  }
 }
 case class Song(title: String, path: Path, loops: Seq[Loop]) {
-  checkArgument(path.toFile.exists())
-
   def loopAtPosition(position: FrameCount): Option[Loop] =
     loops.find(l => (position.value >= l.start) && (position.value < l.endExclusive))
 }
@@ -22,7 +26,6 @@ case class Loop(start: Int, endExclusive: Int, tracks: Seq[Track]) {
 }
 case class Track(rangeMin: Int, rangeMax: Int, path: Path) {
   checkArgument(rangeMin <= rangeMax)
-  checkArgument(path.toFile.exists())
   def channelLevel(level: Int): Double = {
     if (level >= rangeMin && level <= rangeMax)
       1.0

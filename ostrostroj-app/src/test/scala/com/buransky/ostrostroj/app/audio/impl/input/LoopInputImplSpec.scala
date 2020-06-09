@@ -19,7 +19,7 @@ class LoopInputImplSpec extends AnyFlatSpec with MockitoSugar {
     // Prepare
     val path = new File("").toPath
     val audioMixer = mock[AudioMixer]
-    val loop = Loop(10, 11, Nil)
+    val loop = Loop(10, 11, List(mock[Track]))
 
     // Execute
     val ex = intercept[IllegalArgumentException] {
@@ -34,7 +34,7 @@ class LoopInputImplSpec extends AnyFlatSpec with MockitoSugar {
     // Prepare
     val path = new File("").toPath
     val audioMixer = mock[AudioMixer]
-    val loop = Loop(10, 11, Nil)
+    val loop = Loop(10, 11, List(mock[Track]))
 
     // Execute
     val ex = intercept[IllegalArgumentException] {

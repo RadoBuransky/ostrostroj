@@ -12,7 +12,7 @@ import com.buransky.ostrostroj.app.show.{Loop, Playlist, Song}
 import com.sun.media.sound.WaveFileReader
 import com.typesafe.config.Config
 import javax.sound.sampled.spi.AudioFileReader
-import javax.sound.sampled.{AudioSystem, DataLine, Line, Mixer, SourceDataLine}
+import javax.sound.sampled._
 import org.slf4j.LoggerFactory
 
 case class AudioPlayerStatus(song: Song,
@@ -49,6 +49,7 @@ object AudioPlayer {
   private val logger = LoggerFactory.getLogger(classOf[AudioPlayer])
 
   def apply(playlist: Playlist, audioConfig: Config): AudioPlayer = {
+    playlist.checkFilesExist()
     val mixer = getMixer(audioConfig.getString("mixerName"))
     val bufferLength = Duration.ofMillis(audioConfig.getInt("bufferLengthMs"))
     val audioFileReader = new WaveFileReader()
