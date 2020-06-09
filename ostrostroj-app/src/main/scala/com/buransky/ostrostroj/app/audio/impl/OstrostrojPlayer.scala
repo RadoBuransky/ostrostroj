@@ -1,10 +1,11 @@
 package com.buransky.ostrostroj.app.audio.impl
 
 import com.buransky.ostrostroj.app.audio._
-import javax.sound.sampled.SourceDataLine
+import javax.sound.sampled.{Mixer, SourceDataLine}
 import org.slf4j.LoggerFactory
 
-private[audio] class OstrostrojPlayer(sourceDataLine: SourceDataLine,
+private[audio] class OstrostrojPlayer(mixer: Mixer,
+                                      sourceDataLine: SourceDataLine,
                                       audioOutput: AudioOutput,
                                       playlistInput: PlaylistInput,
                                       audioProvider: AudioProvider) extends AudioPlayer {
@@ -44,6 +45,7 @@ private[audio] class OstrostrojPlayer(sourceDataLine: SourceDataLine,
     audioOutput.close()
     sourceDataLine.close()
     playlistInput.close()
+    mixer.close()
     logger.info("Ostrostroj player closed.")
   }
 }

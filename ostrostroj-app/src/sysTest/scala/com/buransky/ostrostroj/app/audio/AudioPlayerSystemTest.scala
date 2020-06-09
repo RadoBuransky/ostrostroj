@@ -16,7 +16,7 @@ class AudioPlayerSystemTest extends AnyFlatSpecLike with SequentialNestedSuiteEx
   behavior of "audio player"
 
   it should "not fail during construction" in {
-    AudioPlayer(playlist, OstrostrojConfig.audio).close()
+    withAudioPlayer(playlist)(_.close())
   }
 
   it should "play a single song and then stop" in {

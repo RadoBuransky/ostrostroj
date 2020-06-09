@@ -11,8 +11,8 @@ import com.buransky.ostrostroj.app.common.OstrostrojException
 import com.buransky.ostrostroj.app.show.{Loop, Playlist, Song}
 import com.sun.media.sound.WaveFileReader
 import com.typesafe.config.Config
-import javax.sound.sampled.spi.AudioFileReader
 import javax.sound.sampled._
+import javax.sound.sampled.spi.AudioFileReader
 import org.slf4j.LoggerFactory
 
 case class AudioPlayerStatus(song: Song,
@@ -51,14 +51,26 @@ object AudioPlayer {
   def apply(playlist: Playlist, audioConfig: Config): AudioPlayer = {
     playlist.checkFilesExist()
     val mixer = getMixer(audioConfig.getString("mixerName"))
-    val bufferLength = Duration.ofMillis(audioConfig.getInt("bufferLengthMs"))
-    val audioFileReader = new WaveFileReader()
-    val sourceDataLine = getSourceDataLine(playlist.songs.head.path, mixer.getMixerInfo, bufferLength, audioFileReader)
-    val audioOutput = new AsyncJavaxAudioOutput(sourceDataLine, audioConfig.getInt("bufferCount"))
-    val audioMixer = AudioMixer(sourceDataLine.getFormat)
-    val playlistInput = new PlaylistInputImpl(playlist, SongInput.apply(_, _, audioMixer), audioFileReader)
-    val audioProvider = new AsyncAudioProvider(playlistInput, audioOutput)
-    new OstrostrojPlayer(sourceDataLine, audioOutput, playlistInput, audioProvider)
+    try {
+      val bufferLength = Duration.ofMillis(audioConfig.getInt("bufferLengthMs"))
+      val audioFileReader = new WaveFileReader()
+      val sourceDataLine = getSourceDataLine(playlist.songs.head.path, mixer.getMixerInfo, bufferLength, audioFileReader)
+      try {
+        val audioOutput = new AsyncJavaxAudioOutput(sourceDataLine, audioConfig.getInt("bufferCount"))
+        val audioMixer = AudioMixer(sourceDataLine.getFormat)
+        val playlistInput = new PlaylistInputImpl(playlist, SongInput.apply(_, _, audioMixer), audioFileReader)
+        val audioProvider = new AsyncAudioProvider(playlistInput, audioOutput)
+        new OstrostrojPlayer(mixer, sourceDataLine, audioOutput, playlistInput, audioProvider)
+      } catch {
+        case t: Throwable =>
+          sourceDataLine.close()
+          throw t
+      }
+    } catch {
+      case t: Throwable =>
+        mixer.close()
+        throw t
+    }
   }
 
   private def getSourceDataLine(firstSongMaster: Path,
