@@ -69,22 +69,28 @@ object AudioPlayer {
     val audioFormat = audioFileFormat.getFormat
     val sourceDataLine = AudioSystem.getSourceDataLine(audioFormat, mixerInfo)
     if (logger.isTraceEnabled) {
-      logSourceDataLineInfo(sourceDataLine.getLineInfo)
+      logger.trace(getSourceDataLineInfo(sourceDataLine.getLineInfo))
     }
     val bufferSize = bufferLength.toMillis*audioFormat.getSampleRate*audioFormat.getFrameSize/1000
-    sourceDataLine.open(audioFormat, bufferSize.toInt)
+    try {
+      sourceDataLine.open(audioFormat, bufferSize.toInt)
+    } catch {
+      case ex: LineUnavailableException =>
+        throw new OstrostrojException(s"Can't open source data line! " +
+          getSourceDataLineInfo(sourceDataLine.getLineInfo), ex)
+    }
     logger.info(s"Source data line open. [${audioFormat.getSampleRate}, ${audioFormat.getSampleSizeInBits}, " +
       s"${audioFormat.getChannels}, ${audioFormat.isBigEndian}, buffer size = ${sourceDataLine.getBufferSize}]")
     sourceDataLine
   }
 
-  private def logSourceDataLineInfo(i: Line.Info): Unit = {
+  private def getSourceDataLineInfo(i: Line.Info): String = {
     i match {
       case dli: DataLine.Info =>
         val formats = dli.getFormats.map(f => s"[${f.getSampleRate},${f.getSampleSizeInBits},${f.getChannels}," +
           s"${f.isBigEndian},${f.getEncoding}]").mkString(",")
-        logger.trace(s"[${dli.getMinBufferSize},${dli.getMaxBufferSize}] $formats")
-      case _ => logger.trace(i.getLineClass.toString)
+        s"[${dli.getMinBufferSize},${dli.getMaxBufferSize}] $formats"
+      case _ => i.getLineClass.toString
     }
   }
 
