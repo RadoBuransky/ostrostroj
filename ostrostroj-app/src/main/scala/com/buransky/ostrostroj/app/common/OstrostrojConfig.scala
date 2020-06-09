@@ -43,12 +43,11 @@ object OstrostrojConfig {
     mergedConfig.withFallback(defaultConfig)
   }
 
-  val isDevDesktop: Boolean = System.getenv(DEV_DESKTOP) != null
-  val isDevDevice: Boolean = System.getenv(DEV_DEVICE) != null
+  val isDevDesktop: Boolean = System.getProperty(DEV_DESKTOP) != null
+  val isDevDevice: Boolean = System.getProperty(DEV_DEVICE) != null
   val playlistPath: Path = {
-    val ostrostrojPlaylist = System.getenv(OSTROSTROJ_PLAYLIST)
+    val ostrostrojPlaylist = System.getProperty(OSTROSTROJ_PLAYLIST)
     if (ostrostrojPlaylist == null) {
-      logger.error(System.getenv().asScala.map(e => s"${e._1}-${e._2}").mkString("[", ";", "]"))
       throw new IllegalArgumentException("OSTROSTROJ_PLAYLIST == null")
     } else {
       Paths.get(ostrostrojPlaylist)

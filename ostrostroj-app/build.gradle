@@ -36,12 +36,25 @@ configurations {
  * System tests. They are supposed to be run directly on Odroid C2 under root user using JDK built for ARMHF
  * (not ARM64!).
  */
-task sysTest(dependsOn: ['sysTestClasses'], type: JavaExec) {
+task sysTestDevice(dependsOn: ['sysTestClasses'], type: JavaExec) {
     description = 'Runs system tests.'
     group = 'verification'
 
     main = 'org.scalatest.tools.Runner'
     args = ['-R', 'build/classes/scala/sysTest', '-o']
+    jvmArgs = ['-DOSTROSTROJ_PLAYLIST=' + file('src/sysTest/resources/systest-playlist/systest-playlist.json'),
+    '-DDEV_DEVICE']
+    classpath = sourceSets.sysTest.runtimeClasspath
+}
+
+task sysTestDesktop(dependsOn: ['sysTestClasses'], type: JavaExec) {
+    description = 'Runs system tests.'
+    group = 'verification'
+
+    main = 'org.scalatest.tools.Runner'
+    args = ['-R', 'build/classes/scala/sysTest', '-o']
+    jvmArgs = ['-DOSTROSTROJ_PLAYLIST=' + file('src/sysTest/resources/systest-playlist/systest-playlist.json'),
+               '-DDEV_DESKTOP']
     classpath = sourceSets.sysTest.runtimeClasspath
 }
 
