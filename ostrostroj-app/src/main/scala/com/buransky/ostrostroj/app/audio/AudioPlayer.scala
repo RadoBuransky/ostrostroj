@@ -80,20 +80,32 @@ object AudioPlayer {
     val audioFileFormat = audioFileReader.getAudioFileFormat(firstSongMaster.toFile)
     val audioFormat = audioFileFormat.getFormat
     val sourceDataLine = AudioSystem.getSourceDataLine(audioFormat, mixerInfo)
-    if (logger.isTraceEnabled) {
-      logger.trace(getSourceDataLineInfo(sourceDataLine.getLineInfo))
-    }
-    val bufferSize = bufferLength.toMillis*audioFormat.getSampleRate*audioFormat.getFrameSize/1000
     try {
-      sourceDataLine.open(audioFormat, bufferSize.toInt)
+      logger.debug(s"Source data line retrieved. [${sourceDataLine.getFormat}, ${sourceDataLine.isOpen}, " +
+        s"${sourceDataLine.isActive}, ${sourceDataLine.isRunning}]")
+      if (logger.isTraceEnabled) {
+        logger.trace(getSourceDataLineInfo(sourceDataLine.getLineInfo))
+      }
+      val bufferSize = bufferLength.toMillis * audioFormat.getSampleRate * audioFormat.getFrameSize / 1000
+      if (sourceDataLine.isOpen) {
+        logger.debug("Source data line is already open.")
+      } else {
+        try {
+          sourceDataLine.open(audioFormat, bufferSize.toInt)
+        } catch {
+          case ex: LineUnavailableException =>
+            throw new OstrostrojException(s"Can't open source data line! " +
+              getSourceDataLineInfo(sourceDataLine.getLineInfo), ex)
+        }
+        logger.info(s"Source data line open. [${audioFormat.getSampleRate}, ${audioFormat.getSampleSizeInBits}, " +
+          s"${audioFormat.getChannels}, ${audioFormat.isBigEndian}, buffer size = ${sourceDataLine.getBufferSize}]")
+      }
+      sourceDataLine
     } catch {
-      case ex: LineUnavailableException =>
-        throw new OstrostrojException(s"Can't open source data line! " +
-          getSourceDataLineInfo(sourceDataLine.getLineInfo), ex)
+      case t: Throwable =>
+        sourceDataLine.close()
+        throw t
     }
-    logger.info(s"Source data line open. [${audioFormat.getSampleRate}, ${audioFormat.getSampleSizeInBits}, " +
-      s"${audioFormat.getChannels}, ${audioFormat.isBigEndian}, buffer size = ${sourceDataLine.getBufferSize}]")
-    sourceDataLine
   }
 
   private def getSourceDataLineInfo(i: Line.Info): String = {
