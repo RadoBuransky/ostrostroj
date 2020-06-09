@@ -2,11 +2,9 @@ package com.buransky.ostrostroj.app.common
 
 import java.nio.file.{Path, Paths}
 
-import com.google.common.base.Preconditions
-import com.typesafe.config.{Config, ConfigFactory, ConfigValue, ConfigValueFactory}
+import com.typesafe.config.{Config, ConfigFactory, ConfigValueFactory}
 import org.slf4j.LoggerFactory
 
-import scala.collection.StringOps
 import scala.jdk.CollectionConverters._
 
 object OstrostrojConfig {
@@ -48,9 +46,13 @@ object OstrostrojConfig {
   val isDevDesktop: Boolean = System.getenv(DEV_DESKTOP) != null
   val isDevDevice: Boolean = System.getenv(DEV_DEVICE) != null
   val playlistPath: Path = {
-    val playlistPathEnv = Preconditions.checkNotNull(System.getenv(OSTROSTROJ_PLAYLIST),
-      OSTROSTROJ_PLAYLIST.asInstanceOf[AnyRef])
-    Paths.get(playlistPathEnv)
+    val ostrostrojPlaylist = System.getenv(OSTROSTROJ_PLAYLIST)
+    if (ostrostrojPlaylist == null) {
+      logger.error(System.getenv().asScala.map(e => s"${e._1}-${e._2}").mkString("[", ";", "]"))
+      throw new IllegalArgumentException("OSTROSTROJ_PLAYLIST == null")
+    } else {
+      Paths.get(ostrostrojPlaylist)
+    }
   }
   val develeoperMode: Boolean = isDevDesktop || isDevDevice
 
