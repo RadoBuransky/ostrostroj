@@ -8,7 +8,7 @@ import com.buransky.ostrostroj.app.sysTest.BaseSystemTest
 class OstrostrojControllerSystemTest extends BaseSystemTest {
   behavior of "An real Ostrostroj controller (not emulated)"
 
-  it should "be able to start" in {
+  ignore should "be able to start" in {
     val driverProbe = testKit.createTestProbe[DriverCommand]()
     val behaviorTestKit = BehaviorTestKit(OstrostrojController(driverProbe.ref))
     behaviorTestKit.expectEffect(Spawned(OdroidGpio(), "driver"))

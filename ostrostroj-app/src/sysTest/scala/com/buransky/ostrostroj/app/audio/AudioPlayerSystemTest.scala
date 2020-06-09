@@ -3,14 +3,10 @@ package com.buransky.ostrostroj.app.audio
 import com.buransky.ostrostroj.app.common.OstrostrojConfig
 import com.buransky.ostrostroj.app.show.{Playlist, PlaylistReader}
 import com.buransky.ostrostroj.app.sysTest.BaseSystemTest
-import org.junit.runner.RunWith
-import org.scalatest.ParallelTestExecution
-import org.scalatestplus.junit.JUnitRunner
 
 import scala.annotation.tailrec
 
-@RunWith(classOf[JUnitRunner])
-class AudioPlayerSystemTest extends BaseSystemTest with ParallelTestExecution {
+class AudioPlayerSystemTest extends BaseSystemTest {
   private val playlist = PlaylistReader.read(OstrostrojConfig.playlistPath)
 
   behavior of "audio player"
