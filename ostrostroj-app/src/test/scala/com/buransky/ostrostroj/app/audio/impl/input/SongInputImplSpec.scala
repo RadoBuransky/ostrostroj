@@ -3,7 +3,7 @@ package com.buransky.ostrostroj.app.audio.impl.input
 import java.io.File
 
 import com.buransky.ostrostroj.app.audio.{AudioBuffer, FrameCount, LoopInput, LoopStatus}
-import com.buransky.ostrostroj.app.show.{Loop, Song}
+import com.buransky.ostrostroj.app.show.{Loop, Song, Track}
 import javax.sound.sampled.{AudioFormat, AudioInputStream}
 import org.junit.runner.RunWith
 import org.mockito.Matchers
@@ -35,7 +35,7 @@ class SongInputImplSpec extends AnyFlatSpec with MockitoSugar {
 
   it should "create loop input and skip master track" in {
     // Prepare
-    val loop = Loop(0, 7, Nil)
+    val loop = Loop(0, 7, List(mock[Track]))
     val song = Song("", new File("").toPath, List(loop))
     val masterTrackInputStream = mock[AudioInputStream]
     val loopInputFactory = mock[(Loop, FrameCount) => LoopInput]
@@ -58,7 +58,7 @@ class SongInputImplSpec extends AnyFlatSpec with MockitoSugar {
 
   it should "stop draining if we are already looping" in {
     // Prepare
-    val loop = Loop(0, 7, Nil)
+    val loop = Loop(0, 7, List(mock[Track]))
     val song = Song("", new File("").toPath, List(loop))
     val masterTrackInputStream = mock[AudioInputStream]
     val loopInputFactory = mock[(Loop, FrameCount) => LoopInput]
@@ -100,7 +100,7 @@ class SongInputImplSpec extends AnyFlatSpec with MockitoSugar {
 
   it should "start draining if we're looping" in {
     // Prepare
-    val loop = Loop(0, 7, Nil)
+    val loop = Loop(0, 7, List(mock[Track]))
     val song = Song("", new File("").toPath, List(loop))
     val masterTrackInputStream = mock[AudioInputStream]
     val loopInputFactory = mock[(Loop, FrameCount) => LoopInput]
@@ -127,7 +127,7 @@ class SongInputImplSpec extends AnyFlatSpec with MockitoSugar {
 
   it should "start or stop looping" in {
     // Prepare
-    val loop = Loop(0, 7, Nil)
+    val loop = Loop(0, 7, List(mock[Track]))
     val song = Song("", new File("").toPath, List(loop))
     val masterTrackInputStream = mock[AudioInputStream]
     val loopInputFactory = mock[(Loop, FrameCount) => LoopInput]
@@ -155,7 +155,7 @@ class SongInputImplSpec extends AnyFlatSpec with MockitoSugar {
 
   it should "return loop input" in {
     // Prepare
-    val loop = Loop(0, 7, Nil)
+    val loop = Loop(0, 7, List(mock[Track]))
     val song = Song("", new File("").toPath, List(loop))
     val masterTrackInputStream = mock[AudioInputStream]
     val loopInputFactory = mock[(Loop, FrameCount) => LoopInput]
@@ -240,7 +240,7 @@ class SongInputImplSpec extends AnyFlatSpec with MockitoSugar {
 
   it should "read only from loop input when looping" in {
     // Prepare
-    val loop = Loop(0, 7, Nil)
+    val loop = Loop(0, 7, List(mock[Track]))
     val song = Song("", new File("").toPath, List(loop))
     val masterTrackInputStream = mock[AudioInputStream]
     val loopInputFactory = mock[(Loop, FrameCount) => LoopInput]
@@ -274,45 +274,45 @@ class SongInputImplSpec extends AnyFlatSpec with MockitoSugar {
 
   it should "finish reading from loop input" in {
     // Prepare
-    val loop = Loop(0, 7, Nil)
+    val loop = Loop(0, 7, List(mock[Track]))
     val song = Song("", new File("").toPath, List(loop))
     val masterTrackInputStream = mock[AudioInputStream]
     val loopInputFactory = mock[(Loop, FrameCount) => LoopInput]
     val loopInput = mock[LoopInput]
     val songInput = new SongInputImpl(song, masterTrackInputStream, loopInputFactory)
-    val emptyBuffer = mock[AudioBuffer]
-    val fullBuffer = mock[AudioBuffer]
-    val fullBufferNotEnd = mock[AudioBuffer]
+    val byteBuffer = new Array[Byte](8)
+    val emptyBuffer = AudioBuffer(byteBuffer, 2, 1, FrameCount(0), FrameCount(0), false)
+    val byteArray1 = new Array[Byte](8)
+    val fullBuffer1 = AudioBuffer(byteArray1, 2, 1, FrameCount(0), FrameCount(0), true)
+    val byteArray2 = new Array[Byte](8)
+    val fullBuffer2 = AudioBuffer(byteArray2, 2, 1, FrameCount(0), FrameCount(0), false)
     when(masterTrackInputStream.getFormat).thenReturn(audioFormat)
     when(loopInputFactory(loop, FrameCount(0))).thenReturn(loopInput)
-    when(loopInput.read(emptyBuffer)).thenReturn(fullBuffer)
-    when(fullBuffer.endOfStream).thenReturn(true)
-    when(fullBuffer.copy(any(), any(), any(), any(), any(), Matchers.eq(false))).thenReturn(fullBufferNotEnd)
+    when(loopInput.read(emptyBuffer)).thenReturn(fullBuffer1)
+    when(masterTrackInputStream.read(byteBuffer)).thenReturn(1)
 
     // Execute
     songInput.startLooping()
     val result = songInput.read(emptyBuffer)
 
     // Verify
-    assert(result == fullBufferNotEnd)
+    assert(result.byteArray == byteBuffer)
     verify(loopInput).read(emptyBuffer)
     verify(loopInput).close()
     verify(loopInputFactory).apply(loop, FrameCount(0))
-    verify(masterTrackInputStream).getFormat
+    verify(masterTrackInputStream, times(2)).getFormat
     verify(masterTrackInputStream).skip(28)
-    verify(fullBuffer).endOfStream
-    verify(emptyBuffer).capacity
+    verify(masterTrackInputStream).read(byteBuffer)
     verifyNoMoreInteractions(masterTrackInputStream)
     verifyNoMoreInteractions(loopInputFactory)
     verifyNoMoreInteractions(loopInput)
-    verifyNoMoreInteractions(emptyBuffer)
   }
 
   behavior of "close"
 
   it should "close loop input if exists" in {
     // Prepare
-    val loop = Loop(0, 7, Nil)
+    val loop = Loop(0, 7, List(mock[Track]))
     val song = Song("", new File("").toPath, List(loop))
     val masterTrackInputStream = mock[AudioInputStream]
     val loopInputFactory = mock[(Loop, FrameCount) => LoopInput]
@@ -339,7 +339,7 @@ class SongInputImplSpec extends AnyFlatSpec with MockitoSugar {
 
   it should "get status from loop input if exists" in {
     // Prepare
-    val loop = Loop(0, 7, Nil)
+    val loop = Loop(0, 7, List(mock[Track]))
     val song = Song("", new File("").toPath, List(loop))
     val masterTrackInputStream = mock[AudioInputStream]
     val loopInputFactory = mock[(Loop, FrameCount) => LoopInput]
@@ -402,7 +402,7 @@ class SongInputImplSpec extends AnyFlatSpec with MockitoSugar {
 
   it should "equal to loop input position when looping" in {
     // Prepare
-    val loop = Loop(0, 7, Nil)
+    val loop = Loop(0, 7, List(mock[Track]))
     val song = Song("", new File("").toPath, List(loop))
     val masterTrackInputStream = mock[AudioInputStream]
     val loopInputFactory = mock[(Loop, FrameCount) => LoopInput]
@@ -437,30 +437,75 @@ class SongInputImplSpec extends AnyFlatSpec with MockitoSugar {
 
   it should "switch from loop position to master track after draining is done" in {
     // Prepare
-    val loop = Loop(0, 7, Nil)
+    val loop = Loop(0, 7, List(mock[Track]))
     val song = Song("", new File("").toPath, List(loop))
     val masterTrackInputStream = mock[AudioInputStream]
     val loopInputFactory = mock[(Loop, FrameCount) => LoopInput]
     val loopInput = mock[LoopInput]
     val songInput = new SongInputImpl(song, masterTrackInputStream, loopInputFactory)
-    val emptyBuffer = mock[AudioBuffer]
-    val fullBuffer = mock[AudioBuffer]
+    val byteBuffer = new Array[Byte](8)
+    val emptyBuffer = AudioBuffer(byteBuffer, 2, 1, FrameCount(0), FrameCount(0), false)
+    val byteArray1 = new Array[Byte](8)
+    val fullBuffer1 = AudioBuffer(byteArray1, 2, 1, FrameCount(0), FrameCount(0), true)
     val loopStatus = mock[LoopStatus]
     when(masterTrackInputStream.getFormat).thenReturn(audioFormat)
     when(masterTrackInputStream.skip(28)).thenReturn(28)
     when(loopInputFactory(loop, FrameCount(0))).thenReturn(loopInput)
     when(loopInput.status).thenReturn(loopStatus)
     when(loopStatus.position).thenReturn(FrameCount(123))
-    when(loopInput.read(emptyBuffer)).thenReturn(fullBuffer)
-    when(fullBuffer.endOfStream).thenReturn(true)
+    when(loopInput.read(emptyBuffer)).thenReturn(fullBuffer1)
 
     // Execute
     songInput.startLooping()
     songInput.stopLooping()
-    songInput.read(emptyBuffer)
+    val result = songInput.read(emptyBuffer)
     val status = songInput.status
 
     // Verify
+    assert(result.byteArray == byteBuffer)
+    assert(status.loopStatus.isEmpty)
+    assert(status.position == FrameCount(7))
+    verify(loopInputFactory).apply(loop, FrameCount(0))
+    verify(masterTrackInputStream).getFormat
+    verify(masterTrackInputStream).skip(28)
+    verify(masterTrackInputStream).read(byteBuffer)
+    verify(loopInput).startDraining()
+    verify(loopInput).read(emptyBuffer)
+    verify(loopInput).close()
+    verifyNoMoreInteractions(masterTrackInputStream)
+    verifyNoMoreInteractions(loopInputFactory)
+    verifyNoMoreInteractions(loopInput)
+    verifyNoMoreInteractions(loopStatus)
+  }
+
+  it should "not switch from loop position to master track after draining is done if size read > 0" in {
+    // Prepare
+    val loop = Loop(0, 7, List(mock[Track]))
+    val song = Song("", new File("").toPath, List(loop))
+    val masterTrackInputStream = mock[AudioInputStream]
+    val loopInputFactory = mock[(Loop, FrameCount) => LoopInput]
+    val loopInput = mock[LoopInput]
+    val songInput = new SongInputImpl(song, masterTrackInputStream, loopInputFactory)
+    val byteBuffer = new Array[Byte](8)
+    val emptyBuffer = AudioBuffer(byteBuffer, 2, 1, FrameCount(0), FrameCount(0), false)
+    val byteArray1 = new Array[Byte](8)
+    val fullBuffer1 = AudioBuffer(byteArray1, 2, 1, FrameCount(0), FrameCount(1), true)
+    val loopStatus = mock[LoopStatus]
+    when(masterTrackInputStream.getFormat).thenReturn(audioFormat)
+    when(masterTrackInputStream.skip(28)).thenReturn(28)
+    when(loopInputFactory(loop, FrameCount(0))).thenReturn(loopInput)
+    when(loopInput.status).thenReturn(loopStatus)
+    when(loopStatus.position).thenReturn(FrameCount(123))
+    when(loopInput.read(emptyBuffer)).thenReturn(fullBuffer1)
+
+    // Execute
+    songInput.startLooping()
+    songInput.stopLooping()
+    val result = songInput.read(emptyBuffer)
+    val status = songInput.status
+
+    // Verify
+    assert(result.byteArray == byteArray1)
     assert(status.loopStatus.isEmpty)
     assert(status.position == FrameCount(7))
     verify(loopInputFactory).apply(loop, FrameCount(0))
@@ -469,18 +514,15 @@ class SongInputImplSpec extends AnyFlatSpec with MockitoSugar {
     verify(loopInput).startDraining()
     verify(loopInput).read(emptyBuffer)
     verify(loopInput).close()
-    verify(fullBuffer).endOfStream
-    verify(emptyBuffer).capacity
     verifyNoMoreInteractions(masterTrackInputStream)
     verifyNoMoreInteractions(loopInputFactory)
     verifyNoMoreInteractions(loopInput)
-    verifyNoMoreInteractions(emptyBuffer)
     verifyNoMoreInteractions(loopStatus)
   }
 
   it should "still use loop input position while draining" in {
     // Prepare
-    val loop = Loop(0, 7, Nil)
+    val loop = Loop(0, 7, List(mock[Track]))
     val song = Song("", new File("").toPath, List(loop))
     val masterTrackInputStream = mock[AudioInputStream]
     val loopInputFactory = mock[(Loop, FrameCount) => LoopInput]
