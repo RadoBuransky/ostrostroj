@@ -32,8 +32,15 @@ object OstrostrojConfig {
         devConfig.getString("deviceHostname")
       }
 
+      val mixerName = if (isDevDesktop) {
+        devConfig.getString("ostrostroj.audio.desktopMixerName")
+      } else {
+        devConfig.getString("ostrostroj.audio.deviceMixerName")
+      }
+
       devConfig
         .withValue("akka.remote.artery.canonical.hostname", ConfigValueFactory.fromAnyRef(hostname))
+        .withValue("ostrostroj.audio.mixerName", ConfigValueFactory.fromAnyRef(mixerName))
         .withFallback(dynamicConfig)
     }
     else {
