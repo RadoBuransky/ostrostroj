@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="warn" name="Ostrostroj">
+    <Appenders>
+        <RollingFile name="RollingFile" fileName="logs/app.log" filePattern="logs/%d{MM-dd-yyyy}-%i.log">
+            <PatternLayout>
+                <Pattern>%d{ISO8601} %p %c{1.} [%t] %m%n</Pattern>
+            </PatternLayout>
+            <Policies>
+                <OnStartupTriggeringPolicy />
+            </Policies>
+            <DefaultRolloverStrategy max="10"/>
+        </RollingFile>
+        <Console name="Console">
+            <PatternLayout>
+                <Pattern>%m%n</Pattern>
+            </PatternLayout>
+        </Console>
+    </Appenders>
+    <Loggers>
+        <Root level="warn">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="RollingFile"/>
+        </Root>
+        <Logger name="com.buransky.ostrostroj.player" level="info"/>
+    </Loggers>
+</Configuration>
