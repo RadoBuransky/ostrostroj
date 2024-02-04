@@ -5,17 +5,20 @@ import org.apache.logging.log4j.LogManager
 import org.slf4j.LoggerFactory
 
 import java.util.HexFormat
+import javax.sound.midi.Sequencer.SyncMode
 import javax.sound.midi.{ControllerEventListener, MetaEventListener, MetaMessage, MidiDevice, MidiMessage, MidiSystem, Receiver, Sequencer, ShortMessage}
 
+// https://www.lim.di.unimi.it/IEEE/MIDI/SPECI.HTM
 class App(device: MidiDevice, sequencer: Sequencer) extends MetaEventListener with ControllerEventListener with Receiver with AutoCloseable {
   device.open()
   log.info(s"MIDI device ${device.getDeviceInfo.getName} open...")
   device.getTransmitter.setReceiver(this)
-  sequencer.open()
-  sequencer.getTransmitter.setReceiver(this)
-  sequencer.addMetaEventListener(this)
-  private val n = sequencer.addControllerEventListener(this, Array.range(0, 128))
-  log.info(s"Listening to ${n.size} controllers.")
+//  sequencer.open()
+//  sequencer.setSlaveSyncMode(SyncMode.MIDI_SYNC)
+//  sequencer.getTransmitter.setReceiver(this)
+//  sequencer.addMetaEventListener(this)
+//  private val n = sequencer.addControllerEventListener(this, Array.range(0, 128))
+//  log.info(s"Listening to ${n.size} controllers.")
 
   override def close(): Unit = {
     device.close()
@@ -23,7 +26,23 @@ class App(device: MidiDevice, sequencer: Sequencer) extends MetaEventListener wi
   }
 
   override def send(message: MidiMessage, timeStamp: Long): Unit = {
-    log.info(s"${message.getStatus} ${HexFormat.of().formatHex(message.getMessage)}")
+    // https://stackoverflow.com/a/15993963
+    message.command match {
+      case ShortMessage.TIMING_CLOCK =>
+        log.debug("tick")
+      case ShortMessage.START =>
+        log.info("start")
+      case ShortMessage.CONTINUE =>
+        log.info("continue")
+      case ShortMessage.STOP =>
+        log.info("stop")
+      case ShortMessage.CONTROL_CHANGE =>
+        log.info(s"ch${message.channel.get} CC")
+      case ShortMessage.PROGRAM_CHANGE =>
+        log.info(s"ch${message.channel.get} PC")
+      case _ =>
+        log.info(s"${message.getStatus} ${HexFormat.of().formatHex(message.getMessage)}")
+    }
   }
 
   override def controlChange(event: ShortMessage): Unit = {
@@ -37,7 +56,7 @@ class App(device: MidiDevice, sequencer: Sequencer) extends MetaEventListener wi
 
 object App {
   private val log = LoggerFactory.getLogger(classOf[App.type])
-  private val midiDeviceName = "MIDIIN2 (IMPACT LX25)"
+  private val midiDeviceName = "ESI MIDIMATE eX"
 
   def main(args: Array[String]): Unit = {
     log.info("Ostrostroj player started.")
