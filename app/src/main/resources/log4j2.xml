@@ -22,5 +22,6 @@
             <AppenderRef ref="RollingFile"/>
         </Root>
         <Logger name="com.buransky.ostrostroj.player" level="info"/>
+        <Logger name="com.buransky.ostrostroj.player.midi" level="debug"/>
     </Loggers>
 </Configuration>
