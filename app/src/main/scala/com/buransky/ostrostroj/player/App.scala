@@ -49,7 +49,7 @@ class App(device: MidiDevice) extends MetaEventListener with ControllerEventList
 
 object App {
   private val log = LoggerFactory.getLogger(classOf[App.type])
-  private val midiDeviceName = "ESI MIDIMATE eX"
+  private val midiDeviceName = "Elektron Model:Cycles" //"ESI MIDIMATE eX"
 
   def main(args: Array[String]): Unit = {
     log.info("Ostrostroj player started.")
