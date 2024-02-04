@@ -5,24 +5,16 @@ import org.apache.logging.log4j.LogManager
 import org.slf4j.LoggerFactory
 
 import java.util.HexFormat
-import javax.sound.midi.Sequencer.SyncMode
-import javax.sound.midi.{ControllerEventListener, MetaEventListener, MetaMessage, MidiDevice, MidiMessage, MidiSystem, Receiver, Sequencer, ShortMessage}
+import javax.sound.midi._
 
 // https://www.lim.di.unimi.it/IEEE/MIDI/SPECI.HTM
-class App(device: MidiDevice, sequencer: Sequencer) extends MetaEventListener with ControllerEventListener with Receiver with AutoCloseable {
+class App(device: MidiDevice) extends MetaEventListener with ControllerEventListener with Receiver with AutoCloseable {
   device.open()
   log.info(s"MIDI device ${device.getDeviceInfo.getName} open...")
   device.getTransmitter.setReceiver(this)
-//  sequencer.open()
-//  sequencer.setSlaveSyncMode(SyncMode.MIDI_SYNC)
-//  sequencer.getTransmitter.setReceiver(this)
-//  sequencer.addMetaEventListener(this)
-//  private val n = sequencer.addControllerEventListener(this, Array.range(0, 128))
-//  log.info(s"Listening to ${n.size} controllers.")
 
   override def close(): Unit = {
     device.close()
-    sequencer.close()
   }
 
   override def send(message: MidiMessage, timeStamp: Long): Unit = {
@@ -39,7 +31,8 @@ class App(device: MidiDevice, sequencer: Sequencer) extends MetaEventListener wi
       case ShortMessage.CONTROL_CHANGE =>
         log.info(s"ch${message.channel.get} CC")
       case ShortMessage.PROGRAM_CHANGE =>
-        log.info(s"ch${message.channel.get} PC")
+        val sm = message.asInstanceOf[ShortMessage]
+        log.info(s"ch${sm.channel.get} PC ${sm.getData1} ${sm.getData2}")
       case _ =>
         log.info(s"${message.getStatus} ${HexFormat.of().formatHex(message.getMessage)}")
     }
@@ -70,7 +63,7 @@ object App {
         }
       })
       printAllDeviceNames()
-      val app = new App(findDevice(), MidiSystem.getSequencer)
+      val app = new App(findDevice())
       try {
         synchronized {
           log.info("Running...")
