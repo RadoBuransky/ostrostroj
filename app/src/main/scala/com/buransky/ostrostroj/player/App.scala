@@ -10,7 +10,7 @@ class App(player: Player, midiDeviceManager: MidiDeviceManager) extends AutoClos
   }
 
   def this() = {
-    this(new Player())
+    this(Player())
   }
 
   override def close(): Unit = {

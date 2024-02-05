@@ -49,15 +49,20 @@ class MidiReceiver(device: MidiDevice, commands: MidiCommands) extends Receiver 
   private def debugLog(message: MidiMessage, timestamp: Duration): Unit = {
     message match {
       case sm: ShortMessage =>
-        if (message.command == ShortMessage.TIMING_CLOCK) {
-          log.trace(s"$timestamp ShortMessage: TIMING_CLOCK ${sm.getData1} ${sm.getData2}")
-        } else {
-          message.channel match {
-            case Some(channel) =>
-              log.debug(s"$timestamp ShortMessage: ch$channel ${message.command} ${sm.getData1} ${sm.getData2}")
-            case None =>
-              log.debug(s"$timestamp ShortMessage: ${message.command} ${sm.getData1} ${sm.getData2}")
-          }
+        message.command match {
+          case ShortMessage.TIMING_CLOCK =>
+            log.trace(s"$timestamp ShortMessage: TIMING_CLOCK ${sm.getData1} ${sm.getData2}")
+          case ShortMessage.NOTE_ON =>
+            log.trace(s"$timestamp ShortMessage: NOTE_ON ${sm.getData1} ${sm.getData2}")
+          case ShortMessage.NOTE_OFF =>
+            log.trace(s"$timestamp ShortMessage: NOTE_OFF ${sm.getData1} ${sm.getData2}")
+          case _ =>
+            message.channel match {
+              case Some(channel) =>
+                log.debug(s"$timestamp ShortMessage: ch$channel ${message.command} ${sm.getData1} ${sm.getData2}")
+              case None =>
+                log.debug(s"$timestamp ShortMessage: ${message.command} ${sm.getData1} ${sm.getData2}")
+            }
         }
       case sm: SysexMessage =>
         log.debug(s"$timestamp SysexMessage: ${sm.getStatus} ${HexFormat.of().formatHex(sm.getData)}")
