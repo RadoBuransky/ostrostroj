@@ -1,0 +1,16 @@
+plugins {
+    id 'java-library'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+group = "com.buransky"
+version = "0.1.0-SNAPSHOT"
+
+dependencies {
+    implementation libs.pi4j.core
+}
