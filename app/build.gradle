@@ -11,14 +11,20 @@ java {
 
 application {
     mainClass = 'com.buransky.ostrostroj.player.App'
+    applicationDefaultJvmArgs = ['-Xms128m', '-Xmx1g']
 }
 
 task deploy {
+    dependsOn installDist
     doLast {
         exec {
-            workingDir layout.buildDirectory.dir('install').get()
+            workingDir layout.buildDirectory
             executable 'cmd'
-            args '/C', 'scp -rp ./app odroid@ostrostroj:/usr/local'
+            args '/C', 'scp -rp ./install/app odroid@ostrostroj:/usr/local'
+        }
+        exec {
+            executable 'cmd'
+            args '/C', 'ssh odroid@ostrostroj chmod +x /usr/local/app/bin/app'
         }
     }
     group 'distribution'
