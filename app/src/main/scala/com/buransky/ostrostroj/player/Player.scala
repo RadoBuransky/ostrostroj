@@ -1,8 +1,11 @@
 package com.buransky.ostrostroj.player
 
 import com.buransky.ostrostroj.player.midi.MidiCommands
+import org.slf4j.LoggerFactory
 
+import javax.sound.sampled.AudioFormat.Encoding
 import javax.sound.sampled._
+import scala.util.control.NonFatal
 
 class Player(clips: Vector[Clip]) extends MidiCommands {
   private var index = 0
@@ -32,11 +35,39 @@ class Player(clips: Vector[Clip]) extends MidiCommands {
 }
 
 object Player {
+  private val log = LoggerFactory.getLogger(classOf[Player])
+
   def apply(): Player = {
-    val audioFormat: AudioFormat = ???
-    val clip = AudioSystem.getLine(new DataLine.Info(classOf[Clip], audioFormat)).asInstanceOf[Clip]
-    clip.open()
-    clip.loop(Clip.LOOP_CONTINUOUSLY)
-    new Player(Vector(clip))
+    val format = new AudioFormat(44100f, 16, 2, true, false);
+    val info = new DataLine.Info(classOf[SourceDataLine], format)
+    AudioSystem.getMixerInfo.foreach { mixerInfo =>
+      val mixer = AudioSystem.getMixer(mixerInfo)
+      val sourceLineInfos = mixer.getSourceLineInfo(info)
+      if (sourceLineInfos.nonEmpty) {
+        log.info(s"Mixer: ${mixerInfo.getName} (${mixerInfo.getDescription})")
+        sourceLineInfos.foreach {
+          case dataLineInfo: DataLine.Info =>
+            if (!dataLineInfo.isFormatSupported(format)) {
+              dataLineInfo.getFormats.foreach { format =>
+                log.info(s"  Format: $format")
+              }
+            } else {
+              val sourceDataLine = mixer.getLine(dataLineInfo).asInstanceOf[SourceDataLine]
+              try {
+                sourceDataLine.open(format)
+                try {
+                  log.info(s"  Source line open: ${sourceDataLine.getFormat}")
+                } finally {
+                  sourceDataLine.close()
+                }
+              } catch {
+                case NonFatal(ex) => log.warn(s"$format failed!", ex)
+              }
+            }
+          case _ =>
+        }
+      }
+    }
+    new Player(Vector.empty)
   }
 }

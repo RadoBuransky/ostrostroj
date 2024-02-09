@@ -12,6 +12,10 @@ java {
 application {
     mainClass = 'com.buransky.ostrostroj.player.App'
     applicationDefaultJvmArgs = ['-Xms128m', '-Xmx1g', '-DostrostrojDir=/usr/local/app']
+    tasks.run {
+//        workingDir = layout.buildDirectory
+//        jvmArgs = ["-DostrostrojDir=${layout.buildDirectory}"]
+    }
 }
 
 task deploy {
