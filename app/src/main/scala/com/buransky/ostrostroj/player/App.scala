@@ -27,16 +27,16 @@ object App {
       Runtime.getRuntime.addShutdownHook(new Thread() {
         override def run(): Unit = {
           log.info("Shutting down...")
-          synchronized {
+          App.synchronized {
             App.notifyAll()
           }
         }
       })
       val app = new App()
       try {
-        synchronized {
+        App.synchronized {
           log.info("Running...")
-          wait()
+          App.wait()
         }
       } finally {
         app.close()
