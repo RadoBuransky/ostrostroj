@@ -12,5 +12,6 @@ group = "com.buransky"
 version = "0.1.0-SNAPSHOT"
 
 dependencies {
+    implementation libs.guava
     implementation libs.pi4j.core
 }

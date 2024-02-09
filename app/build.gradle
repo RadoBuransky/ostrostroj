@@ -10,7 +10,18 @@ java {
 }
 
 application {
-    mainClass = 'com.buransky.ostrostroj.player'
+    mainClass = 'com.buransky.ostrostroj.player.App'
+}
+
+task deploy {
+    doLast {
+        exec {
+            workingDir layout.buildDirectory.dir('install').get()
+            executable 'cmd'
+            args '/C', 'scp -rp ./app odroid@ostrostroj:/usr/local'
+        }
+    }
+    group 'distribution'
 }
 
 dependencies {

@@ -3,7 +3,6 @@ package com.buransky.gpio.output.max7219.core.impl;
 import com.buransky.gpio.output.max7219.core.LedMatrix;
 import com.buransky.gpio.output.max7219.core.Register;
 import com.buransky.gpio.output.max7219.core.register.*;
-import com.buransky.max7219.core.register.*;
 
 import java.util.*;
 
