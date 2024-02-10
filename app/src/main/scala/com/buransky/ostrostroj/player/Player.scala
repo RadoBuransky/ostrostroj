@@ -70,10 +70,10 @@ object Player {
       })
       jackClient.underlying.activate()
 
-      jack.connect(jackClient.underlying, port.getName, "alsa_pcm:hw:UMC1820:in1")
+      jack.connect(jackClient.underlying, port.getName, "alsa_pcm:hw:UMC1820:in10")
       log.info(s"Ports connected. ${port.getConnections.mkString("[", ",", "]")}")
 
-      Thread.sleep(5000)
+      Thread.sleep(60000)
     } finally {
       jackClient.close()
     }
