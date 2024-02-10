@@ -9,6 +9,7 @@ scalatest-v2-v13 = "3.2.17"
 
 [libraries]
 guava = { module = "com.google.guava:guava", version.ref = "guava" }
+jack = 'org.jaudiolibs:jnajack:1.4.0'
 junit = { module = "junit:junit", version.ref = "junit" }
 junit-v4-v13-v2-v13 = { module = "org.scalatestplus:junit-4-13_2.13", version.ref = "junit-v4-v13-v2-v13" }
 log4j-core =  { module = "org.apache.logging.log4j:log4j-core", version.ref = "log4j" }

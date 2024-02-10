@@ -3,6 +3,8 @@ package com.buransky.ostrostroj
 import javax.sound.midi.MidiMessage
 
 package object player {
+  class OstrostrojException(message: String = null, cause: Throwable = null) extends RuntimeException(message, cause)
+
   implicit class MidiMessageOps(msg: MidiMessage) {
     val (command, channel): (Int, Option[Int]) = {
       val high = msg.getStatus & 0xF0

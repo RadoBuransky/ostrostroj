@@ -13,8 +13,7 @@ application {
     mainClass = 'com.buransky.ostrostroj.player.App'
     applicationDefaultJvmArgs = ['-Xms128m', '-Xmx1g', '-DostrostrojDir=/usr/local/app']
     tasks.run {
-//        workingDir = layout.buildDirectory
-//        jvmArgs = ["-DostrostrojDir=${layout.buildDirectory}"]
+        workingDir = layout.buildDirectory
     }
 }
 
@@ -34,9 +33,21 @@ task deploy {
     group 'distribution'
 }
 
+task deployAndRun {
+    dependsOn deploy
+    doLast {
+        exec {
+            executable 'cmd'
+            args '/C', 'ssh odroid@ostrostroj ostrostroj'
+        }
+    }
+    group 'distribution'
+}
+
 dependencies {
     implementation project(':max7219')
     implementation libs.guava
+    implementation libs.jack
     implementation libs.log4j.core
     implementation libs.log4j.slf4j2
     implementation libs.scala.library
