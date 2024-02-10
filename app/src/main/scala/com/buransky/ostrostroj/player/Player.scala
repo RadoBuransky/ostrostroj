@@ -1,7 +1,7 @@
 package com.buransky.ostrostroj.player
 
 import com.buransky.ostrostroj.player.midi.MidiCommands
-import org.jaudiolibs.jnajack.{Jack, JackPortFlags, JackPortType, OstrostrojJackClient}
+import org.jaudiolibs.jnajack._
 import org.slf4j.LoggerFactory
 
 import javax.sound.sampled._
@@ -40,15 +40,40 @@ object Player {
   private val log = LoggerFactory.getLogger(classOf[Player])
 
   def apply(): Player = {
+    val sineSize = 200
+    val sine = (0 until sineSize).map { i =>
+      (0.2 * Math.sin((i.toDouble / sineSize.toDouble) * Math.PI * 2.0)).toFloat
+    }.toVector
+    @volatile var sinePosition = 0
+
     val jack = Jack.getInstance()
     val jackClient = OstrostrojJackClient(jack)
     try {
-      jackClient.underlying.activate()
-      log.info(s"Jack audio client [${jackClient.underlying.getName}] activated.")
+//      jack.getPorts(jackClient.underlying, null, JackPortType.AUDIO,
+//        util.EnumSet.of(JackPortFlags.JackPortIsInput, JackPortFlags.JackPortIsPhysical)).foreach { port =>
+//        log.info(s"Input port: $port")
+//      }
+
+      log.info(s"Jack audio client [${jackClient.underlying.getName}, ${jackClient.underlying.getSampleRate}Hz, " +
+        s"${jackClient.underlying.getBufferSize} bytes] activated.")
       val port = jackClient.underlying.registerPort("p1", JackPortType.AUDIO, JackPortFlags.JackPortIsOutput)
-      log.info(s"Port created. [${port.getName}, ${port.getType}, ${port.getConnections.length}]")
-      jackClient.connect(port.getName, "alsa_pcm:hw:UMC1820:in1")
-      log.info("Ports connected.")
+      log.info(s"Port created. [${port.getName}, ${port.getType.getBufferSize}]")
+
+      jackClient.underlying.setProcessCallback((_: JackClient, nframes: Int) => {
+        val floatBuffer = port.getFloatBuffer
+        val limit = Math.min(nframes, floatBuffer.capacity())
+        for (i <- 0 until limit) {
+          floatBuffer.put(i, sine(sinePosition))
+          sinePosition = (sinePosition + 1) % sineSize
+        }
+        true
+      })
+      jackClient.underlying.activate()
+
+      jack.connect(jackClient.underlying, port.getName, "alsa_pcm:hw:UMC1820:in1")
+      log.info(s"Ports connected. ${port.getConnections.mkString("[", ",", "]")}")
+
+      Thread.sleep(5000)
     } finally {
       jackClient.close()
     }
