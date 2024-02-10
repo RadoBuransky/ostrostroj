@@ -11,11 +11,11 @@ class Player(clips: Vector[Clip]) extends MidiCommands {
   private var index = 0
 
   override def start(): Unit = {
-    clips(index).start()
+//    clips(index).start()
   }
 
   override def stop(): Unit = {
-    clips(index).stop()
+//    clips(index).stop()
   }
 
   override def continue(): Unit = {
@@ -72,8 +72,6 @@ object Player {
 
       jack.connect(jackClient.underlying, port.getName, "alsa_pcm:hw:UMC1820:in10")
       log.info(s"Ports connected. ${port.getConnections.mkString("[", ",", "]")}")
-
-      Thread.sleep(60000)
     } finally {
       jackClient.close()
     }

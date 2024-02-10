@@ -36,7 +36,7 @@ object App {
       try {
         App.synchronized {
           log.info("Running...")
-          //App.wait()
+          App.wait()
         }
       } finally {
         app.close()
