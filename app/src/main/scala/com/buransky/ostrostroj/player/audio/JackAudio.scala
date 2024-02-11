@@ -24,7 +24,7 @@ class JackAudio(jack: Jack, jackClient: JackClient, ports: Vector[JackPort]) ext
     jackClient.setProcessCallback(this)
     jackClient.activate()
     log.info(s"Jack client activated. [${jackClient.getName}, ${jackClient.getSampleRate}Hz, " +
-      s"${jackClient.getBufferSize} bytes]")
+      s"${jackClient.getBufferSize} frames]")
     channelPortNames.indices.foreach { i =>
       jack.connect(jackClient, ports(i).getName, channelPortNames(i))
       log.info(s"  ${ports(i).getName} connected to ${channelPortNames(i)}")
