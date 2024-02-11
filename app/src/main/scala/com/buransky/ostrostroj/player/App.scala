@@ -14,6 +14,7 @@ class App(player: Player, midiDeviceManager: MidiDeviceManager) extends AutoClos
   }
 
   override def close(): Unit = {
+    player.close()
     midiDeviceManager.close()
   }
 }
