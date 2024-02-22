@@ -1,6 +1,2 @@
-# find_package(Jack REQUIRED)
 add_executable(ostrostroj main.cpp)
-#install(TARGETS ostrostroj RUNTIME DESTINATION bin)
-list(APPEND CMAKE_PREFIX_PATH "../../spdlog/build")
-find_package(spdlog REQUIRED)
 target_link_libraries(ostrostroj PRIVATE spdlog::spdlog_header_only)
