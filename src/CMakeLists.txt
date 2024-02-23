@@ -1,7 +1,7 @@
 add_executable(ostrostroj main.cpp)
-
-target_link_libraries(ostrostroj PRIVATE spdlog::spdlog_header_only)
+set_target_properties(ostrostroj PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE)
 
 find_package(JACK REQUIRED)
-target_include_directories(ostrostroj PRIVATE ${JACK_INCLUDE_DIRS})
-target_link_libraries(ostrostroj PRIVATE ${JACK_LIBRARIES})
+target_include_directories(ostrostroj PRIVATE ${JACK_INCLUDE_DIR})
+target_link_libraries(ostrostroj PRIVATE spdlog::spdlog_header_only
+                                 PRIVATE ${JACK_LIBRARIES})
