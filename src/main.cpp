@@ -10,7 +10,14 @@ class OstrostrojApp {
         OstrostrojApp() {            
         }
 
-        void main() const {     
+        void main() const {
+	        jack_status_t status;
+            auto jack_client = jack_client_open("ostrostroj", JackNoStartServer, &status);
+            spdlog::info("Jack client created.");
+            jack_activate(jack_client);
+            spdlog::info("Jack client activated.");
+            jack_client_close(jack_client);
+            spdlog::info("Jack client closed.");
         }
 };
 
