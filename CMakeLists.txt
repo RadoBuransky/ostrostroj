@@ -4,6 +4,6 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/modules")
 
-add_subdirectory(lib)
+add_subdirectory(lib/${CMAKE_CXX_COMPILER_TARGET})
 add_subdirectory(lib/spdlog)
 add_subdirectory(src)
