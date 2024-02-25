@@ -10,6 +10,9 @@ class OstrostrojApp {
         OstrostrojApp() {            
         }
 
+        virtual ~OstrostrojApp() {            
+        }
+
         void main() const {
             auto soundcard = SoundCard("ostrostroj");
         }
