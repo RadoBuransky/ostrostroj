@@ -3,7 +3,7 @@
 #include <sys/reboot.h>
 #include <string.h>
 #include "spdlog/spdlog.h"
-#include "jack/jack.h"
+#include "soundcard.h"
 
 class OstrostrojApp {
     public:
@@ -11,13 +11,7 @@ class OstrostrojApp {
         }
 
         void main() const {
-	        jack_status_t status;
-            auto jack_client = jack_client_open("ostrostroj", JackNoStartServer, &status);
-            spdlog::info("Jack client created.");
-            jack_activate(jack_client);
-            spdlog::info("Jack client activated.");
-            jack_client_close(jack_client);
-            spdlog::info("Jack client closed.");
+            auto soundcard = SoundCard("ostrostroj");
         }
 };
 

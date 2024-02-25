@@ -1,4 +1,5 @@
-add_executable(ostrostroj main.cpp)
+file(GLOB ostrostroj_SRC "*.h" "*.cpp")
+add_executable(ostrostroj ${ostrostroj_SRC})
 set_target_properties(ostrostroj PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE)
 
 find_package(JACK REQUIRED)
