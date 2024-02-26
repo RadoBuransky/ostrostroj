@@ -16,6 +16,8 @@ class SoundCard {
         static jack_port_t * create_midi_input_port(jack_client_t * jack_client);
 
         void registerCallbacks();
+        void activate();
+        void connect();
 
     public:
         SoundCard(const std::string &);
