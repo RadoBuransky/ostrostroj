@@ -4,6 +4,7 @@
 #include <string.h>
 #include "spdlog/spdlog.h"
 #include "soundcard.h"
+#include "common.h"
 
 class OstrostrojApp {
     public:
