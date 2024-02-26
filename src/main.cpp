@@ -2,11 +2,28 @@
 #include <iostream>
 #include <sys/reboot.h>
 #include <string.h>
+#include <signal.h>
+#include <cstdlib>
 #include "spdlog/spdlog.h"
 #include "soundcard.h"
 #include "common.h"
 
 class OstrostrojApp {
+    private:
+        static void sigaction_handler(int s) {
+            spdlog::info(std::format("Signal received [{}].", s));
+        }
+
+        void waitForSignal() const {
+            struct sigaction sigIntHandler;
+            sigIntHandler.sa_handler = sigaction_handler;
+            sigemptyset(&sigIntHandler.sa_mask);
+            sigIntHandler.sa_flags = 0;
+            sigaction(SIGINT, &sigIntHandler, NULL);
+            spdlog::info("Waiting...");
+            pause();
+        }
+
     public:
         OstrostrojApp() {            
         }
@@ -16,6 +33,7 @@ class OstrostrojApp {
 
         void main() const {
             auto soundcard = SoundCard("ostrostroj");
+            waitForSignal();
         }
 };
 

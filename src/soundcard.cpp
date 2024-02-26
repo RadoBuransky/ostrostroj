@@ -4,26 +4,40 @@
 #include "common.h"
 #include "spdlog/spdlog.h"
 
-static int inprocess(jack_nframes_t nframes, void *arg) {
+int SoundCard::process_callback(jack_nframes_t nframes, void *arg) {
     const SoundCard *soundCard = static_cast<SoundCard*>(arg);
     return 0;
 }
 
-static jack_client_t * create_client(const std::string &name, SoundCard *soundCard) {
+void SoundCard::port_connect_callback(jack_port_id_t a, jack_port_id_t b, int connect, void*) {
+    if (connect == 0) {
+        spdlog::info(std::format("Port {} disconnected from {}.", a, b));
+    } else {
+        spdlog::info(std::format("Port {} connected to {}.", a, b));
+    }
+}
+
+void SoundCard::port_registration_callback(jack_port_id_t port, int registered, void *arg) {
+    const SoundCard *soundCard = static_cast<SoundCard*>(arg);
+    auto port_name = jack_port_name(jack_port_by_id(soundCard->jack_client, port));
+    if (registered == 0) {
+        spdlog::info(std::format("Port {} unregistered.", port_name));
+    } else {
+        spdlog::info(std::format("Port {} registered.", port_name));
+    }
+}
+
+jack_client_t * SoundCard::create_client(const std::string &name, SoundCard *) {
     jack_status_t status;
     auto jack_client = jack_client_open(name.c_str(), JackNoStartServer, &status);
     if (nullptr == jack_client) {        
         throw OstrostrojException(std::format("Jack client open failed! [status=0x{:x}]", static_cast<int>(status)));
     }
     spdlog::info(std::format("Jack client open. [status=0x{:x}]", static_cast<int>(status)));
-    const auto set_callback_result = jack_set_process_callback(jack_client, inprocess, soundCard);
-    if (set_callback_result != 0) {
-        throw OstrostrojException(std::format("Jack set process callback failed! [status=0x{:x}]", set_callback_result));        
-    }
     return jack_client;
 };
 
-static jack_port_t * create_midi_input_port(jack_client_t * jack_client) {
+jack_port_t * SoundCard::create_midi_input_port(jack_client_t * jack_client) {
     jack_port_t * const result = jack_port_register(jack_client, "midi_input", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0);
     if (result == nullptr) {
         throw OstrostrojException("Jack MIDI port registration failed!");
@@ -34,15 +48,27 @@ static jack_port_t * create_midi_input_port(jack_client_t * jack_client) {
 SoundCard::SoundCard(const std::string &name) :
     jack_client(create_client(name, this)),
     midi_input_port(create_midi_input_port(jack_client)) {
+    const auto set_callback_result = jack_set_process_callback(jack_client, process_callback, this);
+    if (set_callback_result != 0) {
+        throw OstrostrojException(std::format("Jack set process callback failed! [status=0x{:x}]", set_callback_result));        
+    }
+    const auto set_port_connect_callback_result = jack_set_port_connect_callback(jack_client, port_connect_callback, this);
+    if (set_port_connect_callback_result != 0) {
+        throw OstrostrojException(std::format("Jack set port connect callback failed! [status=0x{:x}]", set_port_connect_callback_result));        
+    }
+    const auto jack_set_port_registration_callback_result = jack_set_port_registration_callback(jack_client, port_registration_callback, this);
+    if (jack_set_port_registration_callback_result != 0) {
+        throw OstrostrojException(std::format("Jack set port registration callback failed! [status=0x{:x}]", jack_set_port_registration_callback_result));        
+    }
     const auto activate_result = jack_activate(jack_client);
     if (activate_result != 0) {
         throw OstrostrojException(std::format("Jack activate failed! [status=0x{:x}]", activate_result));        
     }
     spdlog::info("Jack client activated.");
-    const auto connect_result = jack_connect(jack_client, MIDI_INPUT_PORT.c_str(), jack_port_name(midi_input_port));
-    if (connect_result != 0) {
-        throw OstrostrojException(std::format("Jack connect failed! [status=0x{:x}]", connect_result));        
-    }
+    // const auto connect_result = jack_connect(jack_client, MIDI_INPUT_PORT.c_str(), jack_port_name(midi_input_port));
+    // if (connect_result != 0) {
+    //     throw OstrostrojException(std::format("Jack connect failed! [status=0x{:x}]", connect_result));        
+    // }
 };
 
 SoundCard::~SoundCard() {
