@@ -6,3 +6,5 @@ find_package(JACK REQUIRED)
 target_include_directories(ostrostroj PRIVATE ${JACK_INCLUDE_DIR})
 target_link_libraries(ostrostroj PRIVATE spdlog::spdlog_header_only
                                  PRIVATE ${JACK_LIBRARIES})
+
+target_link_options(ostrostroj PRIVATE "-Wl,--gc-sections")
