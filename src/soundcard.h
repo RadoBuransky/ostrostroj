@@ -1,7 +1,8 @@
 #pragma once
 
-#include "jack/jack.h"
 #include <string>
+#include <jack/jack.h>
+#include <libremidi/libremidi.hpp>
 
 class SoundCard {
     private:
@@ -14,6 +15,8 @@ class SoundCard {
         static void port_registration_callback(jack_port_id_t port, int registered, void*);
         static jack_client_t * create_client(const std::string &name, SoundCard *);
         static jack_port_t * create_midi_input_port(jack_client_t * jack_client);
+
+        static void libremidi_message_callback(int port, libremidi::message& message);
 
         void registerCallbacks();
         void activate();

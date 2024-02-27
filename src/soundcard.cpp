@@ -1,9 +1,9 @@
 #include <string>
 #include <format>
+#include <spdlog/spdlog.h>
+#include <jack/midiport.h>
 #include "soundcard.h"
 #include "common.h"
-#include "spdlog/spdlog.h"
-#include "jack/midiport.h"
 
 SoundCard::SoundCard(const std::string &name) :
     jack_client(create_client(name, this)),
@@ -15,8 +15,9 @@ SoundCard::SoundCard(const std::string &name) :
 
 SoundCard::~SoundCard() {
     if (jack_client != nullptr) {
+        jack_port_unregister(jack_client, midi_input_port);
         jack_client_close(jack_client);
-        spdlog::info("Jack client closed.");        
+        spdlog::info("Jack client closed.");
     }
 }
 
@@ -75,6 +76,34 @@ jack_port_t * SoundCard::create_midi_input_port(jack_client_t * jack_client) {
         throw OstrostrojException("Jack MIDI port registration failed!");
     }
     return result;
+}
+
+void SoundCard::libremidi_message_callback(int port, libremidi::message& message) {
+    std::string log_message;
+    switch (message.get_message_type()) {        
+        case libremidi::message_type::NOTE_ON:
+            log_message = std::format("NOTE_ON {}", (int)message.bytes[1]);
+            break;
+        case libremidi::message_type::PROGRAM_CHANGE:
+            log_message = std::format("PROGRAM_CHANGE {}", (int)message.bytes[1]);
+            break;
+        case libremidi::message_type::START:
+            log_message = "START";
+            break;
+        case libremidi::message_type::CONTINUE:
+            log_message = "CONTINUE";
+            break;            
+        case libremidi::message_type::STOP:
+            log_message = "STOP";
+            break;
+        case libremidi::message_type::TIME_CLOCK:
+            log_message = std::format("TIME_CLOCK {}", (int)message.bytes[1]);
+            break;
+        default:
+            log_message = std::format("{}", static_cast<int>(message.get_message_type()));
+            break;
+    }
+    spdlog::info(std::format("{} [port{}, ch{}]", log_message, port, message.get_channel()));
 }
 
 void SoundCard::registerCallbacks() {

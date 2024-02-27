@@ -6,4 +6,6 @@ list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/modules")
 
 add_subdirectory(lib/${CMAKE_CXX_COMPILER_TARGET})
 add_subdirectory(lib/spdlog)
+add_compile_definitions(LIBREMIDI_JACK=1)
+add_subdirectory(lib/libremidi)
 add_subdirectory(src)

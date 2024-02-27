@@ -1,3 +1,6 @@
 [submodule "lib/spdlog"]
 	path = lib/spdlog
 	url = git@github.com:gabime/spdlog.git
+[submodule "lib/libremidi"]
+	path = lib/libremidi
+	url = git@github.com:jcelerier/libremidi.git
