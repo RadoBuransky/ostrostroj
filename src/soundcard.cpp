@@ -8,27 +8,29 @@
 SoundCard::SoundCard(const std::string &name) :
     jack_client(create_client(name, this)),
     midi_input_port(create_midi_input_port(jack_client)),
-    midiin_callbacks(std::vector<libremidi::jack_callback>()) {
+    libremidi_jack_callback() {
     registerCallbacks();
     activate();
     connect();
     
-    // TODO: We don't need a vector of callbacks, just one is enough
     auto api_input_config = libremidi::jack_input_configuration{
         .context = jack_client,
         .set_process_func = [this](libremidi::jack_callback cb) {
-          midiin_callbacks.push_back(std::move(cb));
+            libremidi_jack_callback = std::move(cb);
         },
         .clear_process_func = [this](int) {
-          midiin_callbacks.clear();
         }
     };
-
     libremidi::midi_in ostrostroj_midi_in = libremidi::midi_in(
           libremidi::input_configuration{
-              .on_message = [=](const libremidi::message& msg) { libremidi_message_callback(0, msg); }},
-          api_input_config);
-    ostrostroj_midi_in.open_virtual_port("libremidi_input");
+            .on_message = [this](libremidi::message m) {
+                libremidi_message_callback(m);
+            },
+            .get_timestamp = [this](libremidi::timestamp t) {
+                return t;
+            }},
+            api_input_config);
+    // ostrostroj_midi_in.open_virtual_port("libremidi_input");
 }
 
 SoundCard::~SoundCard() {
@@ -43,9 +45,7 @@ int SoundCard::process_callback(jack_nframes_t nframes, void *arg) {
     auto& self = *(SoundCard*)arg;
     
     // Process the midi inputs
-    for (auto& cb : self.midiin_callbacks) {
-      cb.callback(nframes);
-    }
+    self.libremidi_jack_callback.callback(nframes);
 
     // void* port_buf = jack_port_get_buffer(self.midi_input_port, nframes);
 	// jack_nframes_t event_count = jack_midi_get_event_count(port_buf);
@@ -94,14 +94,15 @@ jack_client_t * SoundCard::create_client(const std::string &name, SoundCard *) {
 }
 
 jack_port_t * SoundCard::create_midi_input_port(jack_client_t * jack_client) {
-    jack_port_t * const result = jack_port_register(jack_client, "midi_input", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0);
-    if (result == nullptr) {
-        throw OstrostrojException("Jack MIDI port registration failed!");
-    }
-    return result;
+    // jack_port_t * const result = jack_port_register(jack_client, "midi_input", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0);
+    // if (result == nullptr) {
+    //     throw OstrostrojException("Jack MIDI port registration failed!");
+    // }
+    // return result;
+    return nullptr;
 }
 
-void SoundCard::libremidi_message_callback(int port, const libremidi::message& message) {
+void SoundCard::libremidi_message_callback(const libremidi::message& message) {
     std::string log_message;
     switch (message.get_message_type()) {        
         case libremidi::message_type::NOTE_ON:
@@ -126,7 +127,7 @@ void SoundCard::libremidi_message_callback(int port, const libremidi::message& m
             log_message = std::format("{}", static_cast<int>(message.get_message_type()));
             break;
     }
-    spdlog::info(std::format("{} [port{}, ch{}]", log_message, port, message.get_channel()));
+    spdlog::info(std::format("{} ch{}", log_message, message.get_channel()));
 }
 
 void SoundCard::registerCallbacks() {
@@ -153,9 +154,9 @@ void SoundCard::activate() {
 }
 
 void SoundCard::connect() {
-    const auto connect_result = jack_connect(jack_client, MIDI_INPUT_PORT.c_str(), jack_port_name(midi_input_port));
-    if (connect_result != 0) {
-        throw OstrostrojException(std::format("Jack connect failed! [status=0x{:x}]", connect_result));        
-    }
-    spdlog::info("MIDI ports connected.");
+    // const auto connect_result = jack_connect(jack_client, MIDI_INPUT_PORT.c_str(), jack_port_name(midi_input_port));
+    // if (connect_result != 0) {
+    //     throw OstrostrojException(std::format("Jack connect failed! [status=0x{:x}]", connect_result));        
+    // }
+    // spdlog::info("MIDI ports connected.");
 }

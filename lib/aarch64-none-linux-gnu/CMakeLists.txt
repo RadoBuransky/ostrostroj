@@ -10,4 +10,4 @@ if (NOT DEFINED CACHE{libs-${CMAKE_CXX_COMPILER_TARGET}})
   execute_process(COMMAND scp -r ${REMOTE_HOSTNAME}:/usr/include/jack ${LOCAL_INCLUDE_DIR} COMMAND_ERROR_IS_FATAL ANY)
 
   set("libs-${CMAKE_CXX_COMPILER_TARGET}" ON CACHE BOOL "")
-endif()
+endif() 
