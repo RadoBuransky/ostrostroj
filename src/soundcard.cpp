@@ -7,10 +7,28 @@
 
 SoundCard::SoundCard(const std::string &name) :
     jack_client(create_client(name, this)),
-    midi_input_port(create_midi_input_port(jack_client)) {
+    midi_input_port(create_midi_input_port(jack_client)),
+    midiin_callbacks(std::vector<libremidi::jack_callback>()) {
     registerCallbacks();
     activate();
     connect();
+    
+    // TODO: We don't need a vector of callbacks, just one is enough
+    auto api_input_config = libremidi::jack_input_configuration{
+        .context = jack_client,
+        .set_process_func = [this](libremidi::jack_callback cb) {
+          midiin_callbacks.push_back(std::move(cb));
+        },
+        .clear_process_func = [this](int) {
+          midiin_callbacks.clear();
+        }
+    };
+
+    libremidi::midi_in ostrostroj_midi_in = libremidi::midi_in(
+          libremidi::input_configuration{
+              .on_message = [=](const libremidi::message& msg) { libremidi_message_callback(0, msg); }},
+          api_input_config);
+    ostrostroj_midi_in.open_virtual_port("libremidi_input");
 }
 
 SoundCard::~SoundCard() {
@@ -21,21 +39,26 @@ SoundCard::~SoundCard() {
     }
 }
 
-int SoundCard::process_callback(jack_nframes_t nframes, void *arg) {
-    const SoundCard *soundCard = static_cast<SoundCard*>(arg);
-
-    void* port_buf = jack_port_get_buffer(soundCard->midi_input_port, nframes);
-	jack_nframes_t event_count = jack_midi_get_event_count(port_buf);
-    jack_midi_event_t in_event;
-    spdlog::debug(std::format("{} MIDI events", event_count));
-    for(unsigned int i = 0; i < event_count; i++) {
-        auto result = jack_midi_event_get(&in_event, port_buf, i);
-        if (result != 0) {
-            spdlog::error(std::format("MIDI event get failed! [{}]", result));
-        } else {
-            // spdlog::debug(std::format("MIDI event="))
-        }
+int SoundCard::process_callback(jack_nframes_t nframes, void *arg) {    
+    auto& self = *(SoundCard*)arg;
+    
+    // Process the midi inputs
+    for (auto& cb : self.midiin_callbacks) {
+      cb.callback(nframes);
     }
+
+    // void* port_buf = jack_port_get_buffer(self.midi_input_port, nframes);
+	// jack_nframes_t event_count = jack_midi_get_event_count(port_buf);
+    // jack_midi_event_t in_event;
+    // spdlog::debug(std::format("{} MIDI events", event_count));
+    // for(unsigned int i = 0; i < event_count; i++) {
+    //     auto result = jack_midi_event_get(&in_event, port_buf, i);
+    //     if (result != 0) {
+    //         spdlog::error(std::format("MIDI event get failed! [{}]", result));
+    //     } else {
+    //         // spdlog::debug(std::format("MIDI event="))
+    //     }
+    // }
     return 0;
 }
 
@@ -78,7 +101,7 @@ jack_port_t * SoundCard::create_midi_input_port(jack_client_t * jack_client) {
     return result;
 }
 
-void SoundCard::libremidi_message_callback(int port, libremidi::message& message) {
+void SoundCard::libremidi_message_callback(int port, const libremidi::message& message) {
     std::string log_message;
     switch (message.get_message_type()) {        
         case libremidi::message_type::NOTE_ON:

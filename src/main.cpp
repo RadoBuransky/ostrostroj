@@ -38,7 +38,8 @@ class OstrostrojApp {
 };
 
 int main(int argc, char* argv[]) {
-    spdlog::info("Ostrostroj started.");
+    spdlog::set_level(spdlog::level::debug);
+    spdlog::info(std::format("Ostrostroj started. [{}]", static_cast<int>(spdlog::get_level())));
     try {
         if ((argc > 1) && (strcmp(argv[1], "shutdown") == 0)) {
             sync();
