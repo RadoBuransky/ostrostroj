@@ -2,25 +2,22 @@
 #include <format>
 #include <spdlog/spdlog.h>
 #include <jack/midiport.h>
-#include "soundcard.h"
-#include "common.h"
+#include <libremidi/backends/jack/midi_in.hpp>
+#include "soundcard.hpp"
+#include "common.hpp"
 
 SoundCard::SoundCard(const std::string &name) :
-    jack_client(create_client(name, this)),
+    jack_client(create_client(name)),
     midiin_callbacks({}),
     midiin(create_midiin(midiin_callbacks, jack_client)) {
     registerCallbacks();
     activate();
-    std::string destination_port = std::format("{}:{}", name, LOCAL_MIDI_PORT);
-    const auto connect_result = jack_connect(jack_client, INPUT_MIDI_PORT.c_str(), destination_port.c_str());
-    if (connect_result != 0) {
-        throw OstrostrojException(std::format("Jack connect failed! [status=0x{:x}]", connect_result));        
-    }
-    spdlog::info("MIDI ports connected.");
+    connect(jack_client);
 }
 
 SoundCard::~SoundCard() {
     if (jack_client != nullptr) {
+        midiin.close_port();
         jack_client_close(jack_client);
         spdlog::info("Jack client closed.");
     }
@@ -59,19 +56,6 @@ int SoundCard::process_callback(jack_nframes_t nframes, void *arg) {
     } catch (std::exception const& ex) {
         spdlog::error(ex.what());
     }
-
-    // void* port_buf = jack_port_get_buffer(self.midi_input_port, nframes);
-	// jack_nframes_t event_count = jack_midi_get_event_count(port_buf);
-    // jack_midi_event_t in_event;
-    // spdlog::debug(std::format("{} MIDI events", event_count));
-    // for(unsigned int i = 0; i < event_count; i++) {
-    //     auto result = jack_midi_event_get(&in_event, port_buf, i);
-    //     if (result != 0) {
-    //         spdlog::error(std::format("MIDI event get failed! [{}]", result));
-    //     } else {
-    //         // spdlog::debug(std::format("MIDI event="))
-    //     }
-    // }
     return 0;
 }
 
@@ -96,7 +80,7 @@ void SoundCard::port_registration_callback(jack_port_id_t port, int registered, 
     }
 }
 
-jack_client_t * SoundCard::create_client(const std::string &name, SoundCard *) {
+jack_client_t * SoundCard::create_client(const std::string &name) {
     jack_status_t status;
     auto jack_client = jack_client_open(name.c_str(), JackNoStartServer, &status);
     if (nullptr == jack_client) {        
@@ -155,4 +139,13 @@ void SoundCard::activate() {
         throw OstrostrojException(std::format("Jack activate failed! [status=0x{:x}]", activate_result));        
     }
     spdlog::info("Jack client activated.");
+}
+
+void SoundCard::connect(jack_client_t * jack_client) {
+    std::string destination_port = std::format("{}:{}", jack_get_client_name(jack_client), LOCAL_MIDI_PORT);
+    const auto connect_result = jack_connect(jack_client, INPUT_MIDI_PORT.c_str(), destination_port.c_str());
+    if (connect_result != 0) {
+        throw OstrostrojException(std::format("Jack connect failed! [status=0x{:x}]", connect_result));        
+    }
+    spdlog::info("MIDI ports connected.");
 }

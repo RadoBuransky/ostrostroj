@@ -5,8 +5,8 @@
 #include <signal.h>
 #include <cstdlib>
 #include "spdlog/spdlog.h"
-#include "soundcard.h"
-#include "common.h"
+#include "soundcard.hpp"
+#include "common.hpp"
 
 class OstrostrojApp {
     private:
