@@ -38,7 +38,7 @@ libremidi::midi_in SoundCard::create_midiin(std::vector<libremidi::jack_callback
             .on_message = [=](libremidi::message m) {
                 libremidi_message_callback(m);
             },
-            .get_timestamp = [=](libremidi::timestamp t) {
+            .get_timestamp = [=](int64_t t) {
                 return t;
             }},
             api_input_config);
