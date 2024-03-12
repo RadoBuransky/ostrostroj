@@ -7,6 +7,7 @@
 #include "spdlog/spdlog.h"
 #include "soundcard.hpp"
 #include "common.hpp"
+#include "project.hpp"
 
 class OstrostrojApp {
     private:
