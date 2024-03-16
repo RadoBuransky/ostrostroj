@@ -6,23 +6,28 @@
 
 struct Program {
     private:
-        int start_number;
-        std::vector<LoopSample> loops;
-        std::map<uint8_t, OneShotSample> one_shots;
+        const int start_number;
+        const std::vector<LoopSample> loops;
+        const std::map<uint8_t, OneShotSample> one_shots;
+
+    public:
+        Program(const std::filesystem::path dir);
+        virtual ~Program();
 };
 
 class Project {
     private:
-        std::vector<Program> programs;
-
+        const std::vector<Program> programs;
+        std::vector<Program> loadPrograms(const std::filesystem::path dir);
+        Program loadProgram(const std::filesystem::path dir);
     public:
-        Project(std::filesystem::path dir);
-        ~Project();
+        Project(const std::filesystem::path dir);
+        virtual ~Project();
 };
 
 class ProjectStatus {
     private:
-        Project project;
+        const Project project;
         int active_program_number;
         std::vector<SampleReader> loop_readers;
         std::vector<SampleReader> one_shot_readers;

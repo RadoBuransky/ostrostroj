@@ -23,7 +23,7 @@ class Sample {
 
     public:
         Sample(std::filesystem::path path);
-        ~Sample();
+        virtual ~Sample();
 
         SF_INFO get_info() const;
         std::forward_list<Buffer>& get_buffers() const;
@@ -41,7 +41,7 @@ class SampleReader {
     public:
         SampleReader(Sample sample, bool loop);
         // TODO: Unload sample
-        ~SampleReader();
+        virtual ~SampleReader() {};
 
         int read(std::vector<std::vector<float>> channelBuffers, int count);
         int get_samplerate();
@@ -55,7 +55,7 @@ class LoopSample {
 
     public:
         LoopSample(std::filesystem::path path);
-        ~LoopSample();
+        virtual ~LoopSample() {};
         SampleReader createReader();
 };
 
@@ -66,6 +66,6 @@ class OneShotSample {
 
     public:
         OneShotSample(std::filesystem::path path);
-        ~OneShotSample();
+        virtual ~OneShotSample() {};
         SampleReader createReader();
 };

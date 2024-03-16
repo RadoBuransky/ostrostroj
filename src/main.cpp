@@ -33,7 +33,8 @@ class OstrostrojApp {
         }
 
         void main() const {
-            auto soundcard = SoundCard("ostrostroj");
+            SoundCard soundcard = SoundCard("ostrostroj");
+            Project project = Project("/home/odroid/ostrostroj/");
             waitForSignal();
         }
 };
