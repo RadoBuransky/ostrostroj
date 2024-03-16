@@ -10,6 +10,11 @@ struct Program {
         const std::vector<LoopSample> loops;
         const std::map<uint8_t, OneShotSample> one_shots;
 
+        int program_start_number(const std::filesystem::path dir);
+        std::vector<LoopSample> load_loops(const std::filesystem::path dir);
+        std::map<uint8_t, OneShotSample> load_one_shots(const std::filesystem::path dir);
+        std::vector<std::filesystem::path> wav_files(const std::filesystem::path dir);
+
     public:
         Program(const std::filesystem::path dir);
         virtual ~Program();

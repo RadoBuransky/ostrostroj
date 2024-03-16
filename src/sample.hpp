@@ -22,7 +22,7 @@ class Sample {
         void preload();
 
     public:
-        Sample(std::filesystem::path path);
+        Sample(const std::filesystem::path path);
         virtual ~Sample();
 
         SF_INFO get_info() const;
@@ -61,11 +61,13 @@ class LoopSample {
 
 class OneShotSample {
     private:
-        Sample sample;
-        uint8_t note;
+        const Sample sample;
+        const uint8_t note;
 
     public:
-        OneShotSample(std::filesystem::path path);
+        OneShotSample(const std::filesystem::path path);
         virtual ~OneShotSample() {};
         SampleReader createReader();
+
+        uint8_t get_note() const;
 };

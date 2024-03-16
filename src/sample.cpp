@@ -24,3 +24,17 @@ void Sample::preload() {
     it++;
     it->count;
 }
+
+LoopSample::LoopSample(const std::filesystem::path path):
+    sample(Sample(path)),
+    track(0) {
+}
+
+OneShotSample::OneShotSample(const std::filesystem::path path):
+    sample(Sample(path)),
+    note(0) {
+}
+
+uint8_t OneShotSample::get_note() const {
+    return note;
+}
