@@ -15,7 +15,7 @@ struct Buffer {
 class Sample {
     private:
         SNDFILE* snd_file;
-        SF_INFO sfinfo;
+        SF_INFO info;
         std::forward_list<Buffer> buffers;
         bool loaded;
 
@@ -48,20 +48,20 @@ class SampleReader {
         int get_format();
 };
 
-class LoopSample {
+class LoopSample: public Sample {
     private:
-        Sample sample;
-        int track;
+        const int track;
 
     public:
         LoopSample(std::filesystem::path path);
         virtual ~LoopSample() {};
         SampleReader createReader();
+
+        int get_track() const;
 };
 
-class OneShotSample {
+class OneShotSample: public Sample {
     private:
-        const Sample sample;
         const uint8_t note;
 
     public:

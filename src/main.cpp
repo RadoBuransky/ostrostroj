@@ -11,6 +11,9 @@
 
 class OstrostrojApp {
     private:
+        const SoundCard soundcard;
+        const Project project;
+
         static void sigaction_handler(int s) {
             spdlog::info(std::format("Signal received [{}].", s));
         }
@@ -26,15 +29,15 @@ class OstrostrojApp {
         }
 
     public:
-        OstrostrojApp() {            
+        OstrostrojApp():
+            soundcard(SoundCard("ostrostroj")),
+            project(Project("/home/odroid/ostrostroj/", soundcard.get_sample_rate())) {
         }
 
         virtual ~OstrostrojApp() {            
         }
 
         void main() const {
-            SoundCard soundcard = SoundCard("ostrostroj");
-            Project project = Project("/home/odroid/ostrostroj/");
             waitForSignal();
         }
 };

@@ -3,13 +3,13 @@
 #include "sample.hpp"
 
 Sample::Sample(std::filesystem::path path) :
-    snd_file(sf_open(path.c_str(), SFM_READ, &sfinfo)),
+    snd_file(sf_open(path.c_str(), SFM_READ, &info)),
     buffers(),
     loaded(false) {
     if (snd_file == nullptr) {
         throw OstrostrojException(std::format("Can't open file! [{}]", path.c_str()));   
     }
-    spdlog::info(std::format("File open. [{}, {} Hz, {} ch, {:x}]", path.c_str(), sfinfo.samplerate, sfinfo.channels, sfinfo.format));
+    spdlog::info(std::format("File open. [{}, {} Hz, {} ch, {:x}]", path.c_str(), info.samplerate, info.channels, info.format));
 };
 
 Sample::~Sample() {
@@ -19,6 +19,10 @@ Sample::~Sample() {
     }
 }
 
+SF_INFO Sample::get_info() const {
+    return info;
+}
+
 void Sample::preload() {
     auto it = buffers.cbegin();
     it++;
@@ -26,12 +30,16 @@ void Sample::preload() {
 }
 
 LoopSample::LoopSample(const std::filesystem::path path):
-    sample(Sample(path)),
-    track(0) {
+    Sample(path),
+    track(0) { // TODO: Get track number
+}
+
+int LoopSample::get_track() const {
+    return track;
 }
 
 OneShotSample::OneShotSample(const std::filesystem::path path):
-    sample(Sample(path)),
+    Sample(path),
     note(0) {
 }
 

@@ -149,3 +149,7 @@ void SoundCard::connect(jack_client_t * jack_client) {
     }
     spdlog::info("MIDI ports connected.");
 }
+
+int SoundCard::get_sample_rate() const {
+    return jack_get_sample_rate(jack_client);
+}

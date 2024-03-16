@@ -28,4 +28,6 @@ class SoundCard {
     public:
         SoundCard(const std::string &);
         virtual ~SoundCard();
+
+        int get_sample_rate() const;
 };
