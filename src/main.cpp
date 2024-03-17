@@ -31,7 +31,7 @@ class OstrostrojApp {
     public:
         OstrostrojApp():
             soundcard(SoundCard("ostrostroj")),
-            project(Project("/home/odroid/ostrostroj/", soundcard.get_sample_rate())) {
+            project(Project("/home/ostrostroj/project/", soundcard.get_sample_rate())) {
         }
 
         virtual ~OstrostrojApp() {            
