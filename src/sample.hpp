@@ -51,6 +51,7 @@ class SampleReader {
 class LoopSample: public Sample {
     private:
         const int track;
+        int get_track(std::filesystem::path path) const;
 
     public:
         LoopSample(std::filesystem::path path);
@@ -62,7 +63,9 @@ class LoopSample: public Sample {
 
 class OneShotSample: public Sample {
     private:
+        const static inline std::vector<std::string> NOTE_NAMES = {"C_", "C#", "D_", "D#", "E_", "F_", "F#", "G_", "G#", "A_", "A#", "B_"};
         const uint8_t note;
+        uint8_t get_note(std::filesystem::path path) const;
 
     public:
         OneShotSample(const std::filesystem::path path);

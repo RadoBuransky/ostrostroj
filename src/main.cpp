@@ -48,7 +48,7 @@ int main(int argc, char* argv[]) {
     try {
         if ((argc > 1) && (strcmp(argv[1], "shutdown") == 0)) {
             sync();
-            reboot(RB_POWER_OFF); // TODO: Requires sudo, can we do this in shell script?
+            reboot(RB_POWER_OFF); 
             spdlog::info("Shutdown!");
         } else {
             auto ostrostrojApp = OstrostrojApp();
