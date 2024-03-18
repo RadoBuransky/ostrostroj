@@ -37,9 +37,8 @@ LoopSample::LoopSample(const std::filesystem::path path):
 }
 
 int LoopSample::get_track(std::filesystem::path path) const {
-    const auto path_string = path.string();
-    const auto underscore = path_string.find_first_of('_');
-    return std::stoi(path_string.substr(1, underscore - 1));
+    const auto path_filename = path.filename().string();
+    return std::stoi(path_filename.substr(1, 1));
 }
 
 int LoopSample::get_track() const {
@@ -53,9 +52,9 @@ OneShotSample::OneShotSample(const std::filesystem::path path):
 }
 
 uint8_t OneShotSample::get_note(std::filesystem::path path) const {
-    const auto path_string = path.string();
-    const auto octave = std::stoi(path_string.substr(1, 1));
-    const auto note_name = path_string.substr(2, 2);
+    const auto path_filename = path.filename().string();
+    const auto octave = std::stoi(path_filename.substr(1, 1));
+    const auto note_name = path_filename.substr(2, 2);
     const auto note_name_index = std::distance(NOTE_NAMES.cbegin(), std::find(NOTE_NAMES.cbegin(), NOTE_NAMES.cend(), note_name));
     if (note_name_index >= NOTE_NAMES.size()) {
         throw OstrostrojException(std::format("Invalid note name! [{}]", note_name));

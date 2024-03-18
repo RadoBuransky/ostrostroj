@@ -8,11 +8,15 @@
 class SoundCard {
     private:
         inline static const std::string INPUT_MIDI_PORT = "system_midi:capture_1";
+        inline static const std::string AUDIO_OUTPUT_PORT_PREFIX = "alsa_pcm:hw:UMC1820:in";
         inline static const std::string LOCAL_MIDI_PORT = "libremidi_input";
+        inline static const std::string LOCAL_AUDIO_OUTPUT_PORT_PREFIX = "audio_output_";
         jack_client_t * const jack_client;
         std::vector<libremidi::jack_callback> midiin_callbacks;
         libremidi::midi_in midiin;
+        const std::vector<jack_port_t*> audio_output_ports;
 
+        std::vector<jack_port_t*> register_audio_output_ports(jack_client_t * jack_client);
         static int process_callback(jack_nframes_t nframes, void *arg);
         static void port_connect_callback(jack_port_id_t a, jack_port_id_t b, int connect, void*);
         static void port_registration_callback(jack_port_id_t port, int registered, void*);

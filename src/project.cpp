@@ -13,13 +13,14 @@ Program::~Program() {
 }
 
 int Program::program_start_number(const std::filesystem::path dir) {
-    return std::stoi(dir.string().substr(1, 2));
+    return std::stoi(dir.filename().string().substr(1, 2));
 }
 
 std::vector<LoopSample> Program::load_loops(const std::filesystem::path dir, const int expected_sample_rate) {
+    spdlog::debug(std::format("Loading loops {} ", dir.string()));
     auto result = std::vector<LoopSample>();
     for (auto const& wav_file : wav_files(dir)) {
-        if (wav_file.string().starts_with("L")) {
+        if (wav_file.filename().string().starts_with("L")) {
             auto loop = LoopSample(wav_file);
             const int expected_channels = (loop.get_track() < 5) ? 1 : 2;
             check_sample_format(wav_file, loop.get_info(), expected_sample_rate, expected_channels);
@@ -30,9 +31,10 @@ std::vector<LoopSample> Program::load_loops(const std::filesystem::path dir, con
 }
 
 std::map<uint8_t, OneShotSample> Program::load_one_shots(const std::filesystem::path dir, const int expected_sample_rate) {
+    spdlog::debug(std::format("Loading one shots {} ", dir.string()));
     auto result = std::map<uint8_t, OneShotSample>();
     for (auto const& wav_file : wav_files(dir)) {
-        if (wav_file.string().starts_with("S")) {
+        if (wav_file.filename().string().starts_with("S")) {
             auto one_shot_sample = OneShotSample(wav_file);
             check_sample_format(wav_file, one_shot_sample.get_info(), expected_sample_rate, 2);
             result.insert({one_shot_sample.get_note(), one_shot_sample});
@@ -87,7 +89,7 @@ std::vector<Program> Project::load_programs(const std::filesystem::path dir, con
     spdlog::info(std::format("Loading project from {}", dir.string()));
     auto result = std::vector<Program>();
     for (auto const& program_dir : std::filesystem::directory_iterator(dir)) {
-        if (program_dir.is_directory() && program_dir.path().string().starts_with("P")) {
+        if (program_dir.is_directory() && program_dir.path().filename().string().starts_with("P")) {
             result.push_back(Program(program_dir, expected_sample_rate));
         }
     }
