@@ -4,3 +4,6 @@
 [submodule "lib/libremidi"]
 	path = lib/libremidi
 	url = git@github.com:jcelerier/libremidi.git
+[submodule "lib/libsndfile"]
+	path = lib/libsndfile
+	url = git@github.com:libsndfile/libsndfile.git
