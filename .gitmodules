@@ -7,3 +7,6 @@
 [submodule "lib/libsndfile"]
 	path = lib/libsndfile
 	url = git@github.com:libsndfile/libsndfile.git
+[submodule "lib/farbot"]
+	path = lib/farbot
+	url = git@github.com:hogliux/farbot.git

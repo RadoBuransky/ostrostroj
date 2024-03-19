@@ -5,6 +5,8 @@
 #include <libremidi/backends/jack/midi_in.hpp>
 #include "soundcard.hpp"
 #include "common.hpp"
+#include "farbot/fifo.hpp"
+#include "farbot/RealtimeObject.hpp"
 
 SoundCard::SoundCard(const std::string &name) :
     jack_client(create_client(name)),
@@ -19,6 +21,18 @@ SoundCard::SoundCard(const std::string &name) :
     jack_port_get_latency_range(audio_output_ports.at(0), JackLatencyCallbackMode::JackPlaybackLatency, &latency_range);
     spdlog::info(std::format("Jack client activated. [{} Hz, {} frames, latency {} - {}]", jack_get_sample_rate(jack_client),
         buffer_size, latency_range.min, latency_range.max));
+
+    farbot::fifo<jack_default_audio_sample_t,
+        farbot::fifo_options::concurrency::single,
+        farbot::fifo_options::concurrency::single,
+        farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
+        farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
+        1> my_fifo(buffer_size);
+
+    jack_default_audio_sample_t s = 0.42f;
+    my_fifo.push(std::move(s));
+
+    // farbot::RealtimeObject<jack_default_audio_sample_t*, farbot::RealtimeObjectOptions::nonRealtimeMutatable> rto;
 }
 
 SoundCard::~SoundCard() {
@@ -28,6 +42,20 @@ SoundCard::~SoundCard() {
     }
     jack_client_close(jack_client);
     spdlog::info("Jack client closed.");
+}
+
+int SoundCard::process_callback(jack_nframes_t nframes, void *arg) {    
+    try {
+        auto& self = *(SoundCard*)arg;    
+        // Process the midi inputs
+        for (auto &midiin_callback: self.midiin_callbacks) {
+            midiin_callback.callback(nframes);
+        }
+        // TODO: jack_default_audio_sample_t* out = jack_port_get_buffer();
+    } catch (std::exception const& ex) {
+        spdlog::error(ex.what());
+    }
+    return 0;
 }
 
 std::vector<jack_port_t*> SoundCard::register_audio_output_ports(jack_client_t * jack_client) {
@@ -61,19 +89,6 @@ libremidi::midi_in SoundCard::create_midiin(std::vector<libremidi::jack_callback
             api_input_config);
     result.open_virtual_port(LOCAL_MIDI_PORT);
     return result;
-}
-
-int SoundCard::process_callback(jack_nframes_t nframes, void *arg) {    
-    try {
-        auto& self = *(SoundCard*)arg;    
-        // Process the midi inputs
-        for (auto &midiin_callback: self.midiin_callbacks) {
-            midiin_callback.callback(nframes);
-        }
-    } catch (std::exception const& ex) {
-        spdlog::error(ex.what());
-    }
-    return 0;
 }
 
 void SoundCard::port_connect_callback(jack_port_id_t a, jack_port_id_t b, int connect, void *arg) {
