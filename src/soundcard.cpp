@@ -6,24 +6,9 @@
 #include "soundcard.hpp"
 #include "common.hpp"
 
-PortFifo::PortFifo(jack_port_t* port, jack_nframes_t buffer_size) :
+PortFifo::PortFifo(jack_port_t* const port, jack_nframes_t buffer_size) :
     port(port),
-    queue(farbot::fifo<jack_default_audio_sample_t,
-            farbot::fifo_options::concurrency::single,
-            farbot::fifo_options::concurrency::single,
-            farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
-            farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
-            1>(buffer_size)) {
-}
-
-PortFifo::PortFifo(const PortFifo& other):
-    port(other.port),
-    queue(std::move(other.queue)) {
-}
-
-PortFifo::PortFifo(PortFifo&& other):
-    port(other.port),
-    queue(std::move(other.queue)) {
+    fifo(std::unique_ptr<SoundCardFifo>(new SoundCardFifo(buffer_size))) {
 }
 
 SoundCard::SoundCard(const std::string &name) :
@@ -57,11 +42,47 @@ int SoundCard::process_callback(jack_nframes_t nframes, void *arg) {
         for (auto &midiin_callback: self.midiin_callbacks) {
             midiin_callback.callback(nframes);
         }
-        // TODO: jack_default_audio_sample_t* out = jack_port_get_buffer();
+        for (const PortFifo& audio_output : self.audio_outputs) {
+            int counter = 0;
+            jack_default_audio_sample_t* buffer = static_cast<jack_default_audio_sample_t*>(jack_port_get_buffer(audio_output.port, nframes));
+            while (counter < nframes && audio_output.fifo->pop(*buffer)) {
+                counter++;
+                buffer++;
+            }
+        }
     } catch (std::exception const& ex) {
         spdlog::error(ex.what());
     }
     return 0;
+}
+
+void SoundCard::libremidi_message_callback(const libremidi::message& message) {
+    // TODO: Remove all this crap because it's blocking!!!
+    std::string log_message;
+    switch (message.get_message_type()) {        
+        case libremidi::message_type::NOTE_ON:
+            log_message = std::format("NOTE_ON {}", (int)message.bytes[1]);
+            break;
+        case libremidi::message_type::PROGRAM_CHANGE:
+            log_message = std::format("PROGRAM_CHANGE {}", (int)message.bytes[1]);
+            break;
+        case libremidi::message_type::START:
+            log_message = "START";
+            break;
+        case libremidi::message_type::CONTINUE:
+            log_message = "CONTINUE";
+            break;            
+        case libremidi::message_type::STOP:
+            log_message = "STOP";
+            break;
+        case libremidi::message_type::TIME_CLOCK:
+            log_message = std::format("TIME_CLOCK {}", (int)message.bytes[1]);
+            break;
+        default:
+            log_message = std::format("{}", static_cast<int>(message.get_message_type()));
+            break;
+    }
+    spdlog::info(std::format("{} ch{}", log_message, message.get_channel()));
 }
 
 std::vector<PortFifo> SoundCard::create_audio_outputs(jack_client_t * jack_client) {
@@ -70,8 +91,7 @@ std::vector<PortFifo> SoundCard::create_audio_outputs(jack_client_t * jack_clien
     for (auto i = 1; i <= 10; i++) {
         const auto jack_port = jack_port_register(jack_client, std::format("{}{}", LOCAL_AUDIO_OUTPUT_PORT_PREFIX, i).c_str(),
             JACK_DEFAULT_AUDIO_TYPE, JackPortFlags::JackPortIsOutput, 0);
-        auto port_fifo = PortFifo(jack_port, buffer_size);
-        result.push_back(port_fifo);
+        result.push_back(PortFifo(jack_port, buffer_size));
     }
     return result;
 }
@@ -128,34 +148,6 @@ jack_client_t * SoundCard::create_client(const std::string &name) {
     }
     spdlog::info(std::format("Jack client open. [status=0x{:x}]", static_cast<int>(status)));
     return jack_client;
-}
-
-void SoundCard::libremidi_message_callback(const libremidi::message& message) {
-    std::string log_message;
-    switch (message.get_message_type()) {        
-        case libremidi::message_type::NOTE_ON:
-            log_message = std::format("NOTE_ON {}", (int)message.bytes[1]);
-            break;
-        case libremidi::message_type::PROGRAM_CHANGE:
-            log_message = std::format("PROGRAM_CHANGE {}", (int)message.bytes[1]);
-            break;
-        case libremidi::message_type::START:
-            log_message = "START";
-            break;
-        case libremidi::message_type::CONTINUE:
-            log_message = "CONTINUE";
-            break;            
-        case libremidi::message_type::STOP:
-            log_message = "STOP";
-            break;
-        case libremidi::message_type::TIME_CLOCK:
-            log_message = std::format("TIME_CLOCK {}", (int)message.bytes[1]);
-            break;
-        default:
-            log_message = std::format("{}", static_cast<int>(message.get_message_type()));
-            break;
-    }
-    spdlog::info(std::format("{} ch{}", log_message, message.get_channel()));
 }
 
 void SoundCard::registerCallbacks() {

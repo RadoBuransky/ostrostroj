@@ -6,18 +6,18 @@
 #include <libremidi/libremidi.hpp>
 #include "farbot/fifo.hpp"
 
+typedef farbot::fifo<jack_default_audio_sample_t,
+            farbot::fifo_options::concurrency::single,
+            farbot::fifo_options::concurrency::single,
+            farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
+            farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
+            1> SoundCardFifo;
+
 class PortFifo {
     public:
-        PortFifo(jack_port_t* port, jack_nframes_t buffer_size);
-        PortFifo(const PortFifo& other);
-        PortFifo(PortFifo&& other);
-        jack_port_t* port;
-        const farbot::fifo<jack_default_audio_sample_t,
-            farbot::fifo_options::concurrency::single,
-            farbot::fifo_options::concurrency::single,
-            farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
-            farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
-            1>& queue;
+        PortFifo(jack_port_t* const port, jack_nframes_t buffer_size);
+        jack_port_t* const port;
+        std::unique_ptr<SoundCardFifo> fifo;
 };
 
 class SoundCard {
