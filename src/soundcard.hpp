@@ -4,6 +4,21 @@
 #include <jack/jack.h>
 #include <libremidi/configurations.hpp>
 #include <libremidi/libremidi.hpp>
+#include "farbot/fifo.hpp"
+
+class PortFifo {
+    public:
+        PortFifo(jack_port_t* port, jack_nframes_t buffer_size);
+        PortFifo(const PortFifo& other);
+        PortFifo(PortFifo&& other);
+        jack_port_t* port;
+        const farbot::fifo<jack_default_audio_sample_t,
+            farbot::fifo_options::concurrency::single,
+            farbot::fifo_options::concurrency::single,
+            farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
+            farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
+            1>& queue;
+};
 
 class SoundCard {
     private:
@@ -14,9 +29,9 @@ class SoundCard {
         jack_client_t * const jack_client;
         std::vector<libremidi::jack_callback> midiin_callbacks;
         libremidi::midi_in midiin;
-        const std::vector<jack_port_t*> audio_output_ports;
+        const std::vector<PortFifo> audio_outputs;
 
-        std::vector<jack_port_t*> register_audio_output_ports(jack_client_t * jack_client);
+        std::vector<PortFifo> create_audio_outputs(jack_client_t * jack_client);
         static int process_callback(jack_nframes_t nframes, void *arg);
         static void port_connect_callback(jack_port_id_t a, jack_port_id_t b, int connect, void*);
         static void port_registration_callback(jack_port_id_t port, int registered, void*);

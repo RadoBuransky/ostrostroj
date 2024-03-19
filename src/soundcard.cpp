@@ -5,40 +5,46 @@
 #include <libremidi/backends/jack/midi_in.hpp>
 #include "soundcard.hpp"
 #include "common.hpp"
-#include "farbot/fifo.hpp"
-#include "farbot/RealtimeObject.hpp"
+
+PortFifo::PortFifo(jack_port_t* port, jack_nframes_t buffer_size) :
+    port(port),
+    queue(farbot::fifo<jack_default_audio_sample_t,
+            farbot::fifo_options::concurrency::single,
+            farbot::fifo_options::concurrency::single,
+            farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
+            farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
+            1>(buffer_size)) {
+}
+
+PortFifo::PortFifo(const PortFifo& other):
+    port(other.port),
+    queue(std::move(other.queue)) {
+}
+
+PortFifo::PortFifo(PortFifo&& other):
+    port(other.port),
+    queue(std::move(other.queue)) {
+}
 
 SoundCard::SoundCard(const std::string &name) :
     jack_client(create_client(name)),
     midiin_callbacks({}),
     midiin(create_midiin(midiin_callbacks, jack_client)),
-    audio_output_ports(register_audio_output_ports(jack_client)) {
+    audio_outputs(create_audio_outputs(jack_client)) {
     registerCallbacks();
     const auto buffer_size = jack_get_buffer_size(jack_client);
     activate();
     connect(jack_client);
     jack_latency_range_t latency_range;
-    jack_port_get_latency_range(audio_output_ports.at(0), JackLatencyCallbackMode::JackPlaybackLatency, &latency_range);
+    jack_port_get_latency_range(audio_outputs.at(0).port, JackLatencyCallbackMode::JackPlaybackLatency, &latency_range);
     spdlog::info(std::format("Jack client activated. [{} Hz, {} frames, latency {} - {}]", jack_get_sample_rate(jack_client),
         buffer_size, latency_range.min, latency_range.max));
-
-    farbot::fifo<jack_default_audio_sample_t,
-        farbot::fifo_options::concurrency::single,
-        farbot::fifo_options::concurrency::single,
-        farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
-        farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
-        1> my_fifo(buffer_size);
-
-    jack_default_audio_sample_t s = 0.42f;
-    my_fifo.push(std::move(s));
-
-    // farbot::RealtimeObject<jack_default_audio_sample_t*, farbot::RealtimeObjectOptions::nonRealtimeMutatable> rto;
 }
 
 SoundCard::~SoundCard() {
     midiin.close_port();
-    for (const auto audio_output_port : audio_output_ports) {
-        jack_port_unregister(jack_client, audio_output_port);
+    for (const PortFifo& audio_output : audio_outputs) {
+        jack_port_unregister(jack_client, audio_output.port);
     }
     jack_client_close(jack_client);
     spdlog::info("Jack client closed.");
@@ -58,12 +64,14 @@ int SoundCard::process_callback(jack_nframes_t nframes, void *arg) {
     return 0;
 }
 
-std::vector<jack_port_t*> SoundCard::register_audio_output_ports(jack_client_t * jack_client) {
-    std::vector<jack_port_t*> result = {};
+std::vector<PortFifo> SoundCard::create_audio_outputs(jack_client_t * jack_client) {
+    const auto buffer_size = jack_get_buffer_size(jack_client);
+    std::vector<PortFifo> result = {};
     for (auto i = 1; i <= 10; i++) {
         const auto jack_port = jack_port_register(jack_client, std::format("{}{}", LOCAL_AUDIO_OUTPUT_PORT_PREFIX, i).c_str(),
             JACK_DEFAULT_AUDIO_TYPE, JackPortFlags::JackPortIsOutput, 0);
-        result.push_back(jack_port);
+        auto port_fifo = PortFifo(jack_port, buffer_size);
+        result.push_back(port_fifo);
     }
     return result;
 }
@@ -180,8 +188,8 @@ void SoundCard::connect(jack_client_t * jack_client) {
     }
     spdlog::debug("MIDI ports connected.");
 
-    for (auto i = 0; i < audio_output_ports.size(); i++) {
-        const auto src_port = jack_port_name(audio_output_ports.at(i));
+    for (auto i = 0; i < audio_outputs.size(); i++) {
+        const auto src_port = jack_port_name(audio_outputs.at(i).port);
         const auto dst_port = std::format("{}{}", AUDIO_OUTPUT_PORT_PREFIX, i + 1);
         const auto connect_result = jack_connect(jack_client, src_port, dst_port.c_str());
         if (connect_result != 0) {
