@@ -11,6 +11,19 @@ PortFifo::PortFifo(jack_port_t* const port, jack_nframes_t buffer_size) :
     fifo(std::unique_ptr<SoundCardFifo>(new SoundCardFifo(buffer_size))) {
 }
 
+jack_port_t* PortFifo::get_port() const {
+    return port;
+}
+
+void PortFifo::copy_to_buffer(const jack_nframes_t nframes) const {
+    jack_default_audio_sample_t* buffer = static_cast<jack_default_audio_sample_t*>(jack_port_get_buffer(port, nframes));
+    int counter = 0;
+    while (counter < nframes && fifo->pop(*buffer)) {
+        counter++;
+        buffer++;
+    }
+}
+
 SoundCard::SoundCard(const std::string &name) :
     jack_client(create_client(name)),
     midiin_callbacks({}),
@@ -21,7 +34,7 @@ SoundCard::SoundCard(const std::string &name) :
     activate();
     connect(jack_client);
     jack_latency_range_t latency_range;
-    jack_port_get_latency_range(audio_outputs.at(0).port, JackLatencyCallbackMode::JackPlaybackLatency, &latency_range);
+    jack_port_get_latency_range(audio_outputs.at(0).get_port(), JackLatencyCallbackMode::JackPlaybackLatency, &latency_range);
     spdlog::info(std::format("Jack client activated. [{} Hz, {} frames, latency {} - {}]", jack_get_sample_rate(jack_client),
         buffer_size, latency_range.min, latency_range.max));
 }
@@ -29,7 +42,7 @@ SoundCard::SoundCard(const std::string &name) :
 SoundCard::~SoundCard() {
     midiin.close_port();
     for (const PortFifo& audio_output : audio_outputs) {
-        jack_port_unregister(jack_client, audio_output.port);
+        jack_port_unregister(jack_client, audio_output.get_port());
     }
     jack_client_close(jack_client);
     spdlog::info("Jack client closed.");
@@ -37,18 +50,13 @@ SoundCard::~SoundCard() {
 
 int SoundCard::process_callback(jack_nframes_t nframes, void *arg) {    
     try {
-        auto& self = *(SoundCard*)arg;    
+        const SoundCard& self = *(SoundCard*)arg;  
         // Process the midi inputs
-        for (auto &midiin_callback: self.midiin_callbacks) {
+        for (const auto &midiin_callback: self.midiin_callbacks) {
             midiin_callback.callback(nframes);
         }
         for (const PortFifo& audio_output : self.audio_outputs) {
-            int counter = 0;
-            jack_default_audio_sample_t* buffer = static_cast<jack_default_audio_sample_t*>(jack_port_get_buffer(audio_output.port, nframes));
-            while (counter < nframes && audio_output.fifo->pop(*buffer)) {
-                counter++;
-                buffer++;
-            }
+            audio_output.copy_to_buffer(nframes);
         }
     } catch (std::exception const& ex) {
         spdlog::error(ex.what());
@@ -181,7 +189,7 @@ void SoundCard::connect(jack_client_t * jack_client) {
     spdlog::debug("MIDI ports connected.");
 
     for (auto i = 0; i < audio_outputs.size(); i++) {
-        const auto src_port = jack_port_name(audio_outputs.at(i).port);
+        const auto src_port = jack_port_name(audio_outputs.at(i).get_port());
         const auto dst_port = std::format("{}{}", AUDIO_OUTPUT_PORT_PREFIX, i + 1);
         const auto connect_result = jack_connect(jack_client, src_port, dst_port.c_str());
         if (connect_result != 0) {
