@@ -24,11 +24,12 @@ void PortFifo::copy_to_buffer(const jack_nframes_t nframes) const {
     }
 }
 
-SoundCard::SoundCard(const std::string &name) :
+SoundCard::SoundCard(const std::string &name, Engine& engine) :
     jack_client(create_client(name)),
     midiin_callbacks({}),
     midiin(create_midiin(midiin_callbacks, jack_client)),
-    audio_outputs(create_audio_outputs(jack_client)) {
+    audio_outputs(create_audio_outputs(jack_client)),
+    engine(engine) {
     registerCallbacks();
     const auto buffer_size = jack_get_buffer_size(jack_client);
     activate();
@@ -48,10 +49,9 @@ SoundCard::~SoundCard() {
     spdlog::info("Jack client closed.");
 }
 
-int SoundCard::process_callback(jack_nframes_t nframes, void *arg) {    
-    std::atomic_flag flag = ATOMIC_FLAG_INIT;
+int SoundCard::process_callback(jack_nframes_t nframes, void *arg) {   
+    SoundCard& self = *(SoundCard*)arg; 
     try {
-        const SoundCard& self = *(SoundCard*)arg;  
         // Process the midi inputs
         for (const auto &midiin_callback: self.midiin_callbacks) {
             midiin_callback.callback(nframes);
@@ -59,12 +59,11 @@ int SoundCard::process_callback(jack_nframes_t nframes, void *arg) {
         for (const PortFifo& audio_output : self.audio_outputs) {
             audio_output.copy_to_buffer(nframes);
         }
-        flag.clear();
-        flag.notify_all();
 
     } catch (std::exception const& ex) {
         spdlog::error(ex.what());
     }
+    self.engine.next();
     return 0;
 }
 

@@ -16,11 +16,15 @@ bool AudioOutputTask::run() const {
 Engine::Engine():
     threads(create_threads()),
     queue(AudioOutputTaskFifo(16)),
-    interrupted(false) {
+    next_queue(AudioOutputTaskFifo(16)),
+    interrupted(false),
+    next_flag(ATOMIC_FLAG_INIT) {
 }
 
 Engine::~Engine() {   
-    interrupted.store(true);
+    interrupted = true;
+    next_flag.clear();
+    next_flag.notify_all();    
 }
 
 std::vector<std::thread> Engine::create_threads() {
@@ -33,14 +37,22 @@ std::vector<std::thread> Engine::create_threads() {
 
 void Engine::run() {
     AudioOutputTask task;
-    std::atomic_flag flag = ATOMIC_FLAG_INIT;
-    while (!interrupted.load()) {
-        flag.wait(true);
-        flag.test_and_set();
-        if (queue.pop(task)) {
+    while (!interrupted) {
+        next_flag.test_and_set();
+        next_flag.wait(true);
+        while (queue.pop(task)) {
             if (task.run()) {
-                queue.push(std::move(task));
+                next_queue.push(std::move(task));
             }
         }
     }
+}
+
+void Engine::next() {
+    AudioOutputTask task;
+    while (next_queue.pop(task)) {
+        queue.push(std::move(task));
+    }
+    next_flag.clear();
+    next_flag.notify_all();    
 }

@@ -8,9 +8,11 @@
 #include "soundcard.hpp"
 #include "common.hpp"
 #include "project.hpp"
+#include "engine.hpp"
 
 class OstrostrojApp {
     private:
+        Engine engine;
         const SoundCard soundcard;
         const Project project;
 
@@ -30,7 +32,8 @@ class OstrostrojApp {
 
     public:
         OstrostrojApp():
-            soundcard(SoundCard("ostrostroj")),
+            engine(Engine()),
+            soundcard(SoundCard("ostrostroj", engine)),
             project(Project("/home/ostrostroj/project/", soundcard.get_sample_rate())) {
         }
 

@@ -24,7 +24,9 @@ class Engine {
     private:
         const std::vector<std::thread> threads;
         AudioOutputTaskFifo queue;
+        AudioOutputTaskFifo next_queue;
         std::atomic_bool interrupted;
+        std::atomic_flag next_flag;
 
         std::vector<std::thread> create_threads();
         void run();
@@ -32,4 +34,6 @@ class Engine {
     public:
         Engine();
         virtual ~Engine();
+
+        void next();
 };

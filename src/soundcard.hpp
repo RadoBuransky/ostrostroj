@@ -5,6 +5,7 @@
 #include <libremidi/configurations.hpp>
 #include <libremidi/libremidi.hpp>
 #include "farbot/fifo.hpp"
+#include "engine.hpp"
 
 typedef farbot::fifo<jack_default_audio_sample_t,
             farbot::fifo_options::concurrency::single,
@@ -34,6 +35,7 @@ class SoundCard {
         std::vector<libremidi::jack_callback> midiin_callbacks;
         libremidi::midi_in midiin;
         const std::vector<PortFifo> audio_outputs;
+        Engine& engine;
         
         static int process_callback(jack_nframes_t nframes, void *arg);
         static void libremidi_message_callback(const libremidi::message& message);
@@ -44,13 +46,12 @@ class SoundCard {
         static jack_client_t * create_client(const std::string &name);
         static libremidi::midi_in create_midiin(std::vector<libremidi::jack_callback>  & midiin_callbacks, jack_client_t * jack_client);
 
-
         void registerCallbacks();
         void activate();
         void connect(jack_client_t * jack_client);
 
     public:
-        SoundCard(const std::string &);
+        SoundCard(const std::string &, Engine& engine);
         virtual ~SoundCard();
 
         int get_sample_rate() const;
