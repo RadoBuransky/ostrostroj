@@ -33,15 +33,14 @@ std::vector<std::thread> Engine::create_threads() {
 
 void Engine::run() {
     AudioOutputTask task;
+    std::atomic_flag flag = ATOMIC_FLAG_INIT;
     while (!interrupted.load()) {
+        flag.wait(true);
+        flag.test_and_set();
         if (queue.pop(task)) {
             if (task.run()) {
-                // TODO: Avoid busy loop if the task did nothing
                 queue.push(std::move(task));
             }
-        } else {
-            // TODO: 1/2 buffer length + jitter
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
     }
 }

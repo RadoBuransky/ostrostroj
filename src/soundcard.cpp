@@ -49,6 +49,7 @@ SoundCard::~SoundCard() {
 }
 
 int SoundCard::process_callback(jack_nframes_t nframes, void *arg) {    
+    std::atomic_flag flag = ATOMIC_FLAG_INIT;
     try {
         const SoundCard& self = *(SoundCard*)arg;  
         // Process the midi inputs
@@ -58,6 +59,9 @@ int SoundCard::process_callback(jack_nframes_t nframes, void *arg) {
         for (const PortFifo& audio_output : self.audio_outputs) {
             audio_output.copy_to_buffer(nframes);
         }
+        flag.clear();
+        flag.notify_all();
+
     } catch (std::exception const& ex) {
         spdlog::error(ex.what());
     }
