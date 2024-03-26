@@ -3,20 +3,13 @@
 
 #define MAX_TASK_COUNT 16
 
-AudioOutputTask::AudioOutputTask() {
-}
-
-AudioOutputTask::~AudioOutputTask() {    
-}
-
-bool AudioOutputTask::run() const {
-    return true;
+void EngineTask::run(EngineTaskFifo &queue) {
+    // TODO: 
 }
 
 Engine::Engine():
     threads(create_threads()),
-    queue(AudioOutputTaskFifo(16)),
-    next_queue(AudioOutputTaskFifo(16)),
+    queue(EngineTaskFifo(16)),
     interrupted(false),
     next_flag(ATOMIC_FLAG_INIT) {
 }
@@ -36,23 +29,38 @@ std::vector<std::thread> Engine::create_threads() {
 }
 
 void Engine::run() {
-    AudioOutputTask task;
+    EngineTask task;
     while (!interrupted) {
         next_flag.test_and_set();
         next_flag.wait(true);
-        while (queue.pop(task)) {
-            if (task.run()) {
-                next_queue.push(std::move(task));
+
+        if (!midi_processed) {
+            std::lock_guard lk(midi_processing_mutex);
+            if (!midi_processed) {
+                libremidi::message midi_message;
+                if (midi_fifo->pop(midi_message)) {
+                    do {
+                        // TODO: Process MIDI message (change internal state)
+                    } while(midi_fifo->pop(midi_message));
+                }
+                midi_processed = true;
             }
+        }
+
+        // TODO: 2. How to decide 
+
+        while (queue.pop(task)) {
+            task.run(queue);
         }
     }
 }
 
+MidiFifo& Engine::get_midi_fifo() {
+    return *midi_fifo.get();
+}
+
 void Engine::next() {
-    AudioOutputTask task;
-    while (next_queue.pop(task)) {
-        queue.push(std::move(task));
-    }
+    midi_processed = false;
     next_flag.clear();
-    next_flag.notify_all();    
+    next_flag.notify_all();
 }

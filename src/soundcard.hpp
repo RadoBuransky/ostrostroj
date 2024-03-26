@@ -7,19 +7,12 @@
 #include "farbot/fifo.hpp"
 #include "engine.hpp"
 
-typedef farbot::fifo<jack_default_audio_sample_t,
-            farbot::fifo_options::concurrency::single,
-            farbot::fifo_options::concurrency::single,
-            farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
-            farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
-            1> SoundCardFifo;
-
-class PortFifo {
+class AudioPortFifo {
     private:
         jack_port_t* const port;
-        std::unique_ptr<SoundCardFifo> fifo;
+        std::unique_ptr<AudioFifo> fifo;
     public:
-        PortFifo(jack_port_t* const port, jack_nframes_t buffer_size);
+        AudioPortFifo(jack_port_t* const port, jack_nframes_t buffer_size);
 
         jack_port_t* get_port() const;
         void copy_to_buffer(const jack_nframes_t nframes) const;
@@ -34,17 +27,18 @@ class SoundCard {
         jack_client_t * const jack_client;
         std::vector<libremidi::jack_callback> midiin_callbacks;
         libremidi::midi_in midiin;
-        const std::vector<PortFifo> audio_outputs;
+        std::unique_ptr<MidiFifo> midi_fifo;
+        const std::vector<AudioPortFifo> audio_outputs;
         Engine& engine;
         
         static int process_callback(jack_nframes_t nframes, void *arg);
-        static void libremidi_message_callback(const libremidi::message& message);
+        void libremidi_message_callback(const libremidi::message& message);
 
-        std::vector<PortFifo> create_audio_outputs(jack_client_t * jack_client);
+        std::vector<AudioPortFifo> create_audio_outputs(jack_client_t * jack_client);
         static void port_connect_callback(jack_port_id_t a, jack_port_id_t b, int connect, void*);
         static void port_registration_callback(jack_port_id_t port, int registered, void*);
         static jack_client_t * create_client(const std::string &name);
-        static libremidi::midi_in create_midiin(std::vector<libremidi::jack_callback>  & midiin_callbacks, jack_client_t * jack_client);
+        libremidi::midi_in create_midiin(std::vector<libremidi::jack_callback>  & midiin_callbacks, jack_client_t * jack_client);
 
         void registerCallbacks();
         void activate();

@@ -6,16 +6,16 @@
 #include "soundcard.hpp"
 #include "common.hpp"
 
-PortFifo::PortFifo(jack_port_t* const port, jack_nframes_t buffer_size) :
+AudioPortFifo::AudioPortFifo(jack_port_t* const port, jack_nframes_t buffer_size) :
     port(port),
-    fifo(std::unique_ptr<SoundCardFifo>(new SoundCardFifo(buffer_size))) {
+    fifo(std::unique_ptr<AudioFifo>(new AudioFifo(buffer_size))) {
 }
 
-jack_port_t* PortFifo::get_port() const {
+jack_port_t* AudioPortFifo::get_port() const {
     return port;
 }
 
-void PortFifo::copy_to_buffer(const jack_nframes_t nframes) const {
+void AudioPortFifo::copy_to_buffer(const jack_nframes_t nframes) const {
     jack_default_audio_sample_t* buffer = static_cast<jack_default_audio_sample_t*>(jack_port_get_buffer(port, nframes));
     int counter = 0;
     while (counter < nframes && fifo->pop(*buffer)) {
@@ -28,6 +28,7 @@ SoundCard::SoundCard(const std::string &name, Engine& engine) :
     jack_client(create_client(name)),
     midiin_callbacks({}),
     midiin(create_midiin(midiin_callbacks, jack_client)),
+    midi_fifo(std::unique_ptr<MidiFifo>(new MidiFifo(512))),
     audio_outputs(create_audio_outputs(jack_client)),
     engine(engine) {
     registerCallbacks();
@@ -42,7 +43,7 @@ SoundCard::SoundCard(const std::string &name, Engine& engine) :
 
 SoundCard::~SoundCard() {
     midiin.close_port();
-    for (const PortFifo& audio_output : audio_outputs) {
+    for (const AudioPortFifo& audio_output : audio_outputs) {
         jack_port_unregister(jack_client, audio_output.get_port());
     }
     jack_client_close(jack_client);
@@ -56,53 +57,37 @@ int SoundCard::process_callback(jack_nframes_t nframes, void *arg) {
         for (const auto &midiin_callback: self.midiin_callbacks) {
             midiin_callback.callback(nframes);
         }
-        for (const PortFifo& audio_output : self.audio_outputs) {
+        for (const AudioPortFifo& audio_output : self.audio_outputs) {
             audio_output.copy_to_buffer(nframes);
         }
 
     } catch (std::exception const& ex) {
         spdlog::error(ex.what());
     }
-    self.engine.next();
+    self.engine.next(/**midi_messages*/);
     return 0;
 }
 
 void SoundCard::libremidi_message_callback(const libremidi::message& message) {
-    // TODO: Remove all this crap because it's blocking!!!
-    std::string log_message;
     switch (message.get_message_type()) {        
         case libremidi::message_type::NOTE_ON:
-            log_message = std::format("NOTE_ON {}", (int)message.bytes[1]);
             break;
         case libremidi::message_type::PROGRAM_CHANGE:
-            log_message = std::format("PROGRAM_CHANGE {}", (int)message.bytes[1]);
-            break;
         case libremidi::message_type::START:
-            log_message = "START";
-            break;
         case libremidi::message_type::CONTINUE:
-            log_message = "CONTINUE";
-            break;            
         case libremidi::message_type::STOP:
-            log_message = "STOP";
-            break;
-        case libremidi::message_type::TIME_CLOCK:
-            log_message = std::format("TIME_CLOCK {}", (int)message.bytes[1]);
-            break;
-        default:
-            log_message = std::format("{}", static_cast<int>(message.get_message_type()));
+            midi_fifo->push(libremidi::message(message));
             break;
     }
-    spdlog::info(std::format("{} ch{}", log_message, message.get_channel()));
 }
 
-std::vector<PortFifo> SoundCard::create_audio_outputs(jack_client_t * jack_client) {
+std::vector<AudioPortFifo> SoundCard::create_audio_outputs(jack_client_t * jack_client) {
     const auto buffer_size = jack_get_buffer_size(jack_client);
-    std::vector<PortFifo> result = {};
+    std::vector<AudioPortFifo> result = {};
     for (auto i = 1; i <= 10; i++) {
         const auto jack_port = jack_port_register(jack_client, std::format("{}{}", LOCAL_AUDIO_OUTPUT_PORT_PREFIX, i).c_str(),
             JACK_DEFAULT_AUDIO_TYPE, JackPortFlags::JackPortIsOutput, 0);
-        result.push_back(PortFifo(jack_port, buffer_size));
+        result.push_back(AudioPortFifo(jack_port, buffer_size));
     }
     return result;
 }
@@ -119,7 +104,7 @@ libremidi::midi_in SoundCard::create_midiin(std::vector<libremidi::jack_callback
     };
     libremidi::midi_in result = libremidi::midi_in(
           libremidi::input_configuration{
-            .on_message = [=](libremidi::message m) {
+            .on_message = [&](libremidi::message m) {
                 libremidi_message_callback(m);
             },
             .get_timestamp = [=](int64_t t) {
