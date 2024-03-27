@@ -37,22 +37,28 @@ typedef farbot::fifo<libremidi::message,
 
 class Engine {
     private:
-        std::unique_ptr<MidiFifo> midi_fifo;
+        MidiFifo midi_fifo;
+        // FIFO for each audio output port
+        std::vector<std::unique_ptr<AudioFifo>> audio_output_fifos;
 
         const std::vector<std::thread> threads;
-        EngineTaskFifo queue;
+        EngineTaskFifo tasks;
         std::atomic_bool interrupted;
         std::atomic_flag next_flag;
         std::mutex midi_processing_mutex;
         volatile bool midi_processed;
 
+        std::vector<std::unique_ptr<AudioFifo>> create_audio_output_fifos(int audio_outputs, jack_nframes_t audio_output_size);
         std::vector<std::thread> create_threads();
         void run();
+        void process_audio();
+        void process_midi();
 
     public:
-        Engine();
+        Engine(int audio_outputs, jack_nframes_t audio_output_size);
         virtual ~Engine();
 
         MidiFifo& get_midi_fifo();
+        AudioFifo& get_audio_output_fifo(int port);
         void next();
 };

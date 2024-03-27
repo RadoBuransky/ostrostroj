@@ -32,7 +32,7 @@ class OstrostrojApp {
 
     public:
         OstrostrojApp():
-            engine(Engine()),
+            engine(Engine(10, 1024)),
             soundcard(SoundCard("ostrostroj", engine)),
             project(Project("/home/ostrostroj/project/", soundcard.get_sample_rate())) {
         }

@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "spdlog/spdlog.h"
 #include "project.hpp"
 #include "common.hpp"
@@ -70,11 +71,15 @@ void Program::check_sample_format(const std::filesystem::path wav_file, const SF
     }
 }
 
-std::vector<LoopSample> Program::get_loops() const {
+int Program::get_start_number() const {
+    return start_number;
+}
+
+std::vector<LoopSample> const & Program::get_loops() const {
     return loops;
 }
 
-std::map<uint8_t, OneShotSample> Program::get_one_shots() const {
+std::map<uint8_t, OneShotSample> const & Program::get_one_shots() const {
     return one_shots;
 }
 
@@ -82,7 +87,20 @@ Project::Project(const std::filesystem::path dir, const int expected_sample_rate
     programs(load_programs(dir, expected_sample_rate)) {
 }
 
+Program::Program(Program&& other):
+    start_number(other.start_number),
+    loops(other.loops),
+    one_shots(other.one_shots) {
+}
+
 Project::~Project() {
+}
+
+Program& Program::operator=(Program&& other) {
+    start_number = other.start_number;
+    loops = std::move(other.loops);
+    one_shots = std::move(other.one_shots);
+    return *this;
 }
 
 std::vector<Program> Project::load_programs(const std::filesystem::path dir, const int expected_sample_rate) {
@@ -93,5 +111,12 @@ std::vector<Program> Project::load_programs(const std::filesystem::path dir, con
             result.push_back(Program(program_dir, expected_sample_rate));
         }
     }
+    std::sort(result.begin(), result.end(), [](const Program& a, const Program& b) {
+        return a.get_start_number() < b.get_start_number();
+    });
     return result;
+}
+
+std::vector<Program> const & Project::get_programs() const {
+    return programs;
 }

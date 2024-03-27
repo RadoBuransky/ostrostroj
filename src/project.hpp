@@ -6,9 +6,9 @@
 
 struct Program {
     private:
-        const int start_number;
-        const std::vector<LoopSample> loops;
-        const std::map<uint8_t, OneShotSample> one_shots;
+        int start_number;
+        std::vector<LoopSample> loops;
+        std::map<uint8_t, OneShotSample> one_shots;
 
         int program_start_number(const std::filesystem::path dir);
         std::vector<LoopSample> load_loops(const std::filesystem::path dir, const int expected_sample_rate);
@@ -19,10 +19,13 @@ struct Program {
 
     public:
         Program(const std::filesystem::path dir, const int expected_sample_rate);
+        Program(Program&&);
         virtual ~Program();
+        Program& operator=(Program&&);
 
-        std::vector<LoopSample> get_loops() const;
-        std::map<uint8_t, OneShotSample> get_one_shots() const;
+        int get_start_number() const;
+        std::vector<LoopSample> const & get_loops() const;
+        std::map<uint8_t, OneShotSample> const & get_one_shots() const;
 };
 
 class Project {
@@ -32,20 +35,6 @@ class Project {
     public:
         Project(const std::filesystem::path dir, const int expected_sample_rate);
         virtual ~Project();
-};
 
-class ProjectStatus {
-    private:
-        const Project project;
-        int active_program_number;
-        std::vector<SampleReader> loop_readers;
-        std::vector<SampleReader> one_shot_readers;
-
-    public:
-        ProjectStatus(Project project);
-        ~ProjectStatus();
-
-        // TODO: Load all loops and one-shots
-        void set_program(int program_number);
-        void play_one_shot(uint8_t note);
+        std::vector<Program> const & get_programs() const;
 };

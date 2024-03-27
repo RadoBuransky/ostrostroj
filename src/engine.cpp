@@ -3,13 +3,15 @@
 
 #define MAX_TASK_COUNT 16
 
-void EngineTask::run(EngineTaskFifo &queue) {
+void EngineTask::run(EngineTaskFifo &tasks) {
     // TODO: 
 }
 
-Engine::Engine():
+Engine::Engine(int audio_outputs, jack_nframes_t audio_output_size):
+    audio_output_fifos(create_audio_output_fifos(audio_outputs, audio_output_size)),
+    midi_fifo(MidiFifo(256)),
     threads(create_threads()),
-    queue(EngineTaskFifo(16)),
+    tasks(EngineTaskFifo(16)),
     interrupted(false),
     next_flag(ATOMIC_FLAG_INIT) {
 }
@@ -18,6 +20,14 @@ Engine::~Engine() {
     interrupted = true;
     next_flag.clear();
     next_flag.notify_all();    
+}
+
+std::vector<std::unique_ptr<AudioFifo>> Engine::create_audio_output_fifos(int audio_outputs, jack_nframes_t audio_output_size) {
+    std::vector<std::unique_ptr<AudioFifo>> result;
+    for (auto i = 0; i < audio_outputs; i++) {
+        result.push_back(std::unique_ptr<AudioFifo>(new AudioFifo(audio_output_size)));
+    }
+    return result;
 }
 
 std::vector<std::thread> Engine::create_threads() {
@@ -29,34 +39,44 @@ std::vector<std::thread> Engine::create_threads() {
 }
 
 void Engine::run() {
-    EngineTask task;
     while (!interrupted) {
         next_flag.test_and_set();
         next_flag.wait(true);
+        process_midi();
+        process_audio();
+    }
+}
 
+void Engine::process_audio() {     
+    EngineTask task;   
+    while (tasks.pop(task)) {
+        task.run(tasks);
+    }
+}
+
+void Engine::process_midi() {
+    if (!midi_processed) {
+        std::lock_guard lk(midi_processing_mutex);
         if (!midi_processed) {
-            std::lock_guard lk(midi_processing_mutex);
-            if (!midi_processed) {
-                libremidi::message midi_message;
-                if (midi_fifo->pop(midi_message)) {
-                    do {
-                        // TODO: Process MIDI message (change internal state)
-                    } while(midi_fifo->pop(midi_message));
-                }
-                midi_processed = true;
+            libremidi::message midi_message;
+            while (midi_fifo.pop(midi_message)) {
+                // TODO: Process MIDI message (change internal state)
+                // project_status.set_program(3);
             }
-        }
-
-        // TODO: 2. How to decide 
-
-        while (queue.pop(task)) {
-            task.run(queue);
+            // TODO: Enqueue engine tasks
+            // project_status.get_loops();
+            // TODO: Map LoopSample.get_track() to audio output port.
+            midi_processed = true;
         }
     }
 }
 
+AudioFifo& Engine::get_audio_output_fifo(int port) {
+    return *audio_output_fifos.at(port);
+}
+
 MidiFifo& Engine::get_midi_fifo() {
-    return *midi_fifo.get();
+    return midi_fifo;
 }
 
 void Engine::next() {
