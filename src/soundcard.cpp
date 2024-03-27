@@ -24,21 +24,13 @@ void AudioPortFifo::copy_to_buffer(const jack_nframes_t nframes) const {
     }
 }
 
-SoundCard::SoundCard(const std::string &name, Engine& engine) :
+SoundCard::SoundCard(const std::string &name) :
     jack_client(create_client(name)),
     midiin_callbacks({}),
     midiin(create_midiin(midiin_callbacks, jack_client)),
     midi_fifo(std::unique_ptr<MidiFifo>(new MidiFifo(512))),
     audio_outputs(create_audio_outputs(jack_client)),
-    engine(engine) {
-    registerCallbacks();
-    const auto buffer_size = jack_get_buffer_size(jack_client);
-    activate();
-    connect(jack_client);
-    jack_latency_range_t latency_range;
-    jack_port_get_latency_range(audio_outputs.at(0).get_port(), JackLatencyCallbackMode::JackPlaybackLatency, &latency_range);
-    spdlog::info(std::format("Jack client activated. [{} Hz, {} frames, latency {} - {}]", jack_get_sample_rate(jack_client),
-        buffer_size, latency_range.min, latency_range.max));
+    buffer_size(jack_get_buffer_size(jack_client)) {
 }
 
 SoundCard::~SoundCard() {
@@ -64,7 +56,7 @@ int SoundCard::process_callback(jack_nframes_t nframes, void *arg) {
     } catch (std::exception const& ex) {
         spdlog::error(ex.what());
     }
-    self.engine.next(/**midi_messages*/);
+    self.callback();
     return 0;
 }
 
@@ -84,7 +76,7 @@ void SoundCard::libremidi_message_callback(const libremidi::message& message) {
 std::vector<AudioPortFifo> SoundCard::create_audio_outputs(jack_client_t * jack_client) {
     const auto buffer_size = jack_get_buffer_size(jack_client);
     std::vector<AudioPortFifo> result = {};
-    for (auto i = 1; i <= 10; i++) {
+    for (auto i = 1; i <= get_audio_outputs(); i++) {
         const auto jack_port = jack_port_register(jack_client, std::format("{}{}", LOCAL_AUDIO_OUTPUT_PORT_PREFIX, i).c_str(),
             JACK_DEFAULT_AUDIO_TYPE, JackPortFlags::JackPortIsOutput, 0);
         result.push_back(AudioPortFifo(jack_port, buffer_size));
@@ -187,6 +179,25 @@ void SoundCard::connect(jack_client_t * jack_client) {
     spdlog::debug("Audio output ports connected.");
 }
 
+void SoundCard::start(std::function<void(void)> callback) {
+    this->callback = callback;
+    registerCallbacks();
+    activate();
+    connect(jack_client);
+    jack_latency_range_t latency_range;
+    jack_port_get_latency_range(audio_outputs.at(0).get_port(), JackLatencyCallbackMode::JackPlaybackLatency, &latency_range);
+    spdlog::info(std::format("Jack client activated. [{} Hz, {} frames, latency {} - {}]", jack_get_sample_rate(jack_client),
+        buffer_size, latency_range.min, latency_range.max));
+}
+
 int SoundCard::get_sample_rate() const {
     return jack_get_sample_rate(jack_client);
+}
+
+int SoundCard::get_audio_outputs() const {
+    return 10; // TODO:
+}
+
+jack_nframes_t SoundCard::get_buffer_size() const {
+    return buffer_size;
 }

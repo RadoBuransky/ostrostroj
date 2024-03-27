@@ -29,7 +29,8 @@ class SoundCard {
         libremidi::midi_in midiin;
         std::unique_ptr<MidiFifo> midi_fifo;
         const std::vector<AudioPortFifo> audio_outputs;
-        Engine& engine;
+        const jack_nframes_t buffer_size;
+        std::function<void(void)> callback = {};
         
         static int process_callback(jack_nframes_t nframes, void *arg);
         void libremidi_message_callback(const libremidi::message& message);
@@ -45,8 +46,12 @@ class SoundCard {
         void connect(jack_client_t * jack_client);
 
     public:
-        SoundCard(const std::string &, Engine& engine);
+        SoundCard(const std::string &);
         virtual ~SoundCard();
 
+        void start(std::function<void(void)>);
+
         int get_sample_rate() const;
+        int get_audio_outputs() const;
+        jack_nframes_t get_buffer_size() const;
 };

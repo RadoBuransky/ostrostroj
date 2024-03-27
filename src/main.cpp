@@ -4,6 +4,7 @@
 #include <string.h>
 #include <signal.h>
 #include <cstdlib>
+#include <functional>
 #include "spdlog/spdlog.h"
 #include "soundcard.hpp"
 #include "common.hpp"
@@ -12,9 +13,9 @@
 
 class OstrostrojApp {
     private:
-        Engine engine;
-        const SoundCard soundcard;
         const Project project;
+        Engine engine;
+        SoundCard soundcard;
 
         static void sigaction_handler(int s) {
             spdlog::info(std::format("Signal received [{}].", s));
@@ -32,9 +33,10 @@ class OstrostrojApp {
 
     public:
         OstrostrojApp():
-            engine(Engine(10, 1024)),
-            soundcard(SoundCard("ostrostroj", engine)),
-            project(Project("/home/ostrostroj/project/", soundcard.get_sample_rate())) {
+            soundcard(SoundCard("ostrostroj")),
+            project(Project("/home/ostrostroj/project/", soundcard.get_sample_rate())),
+            engine(Engine(soundcard.get_audio_outputs(), soundcard.get_buffer_size())) {
+            soundcard.start(std::bind(&Engine::next, &engine));
         }
 
         virtual ~OstrostrojApp() {            
