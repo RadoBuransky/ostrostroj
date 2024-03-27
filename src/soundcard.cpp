@@ -76,7 +76,7 @@ void SoundCard::libremidi_message_callback(const libremidi::message& message) {
 std::vector<AudioPortFifo> SoundCard::create_audio_outputs(jack_client_t * jack_client) {
     const auto buffer_size = jack_get_buffer_size(jack_client);
     std::vector<AudioPortFifo> result = {};
-    for (auto i = 1; i <= get_audio_outputs(); i++) {
+    for (auto i = 1; i <= AUDIO_OUTPUT_PORT_COUNT; i++) {
         const auto jack_port = jack_port_register(jack_client, std::format("{}{}", LOCAL_AUDIO_OUTPUT_PORT_PREFIX, i).c_str(),
             JACK_DEFAULT_AUDIO_TYPE, JackPortFlags::JackPortIsOutput, 0);
         result.push_back(AudioPortFifo(jack_port, buffer_size));
@@ -195,7 +195,7 @@ int SoundCard::get_sample_rate() const {
 }
 
 int SoundCard::get_audio_outputs() const {
-    return 10; // TODO:
+    return AUDIO_OUTPUT_PORT_COUNT;
 }
 
 jack_nframes_t SoundCard::get_buffer_size() const {

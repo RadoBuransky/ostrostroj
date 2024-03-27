@@ -22,6 +22,7 @@ class SoundCard {
     private:
         inline static const std::string INPUT_MIDI_PORT = "system_midi:capture_1";
         inline static const std::string AUDIO_OUTPUT_PORT_PREFIX = "alsa_pcm:hw:UMC1820:in";
+        static constexpr int AUDIO_OUTPUT_PORT_COUNT = 10;
         inline static const std::string LOCAL_MIDI_PORT = "libremidi_input";
         inline static const std::string LOCAL_AUDIO_OUTPUT_PORT_PREFIX = "audio_output_";
         jack_client_t * const jack_client;
