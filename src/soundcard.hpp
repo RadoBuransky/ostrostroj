@@ -5,7 +5,20 @@
 #include <libremidi/configurations.hpp>
 #include <libremidi/libremidi.hpp>
 #include "farbot/fifo.hpp"
-#include "engine.hpp"
+
+typedef farbot::fifo<jack_default_audio_sample_t,
+            farbot::fifo_options::concurrency::single,
+            farbot::fifo_options::concurrency::single,
+            farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
+            farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
+            1> AudioFifo;
+
+typedef farbot::fifo<libremidi::message,
+            farbot::fifo_options::concurrency::single,
+            farbot::fifo_options::concurrency::single,
+            farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
+            farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
+            1> MidiFifo;
 
 class AudioPortFifo {
     private:
@@ -15,6 +28,7 @@ class AudioPortFifo {
         AudioPortFifo(jack_port_t* const port, jack_nframes_t buffer_size);
 
         jack_port_t* get_port() const;
+        AudioFifo& get_fifo();
         void copy_to_buffer(const jack_nframes_t nframes) const;
 };
 
@@ -28,8 +42,8 @@ class SoundCard {
         jack_client_t * const jack_client;
         std::vector<libremidi::jack_callback> midiin_callbacks;
         libremidi::midi_in midiin;
-        std::unique_ptr<MidiFifo> midi_fifo;
-        const std::vector<AudioPortFifo> audio_outputs;
+        MidiFifo midi_fifo;
+        std::vector<AudioPortFifo> audio_outputs;
         const jack_nframes_t buffer_size;
         std::function<void(void)> callback = {};
         
@@ -55,4 +69,6 @@ class SoundCard {
         int get_sample_rate() const;
         int get_audio_outputs() const;
         jack_nframes_t get_buffer_size() const;
+        MidiFifo& get_midi_fifo();
+        AudioFifo& get_audio_output_fifo(int port);
 };

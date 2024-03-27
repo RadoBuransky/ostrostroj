@@ -15,7 +15,7 @@ class OstrostrojApp {
     private:
         const Project project;
         Engine engine;
-        SoundCard soundcard;
+        SoundCard soundCard;
 
         static void sigaction_handler(int s) {
             spdlog::info(std::format("Signal received [{}].", s));
@@ -33,10 +33,10 @@ class OstrostrojApp {
 
     public:
         OstrostrojApp():
-            soundcard(SoundCard("ostrostroj")),
-            project(Project("/home/ostrostroj/project/", soundcard.get_sample_rate())),
-            engine(Engine(soundcard.get_audio_outputs(), soundcard.get_buffer_size())) {
-            soundcard.start(std::bind(&Engine::next, &engine));
+            soundCard(SoundCard("ostrostroj")),
+            project(Project("/home/ostrostroj/project/", soundCard.get_sample_rate())),
+            engine(Engine(project, soundCard)) {
+            soundCard.start(std::bind(&Engine::next, &engine));
         }
 
         virtual ~OstrostrojApp() {            

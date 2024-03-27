@@ -15,6 +15,10 @@ jack_port_t* AudioPortFifo::get_port() const {
     return port;
 }
 
+AudioFifo& AudioPortFifo::get_fifo() {
+    return *fifo.get();
+}
+
 void AudioPortFifo::copy_to_buffer(const jack_nframes_t nframes) const {
     jack_default_audio_sample_t* buffer = static_cast<jack_default_audio_sample_t*>(jack_port_get_buffer(port, nframes));
     int counter = 0;
@@ -28,7 +32,7 @@ SoundCard::SoundCard(const std::string &name) :
     jack_client(create_client(name)),
     midiin_callbacks({}),
     midiin(create_midiin(midiin_callbacks, jack_client)),
-    midi_fifo(std::unique_ptr<MidiFifo>(new MidiFifo(512))),
+    midi_fifo(MidiFifo(512)),
     audio_outputs(create_audio_outputs(jack_client)),
     buffer_size(jack_get_buffer_size(jack_client)) {
 }
@@ -68,7 +72,7 @@ void SoundCard::libremidi_message_callback(const libremidi::message& message) {
         case libremidi::message_type::START:
         case libremidi::message_type::CONTINUE:
         case libremidi::message_type::STOP:
-            midi_fifo->push(libremidi::message(message));
+            midi_fifo.push(libremidi::message(message));
             break;
     }
 }
@@ -200,4 +204,12 @@ int SoundCard::get_audio_outputs() const {
 
 jack_nframes_t SoundCard::get_buffer_size() const {
     return buffer_size;
+}
+
+MidiFifo& SoundCard::get_midi_fifo() {
+    return midi_fifo;
+}
+
+AudioFifo& SoundCard::get_audio_output_fifo(int port) {  
+    return audio_outputs.at(port).get_fifo();
 }
