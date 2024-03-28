@@ -3,10 +3,6 @@
 
 #define MAX_TASK_COUNT 16
 
-void EngineTask::run(EngineTaskFifo &tasks) {
-    // TODO: 
-}
-
 Engine::Engine(const Project& project, SoundCard& soundCard):
     project(project),
     soundCard(soundCard),
@@ -14,6 +10,7 @@ Engine::Engine(const Project& project, SoundCard& soundCard):
     tasks(EngineTaskFifo(16)),
     interrupted(false),
     next_flag(ATOMIC_FLAG_INIT) {
+    set_active_program(0);
 }
 
 Engine::~Engine() {   
@@ -35,14 +32,8 @@ void Engine::run() {
         next_flag.test_and_set();
         next_flag.wait(true);
         process_midi();
-        process_audio();
-    }
-}
-
-void Engine::process_audio() {     
-    EngineTask task;   
-    while (tasks.pop(task)) {
-        task.run(tasks);
+        create_tasks();
+        run_tasks();
     }
 }
 
@@ -54,7 +45,6 @@ void Engine::process_midi() {
             MidiFifo& midi_fifo = soundCard.get_midi_fifo();
             while (midi_fifo.pop(midi_message)) {
                 // TODO: Process MIDI message (change internal state)
-                // project_status.set_program(3);
             }
             // TODO: Enqueue engine tasks
             // project_status.get_loops();
@@ -62,6 +52,39 @@ void Engine::process_midi() {
             midi_processed = true;
         }
     }
+}
+
+// TODO:
+// - tasks are state holders
+// - one task per audio output fifo
+// - tasks CAN'T create other tasks 
+// - midi processing creates tasks with current state (mute, unmute, params):
+//       - play loop
+//       - play one shot
+// - run tasks until:
+//      - audio output fifos are full or
+//      - 
+void Engine::create_tasks() {
+    tasks.push(std::bind(&Engine::play_one_shot, this, 13));
+}
+
+void Engine::run_tasks() {     
+    EngineTask task;
+
+    while (tasks.pop(task)) {
+        task();
+    }
+}
+
+void Engine::play_one_shot(uint8_t note) {
+    SampleReader sampleReader = project.get_programs().at(0).get_one_shots().at(note).createReader();
+}
+
+void Engine::set_active_program(int program_number) {
+    // TODO:
+    // 1. Find program for this program_number
+    // 2. if different than the current, unload the current and load the new one
+    // 3. create tasks for new loops
 }
 
 void Engine::next() {

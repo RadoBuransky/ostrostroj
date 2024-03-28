@@ -44,8 +44,8 @@ class SampleReader {
         virtual ~SampleReader() {};
 
         int read(std::vector<std::vector<float>> channelBuffers, int count);
-        int get_samplerate();
-        int get_format();
+        int get_samplerate() const;
+        int get_format() const;
 };
 
 class LoopSample: public Sample {
@@ -56,7 +56,7 @@ class LoopSample: public Sample {
     public:
         LoopSample(std::filesystem::path path);
         virtual ~LoopSample() {};
-        SampleReader createReader();
+        SampleReader createReader() const;
 
         int get_track() const;
 };
@@ -70,7 +70,7 @@ class OneShotSample: public Sample {
     public:
         OneShotSample(const std::filesystem::path path);
         virtual ~OneShotSample() {};
-        SampleReader createReader();
+        SampleReader createReader() const;
 
         uint8_t get_note() const;
 };
