@@ -3,11 +3,28 @@
 
 #define MAX_TASK_COUNT 16
 
+MonoTrack::MonoTrack(AudioFifo& output):
+    output(output) {    
+}
+
+StereoTrack::StereoTrack(AudioFifo& left_output, AudioFifo& right_output):
+    left_output(left_output),
+    right_output(right_output) {    
+}
+
 Engine::Engine(const Project& project, SoundCard& soundCard):
     project(project),
     soundCard(soundCard),
+    tracks {
+        std::make_unique<MonoTrack>(soundCard.get_audio_output_fifo(0)),
+        std::make_unique<MonoTrack>(soundCard.get_audio_output_fifo(1)),
+        std::make_unique<MonoTrack>(soundCard.get_audio_output_fifo(2)),
+        std::make_unique<MonoTrack>(soundCard.get_audio_output_fifo(4)),
+        std::make_unique<StereoTrack>(soundCard.get_audio_output_fifo(5), soundCard.get_audio_output_fifo(6)),
+        std::make_unique<StereoTrack>(soundCard.get_audio_output_fifo(7), soundCard.get_audio_output_fifo(8)),
+    },
     threads(create_threads()),
-    tasks(EngineTaskFifo(16)),
+    tasks(TrackTaskFifo(16)),
     interrupted(false),
     next_flag(ATOMIC_FLAG_INIT) {
     set_active_program(0);
@@ -65,14 +82,13 @@ void Engine::process_midi() {
 //      - audio output fifos are full or
 //      - 
 void Engine::create_tasks() {
-    tasks.push(std::bind(&Engine::play_one_shot, this, 13));
+    // tasks.push(std::bind(&Engine::play_one_shot, this, 13));
 }
 
 void Engine::run_tasks() {     
-    EngineTask task;
-
+    TrackTask task;
     while (tasks.pop(task)) {
-        task();
+        task.fill_output();
     }
 }
 

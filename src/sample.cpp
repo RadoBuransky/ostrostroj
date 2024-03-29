@@ -30,6 +30,11 @@ void Sample::preload() {
     it->count;
 }
 
+SampleReader::SampleReader(const Sample& sample, bool loop):
+    sample(sample),
+    loop(loop) {
+}
+
 LoopSample::LoopSample(const std::filesystem::path path):
     Sample(path),
     track(get_track(path)) {
@@ -39,6 +44,10 @@ LoopSample::LoopSample(const std::filesystem::path path):
 int LoopSample::get_track(std::filesystem::path path) const {
     const auto path_filename = path.filename().string();
     return std::stoi(path_filename.substr(1, 1));
+}
+
+SampleReader LoopSample::createReader() const {
+    return SampleReader(*this, true);
 }
 
 int LoopSample::get_track() const {
@@ -60,6 +69,10 @@ uint8_t OneShotSample::get_note(std::filesystem::path path) const {
         throw OstrostrojException(std::format("Invalid note name! [{}]", note_name));
     }
     return octave * 12 + note_name_index;
+}
+
+SampleReader OneShotSample::createReader() const {
+    return SampleReader(*this, false);
 }
 
 uint8_t OneShotSample::get_note() const {

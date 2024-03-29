@@ -9,15 +9,6 @@
 #include "project.hpp"
 #include "soundcard.hpp"
 
-typedef std::function<void(void)> EngineTask;
-
-typedef farbot::fifo<EngineTask,
-            farbot::fifo_options::concurrency::multiple,
-            farbot::fifo_options::concurrency::multiple,
-            farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
-            farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
-            8> EngineTaskFifo;
-
 class Track {
     protected:
         volatile bool mute;
@@ -32,23 +23,40 @@ class Track {
         void set_sample(Sample sample);
 };
 
-class MonoTrack : Track {
+class MonoTrack : public Track {
     private:
         AudioFifo& output;
     public:
         MonoTrack(AudioFifo& output);
-        virtual void fill_output();
+        virtual void fill_output() {};
 };
 
-class StereoTrack : Track {
+class StereoTrack : public Track {
     private:
         AudioFifo& left_output;
         AudioFifo& right_output;
-
     public:
         StereoTrack(AudioFifo& left_output, AudioFifo& right_output);
-        virtual void fill_output();
+        virtual void fill_output() {};
 };
+
+class TrackTask {
+    private:
+        Track* track;
+    public:
+        TrackTask() {};
+        TrackTask(Track& track) {
+            this->track = &track;
+        };
+        virtual void fill_output() {};
+};
+
+typedef farbot::fifo<TrackTask,
+            farbot::fifo_options::concurrency::multiple,
+            farbot::fifo_options::concurrency::multiple,
+            farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
+            farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
+            8> TrackTaskFifo;
 
 // TODO:
 // - engine has a fixed list of tracks
@@ -60,8 +68,12 @@ class Engine {
         const Project& project;
         SoundCard& soundCard;
 
+        // TODO: Track for one shots?
+        std::array<std::unique_ptr<Track>, 6> tracks;        
+
         const std::vector<std::thread> threads;
-        EngineTaskFifo tasks;
+        TrackTaskFifo tasks;
+
         std::atomic_bool interrupted;
         std::atomic_flag next_flag;
         std::mutex midi_processing_mutex;

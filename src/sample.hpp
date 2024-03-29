@@ -33,13 +33,13 @@ class Sample {
 
 class SampleReader {
     private:
-        Sample sample;
+        const Sample& sample;
         bool loop;
         std::forward_list<Buffer>::const_iterator it;
 
         void reset();
     public:
-        SampleReader(Sample sample, bool loop);
+        SampleReader(const Sample& sample, bool loop);
         // TODO: Unload sample
         virtual ~SampleReader() {};
 
@@ -71,6 +71,5 @@ class OneShotSample: public Sample {
         OneShotSample(const std::filesystem::path path);
         virtual ~OneShotSample() {};
         SampleReader createReader() const;
-
         uint8_t get_note() const;
 };
