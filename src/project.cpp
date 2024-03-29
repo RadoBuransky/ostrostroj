@@ -117,6 +117,6 @@ std::vector<Program> Project::load_programs(const std::filesystem::path dir, con
     return result;
 }
 
-std::vector<Program> const & Project::get_programs() const {
-    return programs;
+const Program& Project::get_program(int program_number) const {
+    return programs.at(program_number);
 }

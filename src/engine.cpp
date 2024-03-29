@@ -11,9 +11,24 @@ Track::Track(AudioFifo& left_channel, AudioFifo& right_channel):
     channels({std::ref(left_channel), std::ref(right_channel)}) {
 }
 
+void Track::set_node(std::unique_ptr<Node>& _node) {
+    node = std::move(_node);
+}
+
+void Track::fill_output() {
+    float sample;
+    int channel = 0;
+    while (node->pop(channel, sample)) {
+        AudioFifo& channel_fifo = channels.at(channel);
+        channel_fifo.push(std::move(sample));
+        channel = (channel + 1) % channels.size();
+    }
+}
+
 Engine::Engine(const Project& project, SoundCard& soundCard):
     project(project),
     soundCard(soundCard),
+    active_program(project.get_program(0)),
     loop_tracks {
         std::make_unique<Track>(soundCard.get_audio_output_fifo(0)),
         std::make_unique<Track>(soundCard.get_audio_output_fifo(1)),
@@ -27,7 +42,6 @@ Engine::Engine(const Project& project, SoundCard& soundCard):
     tasks(TrackTaskFifo(16)),
     interrupted(false),
     next_flag(ATOMIC_FLAG_INIT) {
-    set_active_program(0);
 }
 
 Engine::~Engine() {   
@@ -49,8 +63,21 @@ void Engine::run() {
         next_flag.test_and_set();
         next_flag.wait(true);
         process_midi();
-        create_tasks();
         run_tasks();
+    }
+}
+
+void Engine::create_tasks() {
+}
+
+void Engine::create_track_task(Track& track) {
+    tasks.push(std::bind(&Track::fill_output, &track));
+}
+
+void Engine::run_tasks() {     
+    std::function<void(void)> task;
+    while (tasks.pop(task)) {
+        task();
     }
 }
 
@@ -61,42 +88,35 @@ void Engine::process_midi() {
             libremidi::message midi_message;
             MidiFifo& midi_fifo = soundCard.get_midi_fifo();
             while (midi_fifo.pop(midi_message)) {
-                // TODO: Process MIDI message (change internal state)
+                switch (midi_message.get_message_type()) {       
+                    case libremidi::message_type::START:
+                        midi_start();
+                        break;
+                    case libremidi::message_type::STOP:
+                        break;
+                    case libremidi::message_type::CONTINUE:
+                        break;
+                    case libremidi::message_type::PROGRAM_CHANGE:
+                        set_active_program(midi_message.bytes[0]);
+                        break;
+                }
             }
-            // TODO: Enqueue engine tasks
-            // project_status.get_loops();
-            // TODO: Map LoopSample.get_track() to audio output port.
+            create_tasks();
             midi_processed = true;
         }
     }
 }
 
-// TODO:
-// - tasks are state holders
-// - one task per audio output fifo
-// - tasks CAN'T create other tasks 
-// - midi processing creates tasks with current state (mute, unmute, params):
-//       - play loop
-//       - play one shot
-// - run tasks until:
-//      - audio output fifos are full or
-//      - 
-void Engine::create_tasks() {
-    // tasks.push(std::bind(&Engine::play_one_shot, this, 13));
-}
-
-void Engine::run_tasks() {     
-    TrackTask task;
-    while (tasks.pop(task)) {
-        task.fill_output();
-    }
+void Engine::midi_start() {
+    // Create nodes
 }
 
 void Engine::play_one_shot(uint8_t note) {
-    SampleReader sampleReader = project.get_programs().at(0).get_one_shots().at(note).createReader();
+    // SampleReader sampleReader = project.get_programs().at(0).get_one_shots().at(note).createReader();
 }
 
 void Engine::set_active_program(int program_number) {
+    active_program = project.get_program(program_number);
     // TODO:
     // 1. Find program for this program_number
     // 2. if different than the current, unload the current and load the new one

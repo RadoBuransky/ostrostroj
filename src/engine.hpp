@@ -10,47 +10,34 @@
 #include "soundcard.hpp"
 #include "graph.hpp"
 
+// TODO: Is this mutable? Who owns the graph? NoopNode? TrackNode?
 class Track {
     private:
         std::vector<std::reference_wrapper<AudioFifo>> channels;
         volatile bool mute;
-        volatile std::unique_ptr<Node> node;
+        std::unique_ptr<Node> node;
 
     public:
         Track(AudioFifo& channel);
         Track(AudioFifo& left_channel, AudioFifo& right_channel);
+        void set_node(std::unique_ptr<Node>& _node);
         void fill_output();
         void set_mute(bool mute);
         bool get_mute() const;
 };
 
-class TrackTask {
-    private:
-        Track* track;
-    public:
-        TrackTask() {};
-        TrackTask(Track& track) {
-            this->track = &track;
-        };
-        virtual void fill_output() {};
-};
-
-typedef farbot::fifo<TrackTask,
+typedef farbot::fifo<std::function<void(void)>,
             farbot::fifo_options::concurrency::multiple,
             farbot::fifo_options::concurrency::multiple,
             farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
             farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
             8> TrackTaskFifo;
 
-// TODO:
-// - engine has a fixed list of tracks
-// - one task per track
-// - each task fills output.
-
 class Engine {
     private:
         const Project& project;
         SoundCard& soundCard;
+        std::reference_wrapper<const Program> active_program;
 
         std::array<std::unique_ptr<Track>, 6> loop_tracks;
         Track one_shots_track;
@@ -65,12 +52,13 @@ class Engine {
 
         std::vector<std::thread> create_threads();
         void run();
-        void process_midi();
         void create_tasks();
+        void create_track_task(Track& track);
         void run_tasks();
-
+        
+        void process_midi();
+        void midi_start();
         void play_one_shot(uint8_t note);
-
         void set_active_program(int program_number);
 
     public:

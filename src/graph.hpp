@@ -28,4 +28,14 @@ class MixingNode : public Node {
         virtual bool pop(int channel, float& sample);
 };
 
+class MuteNode : public Node {
+    private:
+        Node& src;
+        bool mute;
+    public:
+        MuteNode(Node& src);
+        void set_mute(bool mute);
+        bool get_mute() const;
+};
+
 // TODO: graph is dynamic, nodes can be added and removed (play one shot, change program)

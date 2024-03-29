@@ -36,5 +36,5 @@ class Project {
         Project(const std::filesystem::path dir, const int expected_sample_rate);
         virtual ~Project();
 
-        std::vector<Program> const & get_programs() const;
+        const Program& get_program(int program_number) const;
 };
