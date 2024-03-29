@@ -8,11 +8,13 @@
 #include "farbot/fifo.hpp"
 #include "project.hpp"
 #include "soundcard.hpp"
+#include "graph.hpp"
 
 class Track {
     protected:
         volatile bool mute;
         volatile std::unique_ptr<SampleReader> sample_reader;
+        // TODO: std::vector<std::unique_ptr<SampleReader>>?
 
     public:
         virtual void fill_output() = 0;
@@ -21,6 +23,9 @@ class Track {
         bool get_mute() const;
 
         void set_sample(Sample sample);
+        // TODO: add_sample(Sample &sample)?
+        // TODO: we also need to be able to remove/replace 
+        // TODO: what about processing, fade in/out
 };
 
 class MonoTrack : public Track {
@@ -68,7 +73,7 @@ class Engine {
         const Project& project;
         SoundCard& soundCard;
 
-        // TODO: Track for one shots?
+        // TODO: Track for one shots (ports 8, 9)?
         std::array<std::unique_ptr<Track>, 6> tracks;        
 
         const std::vector<std::thread> threads;
