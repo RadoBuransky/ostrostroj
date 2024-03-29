@@ -15,8 +15,8 @@ class SampleNode : public Node {
     private:
         SampleReader sampleReader;
     public:
-        SampleNode(const Sample& sample);
-        virtual bool pop(int channel, float& sample);
+        SampleNode(const Sample& sample, bool loop): sampleReader(SampleReader(sample, loop)) {};
+        virtual bool pop(int channel, float& sample) {return false;};
 };
 
 class MixingNode : public Node {

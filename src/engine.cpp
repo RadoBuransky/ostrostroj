@@ -109,18 +109,17 @@ void Engine::process_midi() {
 
 void Engine::midi_start() {
     // Create nodes
+    for (const LoopSample& loop_sample : active_program.load().get().get_loops()) {
+        std::unique_ptr<Node> node = std::make_unique<SampleNode>(loop_sample, true);
+        loop_tracks[loop_sample.get_track()].get()->set_node(node);
+    }
 }
 
 void Engine::play_one_shot(uint8_t note) {
-    // SampleReader sampleReader = project.get_programs().at(0).get_one_shots().at(note).createReader();
 }
 
 void Engine::set_active_program(int program_number) {
     active_program = project.get_program(program_number);
-    // TODO:
-    // 1. Find program for this program_number
-    // 2. if different than the current, unload the current and load the new one
-    // 3. create tasks for new loops
 }
 
 void Engine::next() {

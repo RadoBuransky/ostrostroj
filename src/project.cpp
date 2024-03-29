@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <ranges>
 #include "spdlog/spdlog.h"
 #include "project.hpp"
 #include "common.hpp"
@@ -118,5 +119,10 @@ std::vector<Program> Project::load_programs(const std::filesystem::path dir, con
 }
 
 const Program& Project::get_program(int program_number) const {
-    return programs.at(program_number);
+    for (const Program& program : programs | std::views::reverse) {
+        if (program.get_start_number() <= program_number) {
+            return program;
+        }
+    }
+    throw OstrostrojException("Program not found!");
 }
