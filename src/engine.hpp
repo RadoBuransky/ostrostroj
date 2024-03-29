@@ -11,38 +11,17 @@
 #include "graph.hpp"
 
 class Track {
-    protected:
+    private:
+        std::vector<std::reference_wrapper<AudioFifo>> channels;
         volatile bool mute;
-        volatile std::unique_ptr<SampleReader> sample_reader;
-        // TODO: std::vector<std::unique_ptr<SampleReader>>?
+        volatile std::unique_ptr<Node> node;
 
     public:
-        virtual void fill_output() = 0;
-
+        Track(AudioFifo& channel);
+        Track(AudioFifo& left_channel, AudioFifo& right_channel);
+        void fill_output();
         void set_mute(bool mute);
         bool get_mute() const;
-
-        void set_sample(Sample sample);
-        // TODO: add_sample(Sample &sample)?
-        // TODO: we also need to be able to remove/replace 
-        // TODO: what about processing, fade in/out
-};
-
-class MonoTrack : public Track {
-    private:
-        AudioFifo& output;
-    public:
-        MonoTrack(AudioFifo& output);
-        virtual void fill_output() {};
-};
-
-class StereoTrack : public Track {
-    private:
-        AudioFifo& left_output;
-        AudioFifo& right_output;
-    public:
-        StereoTrack(AudioFifo& left_output, AudioFifo& right_output);
-        virtual void fill_output() {};
 };
 
 class TrackTask {
@@ -73,8 +52,8 @@ class Engine {
         const Project& project;
         SoundCard& soundCard;
 
-        // TODO: Track for one shots (ports 8, 9)?
-        std::array<std::unique_ptr<Track>, 6> tracks;        
+        std::array<std::unique_ptr<Track>, 6> loop_tracks;
+        Track one_shots_track;
 
         const std::vector<std::thread> threads;
         TrackTaskFifo tasks;

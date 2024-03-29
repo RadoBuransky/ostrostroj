@@ -3,26 +3,26 @@
 
 #define MAX_TASK_COUNT 16
 
-MonoTrack::MonoTrack(AudioFifo& output):
-    output(output) {    
+Track::Track(AudioFifo& channel):
+    channels({std::ref(channel)}) {
 }
 
-StereoTrack::StereoTrack(AudioFifo& left_output, AudioFifo& right_output):
-    left_output(left_output),
-    right_output(right_output) {    
+Track::Track(AudioFifo& left_channel, AudioFifo& right_channel):
+    channels({std::ref(left_channel), std::ref(right_channel)}) {
 }
 
 Engine::Engine(const Project& project, SoundCard& soundCard):
     project(project),
     soundCard(soundCard),
-    tracks {
-        std::make_unique<MonoTrack>(soundCard.get_audio_output_fifo(0)),
-        std::make_unique<MonoTrack>(soundCard.get_audio_output_fifo(1)),
-        std::make_unique<MonoTrack>(soundCard.get_audio_output_fifo(2)),
-        std::make_unique<MonoTrack>(soundCard.get_audio_output_fifo(4)),
-        std::make_unique<StereoTrack>(soundCard.get_audio_output_fifo(5), soundCard.get_audio_output_fifo(6)),
-        std::make_unique<StereoTrack>(soundCard.get_audio_output_fifo(7), soundCard.get_audio_output_fifo(8)),
+    loop_tracks {
+        std::make_unique<Track>(soundCard.get_audio_output_fifo(0)),
+        std::make_unique<Track>(soundCard.get_audio_output_fifo(1)),
+        std::make_unique<Track>(soundCard.get_audio_output_fifo(2)),
+        std::make_unique<Track>(soundCard.get_audio_output_fifo(3)),
+        std::make_unique<Track>(soundCard.get_audio_output_fifo(4), soundCard.get_audio_output_fifo(5)),
+        std::make_unique<Track>(soundCard.get_audio_output_fifo(6), soundCard.get_audio_output_fifo(7)),
     },
+    one_shots_track(Track(soundCard.get_audio_output_fifo(8), soundCard.get_audio_output_fifo(9))),
     threads(create_threads()),
     tasks(TrackTaskFifo(16)),
     interrupted(false),
