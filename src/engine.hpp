@@ -37,7 +37,7 @@ class Engine {
     private:
         const Project& project;
         SoundCard& soundCard;
-        std::reference_wrapper<const Program> active_program;
+        std::atomic<std::reference_wrapper<const Program>> active_program;
 
         std::array<std::unique_ptr<Track>, 6> loop_tracks;
         Track one_shots_track;

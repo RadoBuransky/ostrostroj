@@ -4,7 +4,7 @@
 #include <map>
 #include "sample.hpp"
 
-struct Program {
+class Program {
     private:
         int start_number;
         std::vector<LoopSample> loops;
