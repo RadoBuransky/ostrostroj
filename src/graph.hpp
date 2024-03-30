@@ -15,16 +15,22 @@ class Node {
 
 class ChildNode : public Node {
     protected:
-        std::unique_ptr<Node> parent;
+        Node& parent;
     public:
-        ChildNode(std::unique_ptr<Node> parent);
+        ChildNode(Node& parent);
         Node& get_parent();
-        void set_parent(std::unique_ptr<Node> parent);
 };
 
 class NoopNode : public Node {
+    private:
+        NoopNode() {};
     public:
-        NoopNode();
+        static NoopNode& getInstance() {
+            static NoopNode instance;
+            return instance;
+        }
+        NoopNode(NoopNode const &) = delete;
+        void operator=(NoopNode const &) = delete;
         virtual bool pop(float& sample) {
             sample = 0.0;
             return true;
@@ -49,9 +55,9 @@ class MixingNode : public Node {
 
 class MuteNode : public ChildNode {
     private:
-        std::atomic_bool mute;
+        bool muted;
     public:
-        MuteNode(std::unique_ptr<Node> parent);
+        MuteNode(Node& parent);
         virtual bool pop(float& sample);
         void set_mute(bool mute);
         bool get_mute() const;
@@ -59,9 +65,9 @@ class MuteNode : public ChildNode {
 
 class TransportNode : public ChildNode {
     private:
-        std::atomic_bool started;
+        bool started;
     public:
-        TransportNode(std::unique_ptr<Node> parent);
+        TransportNode(Node& parent);
         virtual bool pop(float& sample);
         void start();
         void stop();

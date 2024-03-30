@@ -1,20 +1,37 @@
 #include "graph.hpp"
 
-ChildNode::ChildNode(std::unique_ptr<Node> _parent):
-    parent(std::move(_parent)) {    
+ChildNode::ChildNode(Node& _parent):
+    parent(_parent) {
 }
 
 Node& ChildNode::get_parent() {
-    return *parent.get();
+    return parent;
 }
 
-void ChildNode::set_parent(std::unique_ptr<Node> _parent) {
-    parent = std::move(_parent);
+MuteNode::MuteNode(Node& parent):
+    ChildNode(parent),
+    muted(false) {
 }
 
-TransportNode::TransportNode(std::unique_ptr<Node> _parent):
-    ChildNode(std::move(_parent)),
+bool MuteNode::pop(float& sample) {
+    if (muted) {
+        float other_sample;
+        return parent.pop(other_sample);
+    }
+    return parent.pop(sample);
+}
+
+TransportNode::TransportNode(Node& parent):
+    ChildNode(parent),
     started(false) {
+}
+
+bool TransportNode::pop(float& sample) {
+    if (started) {
+        return parent.pop(sample);
+    }
+    sample = 0.0;
+    return true;
 }
 
 void TransportNode::start() {
