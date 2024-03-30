@@ -8,6 +8,22 @@ Node& ChildNode::get_parent() {
     return parent;
 }
 
+DynamicNode::DynamicNode():
+    parent(std::make_unique<NoopNode>()) {    
+}
+
+Node& DynamicNode::get_parent() {
+    return *parent;
+}
+
+void DynamicNode::set_parent(std::unique_ptr<Node> _parent) {    
+    parent = std::move(_parent);
+}
+
+bool DynamicNode::pop(float& sample) {
+    return parent->pop(sample);
+}
+
 MuteNode::MuteNode(Node& parent):
     ChildNode(parent),
     muted(false) {

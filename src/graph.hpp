@@ -13,6 +13,21 @@ class Node {
         virtual bool pop(float& sample) = 0;
 };
 
+class NoopNode : public Node {
+    public:
+        static NoopNode& getInstance() {
+            static NoopNode instance;
+            return instance;
+        }
+        NoopNode() {};
+        NoopNode(NoopNode const &) = delete;
+        void operator=(NoopNode const &) = delete;
+        virtual bool pop(float& sample) {
+            sample = 0.0;
+            return true;
+        }
+};
+
 class ChildNode : public Node {
     protected:
         Node& parent;
@@ -21,20 +36,14 @@ class ChildNode : public Node {
         Node& get_parent();
 };
 
-class NoopNode : public Node {
+class DynamicNode : public Node {
     private:
-        NoopNode() {};
+        std::unique_ptr<Node> parent;
     public:
-        static NoopNode& getInstance() {
-            static NoopNode instance;
-            return instance;
-        }
-        NoopNode(NoopNode const &) = delete;
-        void operator=(NoopNode const &) = delete;
-        virtual bool pop(float& sample) {
-            sample = 0.0;
-            return true;
-        }
+        DynamicNode();
+        Node& get_parent();
+        void set_parent(std::unique_ptr<Node> _parent);
+        virtual bool pop(float& sample);
 };
 
 class SampleNode : public Node {

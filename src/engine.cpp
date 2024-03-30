@@ -13,7 +13,8 @@ Track::Track(AudioFifo& left_channel, AudioFifo& right_channel):
 
 Track::Track(std::vector<std::reference_wrapper<AudioFifo>> _channels):
     channels(_channels),
-    mute_node(MuteNode(NoopNode::getInstance())),
+    dynamic_node(DynamicNode()),
+    mute_node(MuteNode(dynamic_node)),
     transport_node(TransportNode(mute_node)) {
 }
 
