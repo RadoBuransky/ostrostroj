@@ -1,22 +1,42 @@
 #pragma once
 
+#include <vector>
+#include <thread>
 #include "sample.hpp"
 
 class Node {
     public:
         /**
+         * Stateful operation. For stereo, first call returns left, second call right channel.
          * @returns `false` if this node is done and will never produce a sample.
         */
-        virtual bool pop(int channel, float& sample) = 0;
+        virtual bool pop(float& sample) = 0;
 };
 
-// TODO: Can this be actually the SampleReader?
+class ChildNode : public Node {
+    protected:
+        std::unique_ptr<Node> parent;
+    public:
+        ChildNode(std::unique_ptr<Node> parent);
+        Node& get_parent();
+        void set_parent(std::unique_ptr<Node> parent);
+};
+
+class NoopNode : public Node {
+    public:
+        NoopNode();
+        virtual bool pop(float& sample) {
+            sample = 0.0;
+            return true;
+        }
+};
+
 class SampleNode : public Node {
     private:
         SampleReader sampleReader;
     public:
         SampleNode(const Sample& sample, bool loop): sampleReader(SampleReader(sample, loop)) {};
-        virtual bool pop(int channel, float& sample) {return false;};
+        virtual bool pop(float& sample) {return false;};
 };
 
 class MixingNode : public Node {
@@ -24,18 +44,25 @@ class MixingNode : public Node {
         std::vector<std::unique_ptr<Node>> nodes;
     public:
         void add_node(Node& node);
-        // TODO: Remove node when done
-        virtual bool pop(int channel, float& sample);
+        virtual bool pop(float& sample);
 };
 
-class MuteNode : public Node {
+class MuteNode : public ChildNode {
     private:
-        Node& src;
-        bool mute;
+        std::atomic_bool mute;
     public:
-        MuteNode(Node& src);
+        MuteNode(std::unique_ptr<Node> parent);
+        virtual bool pop(float& sample);
         void set_mute(bool mute);
         bool get_mute() const;
 };
 
-// TODO: graph is dynamic, nodes can be added and removed (play one shot, change program)
+class TransportNode : public ChildNode {
+    private:
+        std::atomic_bool started;
+    public:
+        TransportNode(std::unique_ptr<Node> parent);
+        virtual bool pop(float& sample);
+        void start();
+        void stop();
+};
