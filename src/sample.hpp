@@ -2,30 +2,35 @@
 
 #include <vector>
 #include <filesystem>
-#include <forward_list>
-#include <iterator>
+#include <chrono>
 #include <sndfile.hh>
 
 class SampleBlock {
     private:
-        static constexpr int BUFFER_LEN = 32*1024;
+        static constexpr int BUFFER_LEN = 8192;
         class Sample& sample;
+        const sf_count_t start_pos;
         const std::vector<float> buffer;
         std::unique_ptr<SampleBlock> next;
         const std::vector<float> read_buffer();
     public:
-        SampleBlock(Sample& sample);
+        SampleBlock(Sample& sample, sf_count_t _start_pos);
         const std::vector<float>& get_buffer() const;
+        sf_count_t get_start_pos() const;
+        bool is_next_loaded() const;
         bool has_next() const;
         SampleBlock& get_next();
+        void unload_next();
 };
 
 class Sample {
     private:
+        static constexpr std::chrono::seconds PRELOAD_TIME = std::chrono::seconds(2);
         friend SampleBlock;
         SNDFILE* snd_file;
         SF_INFO info;
         SampleBlock head;
+        SampleBlock& get_last_loaded();
     public:
         Sample(const std::filesystem::path path);
         Sample(Sample&&) = default;

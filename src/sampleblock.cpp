@@ -10,8 +10,9 @@ const std::vector<float> SampleBlock::read_buffer() {
     return std::move(result);
 }
 
-SampleBlock::SampleBlock(Sample& sample):
+SampleBlock::SampleBlock(Sample& sample, sf_count_t _start_pos):
     sample(sample),
+    start_pos(_start_pos),
     buffer(std::move(read_buffer())) {
     if ((BUFFER_LEN % sample.info.channels) != 0) {
         throw OstrostrojException("Invalid buffer length!");
@@ -22,6 +23,14 @@ const std::vector<float>& SampleBlock::get_buffer() const {
     return buffer;
 }
 
+sf_count_t SampleBlock::get_start_pos() const {
+    return start_pos;
+}
+
+bool SampleBlock::is_next_loaded() const {
+    return has_next() && (next.get() != nullptr);
+}
+
 bool SampleBlock::has_next() const {
     return buffer.size() == BUFFER_LEN;
 }
@@ -30,8 +39,12 @@ SampleBlock& SampleBlock::get_next() {
     if (!has_next()) {
         throw OstrostrojException("No more samples!");
     }
-    if (next == nullptr) {
-        next = std::make_unique<SampleBlock>(sample);
+    if (next.get() == nullptr) {
+        next = std::make_unique<SampleBlock>(sample, start_pos + (buffer.size() / sample.info.channels));
     }
     return *next;
+}
+
+void SampleBlock::unload_next() {
+    next.reset();
 }
