@@ -13,7 +13,7 @@
 
 class OstrostrojApp {
     private:
-        const Project project;
+        Project project;
         Engine engine;
         SoundCard soundCard;
 

@@ -76,11 +76,11 @@ int Program::get_start_number() const {
     return start_number;
 }
 
-std::vector<LoopSample> const & Program::get_loops() const {
+std::vector<LoopSample>& Program::get_loops() {
     return loops;
 }
 
-std::map<uint8_t, OneShotSample> const & Program::get_one_shots() const {
+std::map<uint8_t, OneShotSample>& Program::get_one_shots() {
     return one_shots;
 }
 
@@ -118,8 +118,8 @@ std::vector<Program> Project::load_programs(const std::filesystem::path dir, con
     return result;
 }
 
-const Program& Project::get_program(int program_number) const {
-    for (const Program& program : programs | std::views::reverse) {
+Program& Project::get_program(int program_number) {
+    for (Program& program : programs | std::views::reverse) {
         if (program.get_start_number() <= program_number) {
             return program;
         }

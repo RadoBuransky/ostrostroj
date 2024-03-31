@@ -3,10 +3,21 @@
 #include "common.hpp"
 #include "sample.hpp"
 
+SampleBlock::SampleBlock(Sample& sample):
+    sample(sample),
+    buffer(read_buffer()) {
+}
+
+SampleBlock::~SampleBlock() {    
+}
+
+const std::vector<float> SampleBlock::read_buffer() {
+    return std::vector<float>();
+}
+
 Sample::Sample(std::filesystem::path path) :
-    snd_file(sf_open(path.c_str(), SFM_READ, &info)),
-    buffers(),
-    loaded(false) {
+    snd_file(sf_open(path.c_str(), SFM_READ, &info))/*,
+    head(SampleBlock(*this))*/ {
     if (snd_file == nullptr) {
         throw OstrostrojException(std::format("Can't open file! [{}]", path.c_str()));   
     }
@@ -24,15 +35,7 @@ SF_INFO Sample::get_info() const {
     return info;
 }
 
-void Sample::preload() {
-    auto it = buffers.cbegin();
-    it++;
-    it->count;
-}
-
-SampleReader::SampleReader(const Sample& sample, bool loop):
-    sample(sample),
-    loop(loop) {
+void Sample::unload() {
 }
 
 LoopSample::LoopSample(const std::filesystem::path path):
@@ -44,10 +47,6 @@ LoopSample::LoopSample(const std::filesystem::path path):
 int LoopSample::get_track(std::filesystem::path path) const {
     const auto path_filename = path.filename().string();
     return std::stoi(path_filename.substr(1, 1));
-}
-
-SampleReader LoopSample::createReader() const {
-    return SampleReader(*this, true);
 }
 
 int LoopSample::get_track() const {
@@ -69,10 +68,6 @@ uint8_t OneShotSample::get_note(std::filesystem::path path) const {
         throw OstrostrojException(std::format("Invalid note name! [{}]", note_name));
     }
     return octave * 12 + note_name_index;
-}
-
-SampleReader OneShotSample::createReader() const {
-    return SampleReader(*this, false);
 }
 
 uint8_t OneShotSample::get_note() const {

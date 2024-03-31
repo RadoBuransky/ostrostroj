@@ -24,17 +24,17 @@ class Program {
         Program& operator=(Program&&);
 
         int get_start_number() const;
-        std::vector<LoopSample> const & get_loops() const;
-        std::map<uint8_t, OneShotSample> const & get_one_shots() const;
+        std::vector<LoopSample>& get_loops();
+        std::map<uint8_t, OneShotSample>& get_one_shots();
 };
 
 class Project {
     private:
-        const std::vector<Program> programs;
+        std::vector<Program> programs;
         std::vector<Program> load_programs(const std::filesystem::path dir, const int expected_sample_rate);
     public:
         Project(const std::filesystem::path dir, const int expected_sample_rate);
         virtual ~Project();
 
-        const Program& get_program(int program_number) const;
+        Program& get_program(int program_number);
 };

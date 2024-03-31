@@ -10,7 +10,6 @@
 #include "soundcard.hpp"
 #include "graph.hpp"
 
-// TODO: Is this mutable? Who owns the graph? NoopNode? TrackNode?
 class Track {
     private:
         std::vector<std::reference_wrapper<AudioFifo>> channels;
@@ -18,16 +17,18 @@ class Track {
         MuteNode mute_node;
         TransportNode transport_node;
         volatile bool mute;
-        std::unique_ptr<Node> node;
 
     public:
         Track(AudioFifo& channel);
         Track(AudioFifo& left_channel, AudioFifo& right_channel);
         Track(std::vector<std::reference_wrapper<AudioFifo>> channels);
-        void set_node(std::unique_ptr<Node>& _node);
+        void set_node(std::unique_ptr<Node> node);
+        void reset_node();
+
         void fill_output();
         void set_mute(bool mute);
-        bool get_mute() const;
+        void start();
+        void stop();
 };
 
 typedef farbot::fifo<std::function<void(void)>,
@@ -39,9 +40,8 @@ typedef farbot::fifo<std::function<void(void)>,
 
 class Engine {
     private:
-        const Project& project;
+        Project& project;
         SoundCard& soundCard;
-        std::atomic<std::reference_wrapper<const Program>> active_program;
 
         std::array<std::unique_ptr<Track>, 6> loop_tracks;
         Track one_shots_track;
@@ -55,6 +55,7 @@ class Engine {
         volatile bool midi_processed;
 
         std::vector<std::thread> create_threads();
+
         void run();
         void create_tasks();
         void create_track_task(Track& track);
@@ -65,10 +66,10 @@ class Engine {
         void midi_stop();
         void midi_continue();
         void play_one_shot(uint8_t note);
-        void set_active_program(int program_number);
+        void set_program(int program_number);
 
     public:
-        Engine(const Project& project, SoundCard& soundCard);
+        Engine(Project& project, SoundCard& soundCard);
         virtual ~Engine();
 
         void next();

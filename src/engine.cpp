@@ -18,24 +18,39 @@ Track::Track(std::vector<std::reference_wrapper<AudioFifo>> _channels):
     transport_node(TransportNode(mute_node)) {
 }
 
-void Track::set_node(std::unique_ptr<Node>& _node) {
-    node = std::move(_node);
+void Track::set_mute(bool mute) {
+    mute_node.set_mute(mute);
+}
+
+void Track::start() {
+    transport_node.start();
+}
+
+void Track::stop() {
+    transport_node.stop();
+}
+
+void Track::set_node(std::unique_ptr<Node> node) {
+    dynamic_node.set_parent(std::move(node));
+}
+
+void Track::reset_node() {
+    dynamic_node.reset_parent();
 }
 
 void Track::fill_output() {
     float sample;
     int channel = 0;
-    while (node->pop(sample)) {
+    while (transport_node.pop(sample)) {
         AudioFifo& channel_fifo = channels.at(channel);
         channel_fifo.push(std::move(sample));
         channel = (channel + 1) % channels.size();
     }
 }
 
-Engine::Engine(const Project& project, SoundCard& soundCard):
+Engine::Engine(Project& project, SoundCard& soundCard):
     project(project),
     soundCard(soundCard),
-    active_program(project.get_program(0)),
     loop_tracks {
         std::make_unique<Track>(soundCard.get_audio_output_fifo(0)),
         std::make_unique<Track>(soundCard.get_audio_output_fifo(1)),
@@ -49,7 +64,7 @@ Engine::Engine(const Project& project, SoundCard& soundCard):
     tasks(TrackTaskFifo(16)),
     interrupted(false),
     next_flag(ATOMIC_FLAG_INIT) {
-    set_active_program(0);
+    set_program(0);
 }
 
 Engine::~Engine() {   
@@ -107,7 +122,7 @@ void Engine::process_midi() {
                         midi_continue();
                         break;
                     case libremidi::message_type::PROGRAM_CHANGE:
-                        set_active_program(midi_message.bytes[0]);
+                        set_program(midi_message.bytes[0]);
                         break;
                 }
             }
@@ -118,28 +133,37 @@ void Engine::process_midi() {
 }
 
 void Engine::midi_start() {
-    // TODO: 
+    // TODO: Reset position (start from beginning)
+    for (std::unique_ptr<Track>& track : loop_tracks) {
+        track->start();
+    }
 }
 
 void Engine::midi_stop() {
-    // TODO: NoopNode & reset position
+    for (std::unique_ptr<Track>& track : loop_tracks) {
+        track->stop();
+    }
 }
 
 void Engine::midi_continue() {
+    for (std::unique_ptr<Track>& track : loop_tracks) {
+        track->start();
+    }
 }
 
 void Engine::play_one_shot(uint8_t note) {
     // TODO: Unload sample (not samplereader!) from memory once done
 }
 
-void Engine::set_active_program(int program_number) {
-    // TODO: Unload samples for previous program from memory
+void Engine::set_program(int program_number) {
+    for (std::unique_ptr<Track>& track : loop_tracks) {
+        track->reset_node();
+    }
 
-    // TODO: This starts playback immediately regardless of play/stop state
-    active_program = project.get_program(program_number);
-    for (const LoopSample& loop_sample : active_program.load().get().get_loops()) {
-        std::unique_ptr<Node> node = std::make_unique<SampleNode>(loop_sample, true);
-        loop_tracks[loop_sample.get_track()].get()->set_node(node);
+    Program& active_program = project.get_program(program_number);
+    for (LoopSample& loop_sample : active_program.get_loops()) {
+        auto sample_node = std::make_unique<SampleNode>(loop_sample, true);
+        loop_tracks[loop_sample.get_track()]->set_node(std::move(sample_node));
     }
 }
 

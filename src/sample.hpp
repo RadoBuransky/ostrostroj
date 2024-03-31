@@ -1,51 +1,39 @@
 #pragma once
 
+#include <array>
 #include <filesystem>
 #include <forward_list>
+#include <iterator>
 #include <sndfile.hh>
 
-#define		BUFFER_LEN	32*1024
-
-struct Buffer {
+class SampleBlock {
+    private:
+        static constexpr int BUFFER_LEN = 32*1024;
+        class Sample& sample;
+        const std::vector<float> buffer;
+        std::unique_ptr<SampleBlock> next;
+        const std::vector<float> read_buffer();
     public:
-        float samples[BUFFER_LEN];
-        int count;
+        SampleBlock(Sample& sample);
+        virtual ~SampleBlock();
+        std::vector<float>& get_buffer();
+        bool has_next();
+        SampleBlock& get_next();
 };
 
 class Sample {
     private:
+        friend SampleBlock;
         SNDFILE* snd_file;
         SF_INFO info;
-        std::forward_list<Buffer> buffers;
-        bool loaded;
-
-        void preload();
-
+        // std::unique_ptr<SampleBlock> head;
     public:
         Sample(const std::filesystem::path path);
         virtual ~Sample();
-
         SF_INFO get_info() const;
-        std::forward_list<Buffer>& get_buffers() const;
-        void load();
+        SampleBlock& get_head();
+        void preload(sf_count_t from);
         void unload();
-};
-
-class SampleReader {
-    private:
-        const Sample& sample;
-        bool loop;
-        std::forward_list<Buffer>::const_iterator it;
-
-        void reset();
-    public:
-        SampleReader(const Sample& sample, bool loop);
-        // TODO: Unload sample
-        virtual ~SampleReader() {};
-
-        int read(std::vector<std::vector<float>> channelBuffers, int count);
-        int get_samplerate() const;
-        int get_format() const;
 };
 
 class LoopSample: public Sample {
@@ -56,8 +44,6 @@ class LoopSample: public Sample {
     public:
         LoopSample(std::filesystem::path path);
         virtual ~LoopSample() {};
-        SampleReader createReader() const;
-
         int get_track() const;
 };
 
@@ -70,6 +56,5 @@ class OneShotSample: public Sample {
     public:
         OneShotSample(const std::filesystem::path path);
         virtual ~OneShotSample() {};
-        SampleReader createReader() const;
         uint8_t get_note() const;
 };

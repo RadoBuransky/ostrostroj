@@ -43,15 +43,17 @@ class DynamicNode : public Node {
         DynamicNode();
         Node& get_parent();
         void set_parent(std::unique_ptr<Node> _parent);
+        void reset_parent();
         virtual bool pop(float& sample);
 };
 
 class SampleNode : public Node {
     private:
-        SampleReader sampleReader;
+        Sample& sample;
     public:
-        SampleNode(const Sample& sample, bool loop): sampleReader(SampleReader(sample, loop)) {};
-        virtual bool pop(float& sample) {return false;};
+        SampleNode(Sample& sample, bool loop);
+        virtual ~SampleNode();
+        virtual bool pop(float& sample);
 };
 
 class MixingNode : public Node {

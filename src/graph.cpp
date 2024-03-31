@@ -20,8 +20,24 @@ void DynamicNode::set_parent(std::unique_ptr<Node> _parent) {
     parent = std::move(_parent);
 }
 
+void DynamicNode::reset_parent() {
+    parent = std::make_unique<NoopNode>();
+}
+
 bool DynamicNode::pop(float& sample) {
     return parent->pop(sample);
+}
+
+SampleNode::SampleNode(Sample& sample, bool loop):
+    sample(sample) {
+}
+
+SampleNode::~SampleNode() {    
+    sample.unload();
+}
+
+bool SampleNode::pop(float& sample) {
+    return true;
 }
 
 MuteNode::MuteNode(Node& parent):
@@ -35,6 +51,14 @@ bool MuteNode::pop(float& sample) {
         return parent.pop(other_sample);
     }
     return parent.pop(sample);
+}
+
+void MuteNode::set_mute(bool mute) {
+    muted = mute;
+}
+
+bool MuteNode::get_mute() const {
+    return muted;
 }
 
 TransportNode::TransportNode(Node& parent):
