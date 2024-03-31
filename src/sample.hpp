@@ -11,7 +11,7 @@ class SampleBlock {
         static constexpr int BUFFER_LEN = 32*1024;
         class Sample& sample;
         const std::vector<float> buffer;
-        std::unique_ptr<SampleBlock> next;
+        // std::unique_ptr<SampleBlock> next;
         const std::vector<float> read_buffer();
     public:
         SampleBlock(Sample& sample);
@@ -26,7 +26,7 @@ class Sample {
         friend SampleBlock;
         SNDFILE* snd_file;
         SF_INFO info;
-        // std::unique_ptr<SampleBlock> head;
+        SampleBlock head;
     public:
         Sample(const std::filesystem::path path);
         virtual ~Sample();

@@ -16,8 +16,8 @@ const std::vector<float> SampleBlock::read_buffer() {
 }
 
 Sample::Sample(std::filesystem::path path) :
-    snd_file(sf_open(path.c_str(), SFM_READ, &info))/*,
-    head(SampleBlock(*this))*/ {
+    snd_file(sf_open(path.c_str(), SFM_READ, &info)),
+    head(SampleBlock(*this)) {
     if (snd_file == nullptr) {
         throw OstrostrojException(std::format("Can't open file! [{}]", path.c_str()));   
     }
