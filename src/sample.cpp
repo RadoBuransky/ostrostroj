@@ -8,9 +8,6 @@ SampleBlock::SampleBlock(Sample& sample):
     buffer(read_buffer()) {
 }
 
-SampleBlock::~SampleBlock() {    
-}
-
 const std::vector<float> SampleBlock::read_buffer() {
     return std::vector<float>();
 }

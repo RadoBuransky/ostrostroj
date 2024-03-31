@@ -15,9 +15,6 @@ class SampleBlock {
         const std::vector<float> read_buffer();
     public:
         SampleBlock(Sample& sample);
-        SampleBlock(SampleBlock&& sample_block);
-        SampleBlock& operator =(SampleBlock&& sample_block);
-        virtual ~SampleBlock();
         std::vector<float>& get_buffer();
         bool has_next();
         SampleBlock& get_next();
@@ -31,8 +28,8 @@ class Sample {
         SampleBlock head;
     public:
         Sample(const std::filesystem::path path);
-        Sample(Sample&&);
-        Sample& operator =(Sample&&);
+        Sample(Sample&&) = default;
+        Sample& operator =(Sample&&) = default;
         virtual ~Sample();
         SF_INFO get_info() const;
         SampleBlock& get_head();
@@ -47,9 +44,6 @@ class LoopSample: public Sample {
 
     public:
         LoopSample(std::filesystem::path path);
-        LoopSample(LoopSample&&);
-        LoopSample& operator =(LoopSample&&);
-        virtual ~LoopSample() {};
         int get_track() const;
 };
 
@@ -61,8 +55,5 @@ class OneShotSample: public Sample {
 
     public:
         OneShotSample(const std::filesystem::path path);
-        OneShotSample(OneShotSample&&);
-        OneShotSample& operator =(OneShotSample&&);
-        virtual ~OneShotSample() {};
         uint8_t get_note() const;
 };

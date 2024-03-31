@@ -19,10 +19,6 @@ class Program {
 
     public:
         Program(const std::filesystem::path dir, const int expected_sample_rate);
-        Program(Program&&);
-        virtual ~Program();
-        Program& operator=(Program&&);
-
         int get_start_number() const;
         std::vector<LoopSample>& get_loops();
         std::map<uint8_t, OneShotSample>& get_one_shots();
@@ -34,7 +30,5 @@ class Project {
         std::vector<Program> load_programs(const std::filesystem::path dir, const int expected_sample_rate);
     public:
         Project(const std::filesystem::path dir, const int expected_sample_rate);
-        virtual ~Project();
-
         Program& get_program(int program_number);
 };

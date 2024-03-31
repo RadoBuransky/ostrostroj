@@ -11,9 +11,6 @@ Program::Program(const std::filesystem::path dir, const int expected_sample_rate
     spdlog::info(std::format("Program loaded {} [{} loops, {} one shots]", dir.string(), loops.size(), one_shots.size()));
 }
 
-Program::~Program() {    
-}
-
 int Program::program_start_number(const std::filesystem::path dir) {
     return std::stoi(dir.filename().string().substr(1, 2));
 }
@@ -86,22 +83,6 @@ std::map<uint8_t, OneShotSample>& Program::get_one_shots() {
 
 Project::Project(const std::filesystem::path dir, const int expected_sample_rate):
     programs(load_programs(dir, expected_sample_rate)) {
-}
-
-Program::Program(Program&& other):
-    start_number(other.start_number),
-    loops(std::move(other.loops)),
-    one_shots(std::move(other.one_shots)) {
-}
-
-Project::~Project() {
-}
-
-Program& Program::operator=(Program&& other) {
-    start_number = other.start_number;
-    loops = std::move(other.loops);
-    one_shots = std::move(other.one_shots);
-    return *this;
 }
 
 std::vector<Program> Project::load_programs(const std::filesystem::path dir, const int expected_sample_rate) {
