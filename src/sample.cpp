@@ -3,15 +3,6 @@
 #include "common.hpp"
 #include "sample.hpp"
 
-SampleBlock::SampleBlock(Sample& sample):
-    sample(sample),
-    buffer(read_buffer()) {
-}
-
-const std::vector<float> SampleBlock::read_buffer() {
-    return std::vector<float>();
-}
-
 Sample::Sample(std::filesystem::path path) :
     snd_file(sf_open(path.c_str(), SFM_READ, &info)),
     head(SampleBlock(*this)) {

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <array>
+#include <vector>
 #include <filesystem>
 #include <forward_list>
 #include <iterator>
@@ -15,8 +15,8 @@ class SampleBlock {
         const std::vector<float> read_buffer();
     public:
         SampleBlock(Sample& sample);
-        std::vector<float>& get_buffer();
-        bool has_next();
+        const std::vector<float>& get_buffer() const;
+        bool has_next() const;
         SampleBlock& get_next();
 };
 
