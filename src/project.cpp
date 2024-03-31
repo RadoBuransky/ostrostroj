@@ -26,7 +26,7 @@ std::vector<LoopSample> Program::load_loops(const std::filesystem::path dir, con
             auto loop = LoopSample(wav_file);
             const int expected_channels = (loop.get_track() < 5) ? 1 : 2;
             check_sample_format(wav_file, loop.get_info(), expected_sample_rate, expected_channels);
-            result.push_back(loop);
+            result.push_back(std::move(loop));
         }
     }
     return result;
@@ -34,12 +34,12 @@ std::vector<LoopSample> Program::load_loops(const std::filesystem::path dir, con
 
 std::map<uint8_t, OneShotSample> Program::load_one_shots(const std::filesystem::path dir, const int expected_sample_rate) {
     spdlog::debug(std::format("Loading one shots {} ", dir.string()));
-    auto result = std::map<uint8_t, OneShotSample>();
+    std::map<uint8_t, OneShotSample> result = std::map<uint8_t, OneShotSample>();
     for (auto const& wav_file : wav_files(dir)) {
         if (wav_file.filename().string().starts_with("S")) {
             auto one_shot_sample = OneShotSample(wav_file);
             check_sample_format(wav_file, one_shot_sample.get_info(), expected_sample_rate, 2);
-            result.insert({one_shot_sample.get_note(), one_shot_sample});
+            result.insert(std::make_pair(one_shot_sample.get_note(), std::move(one_shot_sample)));
         }
     }
     return result;
@@ -90,8 +90,8 @@ Project::Project(const std::filesystem::path dir, const int expected_sample_rate
 
 Program::Program(Program&& other):
     start_number(other.start_number),
-    loops(other.loops),
-    one_shots(other.one_shots) {
+    loops(std::move(other.loops)),
+    one_shots(std::move(other.one_shots)) {
 }
 
 Project::~Project() {
