@@ -28,18 +28,6 @@ bool DynamicNode::pop(float& sample) {
     return parent->pop(sample);
 }
 
-SampleNode::SampleNode(Sample& sample, bool loop):
-    sample(sample) {
-}
-
-SampleNode::~SampleNode() {    
-    sample.unload();
-}
-
-bool SampleNode::pop(float& sample) {
-    return true;
-}
-
 TrackNode::TrackNode(Node& parent):
     ChildNode(parent),
     started(false),

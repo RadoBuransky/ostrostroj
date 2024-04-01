@@ -15,14 +15,15 @@ class Track {
         std::vector<std::reference_wrapper<AudioFifo>> channels;
         DynamicNode dynamic_node;
         TrackNode track_node;
-
+        std::vector<float> next_frame;
+        bool push_next_frame();
+        void pop_next_frame();
     public:
         Track(AudioFifo& channel);
         Track(AudioFifo& left_channel, AudioFifo& right_channel);
         Track(std::vector<std::reference_wrapper<AudioFifo>> channels);
         void set_node(std::unique_ptr<Node> node);
         void reset_node();
-
         void fill_output();
         void set_mute(bool mute);
         void start();

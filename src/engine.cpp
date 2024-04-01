@@ -1,7 +1,33 @@
 #include <spdlog/spdlog.h>
 #include "engine.hpp"
+#include "common.hpp"
 
 #define MAX_TASK_COUNT 16
+
+bool Track::push_next_frame() {
+    if (next_frame.empty()) {
+        return true;
+    }
+    for (int channel = 0; channel < next_frame.size(); channel++) {
+        AudioFifo& channel_fifo = channels.at(channel);
+        if (!channel_fifo.push(std::move(next_frame.at(channel)))) {
+            return false;
+        }
+    }
+    next_frame.clear();
+    return true;
+}
+
+void Track::pop_next_frame() {
+    for (int channel = 0; channel < channels.size(); channel++) {
+        next_frame.push_back(sample);
+        if (!track_node.pop(sample)) {
+            spdlog::warn("Next frame underrun!");
+            next_frame.clear();
+            return;
+        }
+    }
+}
 
 Track::Track(AudioFifo& channel):
     Track(std::vector<std::reference_wrapper<AudioFifo>>({std::ref(channel)})) {
@@ -14,7 +40,8 @@ Track::Track(AudioFifo& left_channel, AudioFifo& right_channel):
 Track::Track(std::vector<std::reference_wrapper<AudioFifo>> _channels):
     channels(_channels),
     dynamic_node(DynamicNode()),
-    track_node(TrackNode(dynamic_node)) {
+    track_node(TrackNode(dynamic_node)),
+    next_frame({}) {
 }
 
 void Track::set_mute(bool mute) {
@@ -39,11 +66,25 @@ void Track::reset_node() {
 
 void Track::fill_output() {
     float sample;
-    int channel = 0;
-    while (track_node.pop(sample)) {
-        AudioFifo& channel_fifo = channels.at(channel);
-        channel_fifo.push(std::move(sample));
+    bool overflow = false;
+    int channel = channels.size() - 1;
+    if (!push_next_frame()) {
+        return;
+    }
+    while (!overflow && track_node.pop(sample)) {
         channel = (channel + 1) % channels.size();
+        AudioFifo& channel_fifo = channels.at(channel);
+        overflow = channel_fifo.push(std::move(sample));
+    }
+    if (overflow) {
+        if (channel != 0) {
+            spdlog::warn("FIFO not channel-aligned!");
+            return;
+        }
+        pop_next_frame();
+        // TODO: Preload next sample blocks. From which position?
+    } else {
+        // TODO: We're done, reset/unload? But only if it's one shot.
     }
 }
 
@@ -90,6 +131,10 @@ void Engine::run() {
 }
 
 void Engine::create_tasks() {
+    for (auto& track : loop_tracks) {
+        create_track_task(*track);
+    }
+    create_track_task(one_shots_track);
 }
 
 void Engine::create_track_task(Track& track) {
@@ -121,7 +166,7 @@ void Engine::process_midi() {
                         midi_continue();
                         break;
                     case libremidi::message_type::PROGRAM_CHANGE:
-                        set_program(midi_message.bytes[0]);
+                        set_program(midi_message.bytes[0]); // TODO: Is this ok?
                         break;
                 }
             }
