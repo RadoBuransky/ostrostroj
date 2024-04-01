@@ -1,19 +1,19 @@
 #include <algorithm>
 #include <spdlog/spdlog.h>
 #include "common.hpp"
-#include "sample.hpp"
+#include "clip.hpp"
 
-SampleBlock& Sample::get_last_loaded() {
-    SampleBlock* result = &head;
+ClipBlock& Clip::get_last_loaded() {
+    ClipBlock* result = &head;
     while (result->is_next_loaded()) {
         result = &result->get_next();
     }
     return *result;
 }
 
-Sample::Sample(std::filesystem::path path) :
+Clip::Clip(std::filesystem::path path) :
     snd_file(sf_open(path.c_str(), SFM_READ, &info)),
-    head(SampleBlock(*this, 0)) {
+    head(ClipBlock(*this, 0)) {
     if (snd_file == nullptr) {
         throw OstrostrojException(std::format("Can't open file! [{}]", path.c_str()));   
     }
@@ -21,23 +21,23 @@ Sample::Sample(std::filesystem::path path) :
     spdlog::debug(std::format("File preloaded. [{}, {} Hz, {} ch, {:x}]", path.c_str(), info.samplerate, info.channels, info.format));
 };
 
-Sample::~Sample() {
+Clip::~Clip() {
     if (snd_file != nullptr) {
         sf_close(snd_file);
         snd_file = nullptr;
     }
 }
 
-SF_INFO Sample::get_info() const {
+SF_INFO Clip::get_info() const {
     return info;
 }
 
-SampleBlock& Sample::get_head() {
+ClipBlock& Clip::get_head() {
     return head;
 }
 
-void Sample::preload(sf_count_t from) {
-    SampleBlock* last = &get_last_loaded();
+void Clip::preload(sf_count_t from) {
+    ClipBlock* last = &get_last_loaded();
     const sf_count_t preload_frames = info.samplerate * PRELOAD_TIME.count();
     const sf_count_t preload_end_pos = from + preload_frames;
     while ((last->get_start_pos() < preload_end_pos) && last->has_next()) {
@@ -45,9 +45,9 @@ void Sample::preload(sf_count_t from) {
     }
 }
 
-void Sample::unload() {
-    SampleBlock* block = &head;
-    SampleBlock* prev = block;
+void Clip::unload() {
+    ClipBlock* block = &head;
+    ClipBlock* prev = block;
     const sf_count_t preload_end_pos = info.samplerate * PRELOAD_TIME.count();
     while ((block->get_start_pos() < preload_end_pos) && block->is_next_loaded()) {
         prev = block;
@@ -58,28 +58,28 @@ void Sample::unload() {
     }
 }
 
-LoopSample::LoopSample(const std::filesystem::path path):
-    Sample(path),
+LoopClip::LoopClip(const std::filesystem::path path):
+    Clip(path),
     track(get_track(path)) {
   spdlog::info(std::format("Loop sample loaded. [{}, {}]", track, path.string()));    
 }
 
-int LoopSample::get_track(std::filesystem::path path) const {
+int LoopClip::get_track(std::filesystem::path path) const {
     const auto path_filename = path.filename().string();
     return std::stoi(path_filename.substr(1, 1));
 }
 
-int LoopSample::get_track() const {
+int LoopClip::get_track() const {
     return track;
 }
 
-OneShotSample::OneShotSample(const std::filesystem::path path):
-    Sample(path),
+OneShotClip::OneShotClip(const std::filesystem::path path):
+    Clip(path),
     note(get_note(path)) {
   spdlog::info(std::format("One-shot sample loaded. [{}, {}]", note, path.string()));    
 }
 
-uint8_t OneShotSample::get_note(std::filesystem::path path) const {
+uint8_t OneShotClip::get_note(std::filesystem::path path) const {
     const auto path_filename = path.filename().string();
     const auto octave = std::stoi(path_filename.substr(1, 1));
     const auto note_name = path_filename.substr(2, 2);
@@ -90,6 +90,6 @@ uint8_t OneShotSample::get_note(std::filesystem::path path) const {
     return octave * 12 + note_name_index;
 }
 
-uint8_t OneShotSample::get_note() const {
+uint8_t OneShotClip::get_note() const {
     return note;
 }

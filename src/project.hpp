@@ -2,17 +2,17 @@
 
 #include <vector>
 #include <map>
-#include "sample.hpp"
+#include "clip.hpp"
 
 class Program {
     private:
         int start_number;
-        std::vector<LoopSample> loops;
-        std::map<uint8_t, OneShotSample> one_shots;
+        std::vector<LoopClip> loops;
+        std::map<uint8_t, OneShotClip> one_shots;
 
         int program_start_number(const std::filesystem::path dir);
-        std::vector<LoopSample> load_loops(const std::filesystem::path dir, const int expected_sample_rate);
-        std::map<uint8_t, OneShotSample> load_one_shots(const std::filesystem::path dir, const int expected_sample_rate);
+        std::vector<LoopClip> load_loops(const std::filesystem::path dir, const int expected_sample_rate);
+        std::map<uint8_t, OneShotClip> load_one_shots(const std::filesystem::path dir, const int expected_sample_rate);
         std::vector<std::filesystem::path> wav_files(const std::filesystem::path dir);
         void check_sample_format(const std::filesystem::path path, const SF_INFO &format, const int expected_sample_rate,
                                  const int expected_channels) const;
@@ -20,8 +20,8 @@ class Program {
     public:
         Program(const std::filesystem::path dir, const int expected_sample_rate);
         int get_start_number() const;
-        std::vector<LoopSample>& get_loops();
-        std::map<uint8_t, OneShotSample>& get_one_shots();
+        std::vector<LoopClip>& get_loops();
+        std::map<uint8_t, OneShotClip>& get_one_shots();
 };
 
 class Project {

@@ -2,7 +2,7 @@
 
 #include <vector>
 #include <thread>
-#include "sample.hpp"
+#include "clip.hpp"
 
 class Node {
     public:
@@ -47,12 +47,12 @@ class DynamicNode : public Node {
         virtual bool pop(float& sample);
 };
 
-class SampleNode : public Node {
+class ClipNode : public Node {
     private:
-        Sample& sample;
+        Clip& clip;
     public:
-        SampleNode(Sample& sample, bool loop);
-        virtual ~SampleNode();
+        ClipNode(Clip& clip, bool loop);
+        virtual ~ClipNode();
         virtual bool pop(float& sample);
 };
 

@@ -18,7 +18,7 @@ bool Track::push_next_frame() {
     return true;
 }
 
-void Track::pop_next_frame() {
+void Track::pop_next_frame(float sample) {
     for (int channel = 0; channel < channels.size(); channel++) {
         next_frame.push_back(sample);
         if (!track_node.pop(sample)) {
@@ -81,7 +81,7 @@ void Track::fill_output() {
             spdlog::warn("FIFO not channel-aligned!");
             return;
         }
-        pop_next_frame();
+        pop_next_frame(sample);
         // TODO: Preload next sample blocks. From which position?
     } else {
         // TODO: We're done, reset/unload? But only if it's one shot.
@@ -205,8 +205,8 @@ void Engine::set_program(int program_number) {
     }
 
     Program& active_program = project.get_program(program_number);
-    for (LoopSample& loop_sample : active_program.get_loops()) {
-        auto sample_node = std::make_unique<SampleNode>(loop_sample, true);
+    for (LoopClip& loop_sample : active_program.get_loops()) {
+        auto sample_node = std::make_unique<ClipNode>(loop_sample, true);
         loop_tracks[loop_sample.get_track()]->set_node(std::move(sample_node));
     }
 }

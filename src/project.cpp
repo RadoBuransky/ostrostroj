@@ -15,12 +15,12 @@ int Program::program_start_number(const std::filesystem::path dir) {
     return std::stoi(dir.filename().string().substr(1, 2));
 }
 
-std::vector<LoopSample> Program::load_loops(const std::filesystem::path dir, const int expected_sample_rate) {
+std::vector<LoopClip> Program::load_loops(const std::filesystem::path dir, const int expected_sample_rate) {
     spdlog::debug(std::format("Loading loops {} ", dir.string()));
-    auto result = std::vector<LoopSample>();
+    auto result = std::vector<LoopClip>();
     for (auto const& wav_file : wav_files(dir)) {
         if (wav_file.filename().string().starts_with("L")) {
-            auto loop = LoopSample(wav_file);
+            auto loop = LoopClip(wav_file);
             const int expected_channels = (loop.get_track() < 5) ? 1 : 2;
             check_sample_format(wav_file, loop.get_info(), expected_sample_rate, expected_channels);
             result.push_back(std::move(loop));
@@ -29,12 +29,12 @@ std::vector<LoopSample> Program::load_loops(const std::filesystem::path dir, con
     return result;
 }
 
-std::map<uint8_t, OneShotSample> Program::load_one_shots(const std::filesystem::path dir, const int expected_sample_rate) {
+std::map<uint8_t, OneShotClip> Program::load_one_shots(const std::filesystem::path dir, const int expected_sample_rate) {
     spdlog::debug(std::format("Loading one shots {} ", dir.string()));
-    std::map<uint8_t, OneShotSample> result = std::map<uint8_t, OneShotSample>();
+    std::map<uint8_t, OneShotClip> result = std::map<uint8_t, OneShotClip>();
     for (auto const& wav_file : wav_files(dir)) {
         if (wav_file.filename().string().starts_with("S")) {
-            auto one_shot_sample = OneShotSample(wav_file);
+            auto one_shot_sample = OneShotClip(wav_file);
             check_sample_format(wav_file, one_shot_sample.get_info(), expected_sample_rate, 2);
             result.insert(std::make_pair(one_shot_sample.get_note(), std::move(one_shot_sample)));
         }
@@ -73,11 +73,11 @@ int Program::get_start_number() const {
     return start_number;
 }
 
-std::vector<LoopSample>& Program::get_loops() {
+std::vector<LoopClip>& Program::get_loops() {
     return loops;
 }
 
-std::map<uint8_t, OneShotSample>& Program::get_one_shots() {
+std::map<uint8_t, OneShotClip>& Program::get_one_shots() {
     return one_shots;
 }
 

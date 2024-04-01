@@ -17,7 +17,7 @@ class Track {
         TrackNode track_node;
         std::vector<float> next_frame;
         bool push_next_frame();
-        void pop_next_frame();
+        void pop_next_frame(float sample);
     public:
         Track(AudioFifo& channel);
         Track(AudioFifo& left_channel, AudioFifo& right_channel);
