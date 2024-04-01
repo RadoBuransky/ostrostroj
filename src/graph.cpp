@@ -40,44 +40,36 @@ bool SampleNode::pop(float& sample) {
     return true;
 }
 
-MuteNode::MuteNode(Node& parent):
+TrackNode::TrackNode(Node& parent):
     ChildNode(parent),
+    started(false),
     muted(false) {
 }
 
-bool MuteNode::pop(float& sample) {
-    if (muted) {
-        float other_sample;
-        return parent.pop(other_sample);
-    }
-    return parent.pop(sample);
-}
-
-void MuteNode::set_mute(bool mute) {
-    muted = mute;
-}
-
-bool MuteNode::get_mute() const {
-    return muted;
-}
-
-TransportNode::TransportNode(Node& parent):
-    ChildNode(parent),
-    started(false) {
-}
-
-bool TransportNode::pop(float& sample) {
+bool TrackNode::pop(float& sample) {
     if (started) {
+        if (muted) {
+            float other_sample;
+            return parent.pop(other_sample);
+        }
         return parent.pop(sample);
     }
     sample = 0.0;
     return true;
 }
 
-void TransportNode::start() {
+void TrackNode::start() {
     started = true;
 }
 
-void TransportNode::stop() {
+void TrackNode::stop() {
     started = false;
+}
+
+void TrackNode::set_mute(bool mute) {
+    muted = mute;
+}
+
+bool TrackNode::get_mute() const {
+    return muted;
 }

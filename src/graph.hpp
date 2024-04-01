@@ -64,22 +64,15 @@ class MixingNode : public Node {
         virtual bool pop(float& sample);
 };
 
-class MuteNode : public ChildNode {
-    private:
-        bool muted;
-    public:
-        MuteNode(Node& parent);
-        virtual bool pop(float& sample);
-        void set_mute(bool mute);
-        bool get_mute() const;
-};
-
-class TransportNode : public ChildNode {
+class TrackNode : public ChildNode {
     private:
         bool started;
+        bool muted;
     public:
-        TransportNode(Node& parent);
+        TrackNode(Node& parent);
         virtual bool pop(float& sample);
         void start();
         void stop();
+        void set_mute(bool mute);
+        bool get_mute() const;
 };

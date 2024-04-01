@@ -14,9 +14,7 @@ class Track {
     private:
         std::vector<std::reference_wrapper<AudioFifo>> channels;
         DynamicNode dynamic_node;
-        MuteNode mute_node;
-        TransportNode transport_node;
-        volatile bool mute;
+        TrackNode track_node;
 
     public:
         Track(AudioFifo& channel);

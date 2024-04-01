@@ -14,20 +14,19 @@ Track::Track(AudioFifo& left_channel, AudioFifo& right_channel):
 Track::Track(std::vector<std::reference_wrapper<AudioFifo>> _channels):
     channels(_channels),
     dynamic_node(DynamicNode()),
-    mute_node(MuteNode(dynamic_node)),
-    transport_node(TransportNode(mute_node)) {
+    track_node(TrackNode(dynamic_node)) {
 }
 
 void Track::set_mute(bool mute) {
-    mute_node.set_mute(mute);
+    track_node.set_mute(mute);
 }
 
 void Track::start() {
-    transport_node.start();
+    track_node.start();
 }
 
 void Track::stop() {
-    transport_node.stop();
+    track_node.stop();
 }
 
 void Track::set_node(std::unique_ptr<Node> node) {
@@ -41,7 +40,7 @@ void Track::reset_node() {
 void Track::fill_output() {
     float sample;
     int channel = 0;
-    while (transport_node.pop(sample)) {
+    while (track_node.pop(sample)) {
         AudioFifo& channel_fifo = channels.at(channel);
         channel_fifo.push(std::move(sample));
         channel = (channel + 1) % channels.size();
@@ -152,7 +151,7 @@ void Engine::midi_continue() {
 }
 
 void Engine::play_one_shot(uint8_t note) {
-    // TODO: Unload sample (not samplereader!) from memory once done
+    // TODO: Unload sample from memory once done
 }
 
 void Engine::set_program(int program_number) {

@@ -7,7 +7,7 @@
 
 class SampleBlock {
     private:
-        static constexpr int BUFFER_LEN = 8192;
+        static constexpr sf_count_t BUFFER_LEN = 8192;
         class Sample& sample;
         const sf_count_t start_pos;
         const std::vector<float> buffer;
