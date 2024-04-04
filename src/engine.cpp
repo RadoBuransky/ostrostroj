@@ -29,6 +29,35 @@ void Track::pop_next_frame(float sample) {
     }
 }
 
+void Track::get_clip_nodes(Node& node, std::vector<std::reference_wrapper<ClipNode>>& result) {
+    ClipNode* clip_node = dynamic_cast<ClipNode*>(&node);
+    if (clip_node) {
+        result.push_back(std::ref(*clip_node));
+        return;
+    }
+    ChildNode* child_node = dynamic_cast<ChildNode*>(&node);
+    if (child_node) {
+        get_clip_nodes(child_node->get_parent(), result);
+    }
+    MixingNode* mixing_node = dynamic_cast<MixingNode*>(&node);
+    if (mixing_node) {
+        for (std::reference_wrapper<Node> parent : mixing_node->get_parents()) {
+            get_clip_nodes(parent, result);
+        }
+    }
+}
+
+void Track::preload_clips() {
+    std::vector<std::reference_wrapper<ClipNode>>::iterator it = clips_to_load.begin();
+    while (it != clips_to_load.end()) {
+        if (!(*it).get().load_next()) {
+            it = clips_to_load.erase(it);
+        } else {
+            it++;
+        }
+    }
+}
+
 Track::Track(AudioFifo& channel):
     Track(std::vector<std::reference_wrapper<AudioFifo>>({std::ref(channel)})) {
 }
@@ -57,10 +86,13 @@ void Track::stop() {
 }
 
 void Track::set_node(std::unique_ptr<Node> node) {
+    clips_to_load.clear();
+    get_clip_nodes(*node, clips_to_load);
     dynamic_node.set_parent(std::move(node));
 }
 
 void Track::reset_node() {
+    clips_to_load.clear();
     dynamic_node.reset_parent();
 }
 
@@ -82,9 +114,9 @@ void Track::fill_output() {
             return;
         }
         pop_next_frame(sample);
-        // TODO: Preload next sample blocks. From which position?
     } else {
-        // TODO: We're done, reset/unload? But only if it's one shot.
+        preload_clips();
+        // TODO: ...or when we're done, reset/unload one shot clip.        
     }
 }
 

@@ -11,13 +11,21 @@ ClipBlock& Clip::get_last_loaded() {
     return *result;
 }
 
+void Clip::preload() {
+    ClipBlock* last = &head;
+    const sf_count_t preload_frames = info.samplerate * PRELOAD_TIME.count();
+    while ((last->get_start_pos() < preload_frames) && last->has_next()) {
+        last = &last->get_next();
+    }
+}
+
 Clip::Clip(std::filesystem::path path) :
     snd_file(sf_open(path.c_str(), SFM_READ, &info)),
     head(ClipBlock(*this, 0)) {
     if (snd_file == nullptr) {
         throw OstrostrojException(std::format("Can't open file! [{}]", path.c_str()));   
     }
-    preload(0);
+    preload();
     spdlog::debug(std::format("File preloaded. [{}, {} Hz, {} ch, {:x}]", path.c_str(), info.samplerate, info.channels, info.format));
 };
 
@@ -36,13 +44,13 @@ ClipBlock& Clip::get_head() {
     return head;
 }
 
-void Clip::preload(sf_count_t from) {
+bool Clip::load_next() {
     ClipBlock* last = &get_last_loaded();
-    const sf_count_t preload_frames = info.samplerate * PRELOAD_TIME.count();
-    const sf_count_t preload_end_pos = from + preload_frames;
-    while ((last->get_start_pos() < preload_end_pos) && last->has_next()) {
-        last = &last->get_next();
+    if (last->has_next()) {
+        last->get_next();
+        return true;
     }
+    return false;
 }
 
 void Clip::unload() {

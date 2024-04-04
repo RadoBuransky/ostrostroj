@@ -31,6 +31,7 @@ class Clip {
         SF_INFO info;
         ClipBlock head;
         ClipBlock& get_last_loaded();
+        void preload();
     public:
         Clip(const std::filesystem::path path);
         Clip(Clip&&) = default;
@@ -38,7 +39,7 @@ class Clip {
         virtual ~Clip();
         SF_INFO get_info() const;
         ClipBlock& get_head();
-        void preload(sf_count_t from);
+        bool load_next();
         void unload();
 };
 

@@ -33,7 +33,7 @@ class ChildNode : public Node {
         Node& parent;
     public:
         ChildNode(Node& parent);
-        Node& get_parent();
+        Node& get_parent() const;
 };
 
 class DynamicNode : public Node {
@@ -41,7 +41,7 @@ class DynamicNode : public Node {
         std::unique_ptr<Node> parent;
     public:
         DynamicNode();
-        Node& get_parent();
+        Node& get_parent() const;
         void set_parent(std::unique_ptr<Node> _parent);
         void reset_parent();
         virtual bool pop(float& sample);
@@ -50,10 +50,12 @@ class DynamicNode : public Node {
 class ClipNode : public Node {
     private:
         Clip& clip;
+        sf_count_t position;
     public:
         ClipNode(Clip& clip, bool loop);
         virtual ~ClipNode();
         virtual bool pop(float& sample);
+        bool load_next();
 };
 
 class MixingNode : public Node {
@@ -62,6 +64,7 @@ class MixingNode : public Node {
     public:
         void add_node(Node& node);
         virtual bool pop(float& sample);
+        std::vector<std::reference_wrapper<Node>> get_parents() const;
 };
 
 class TrackNode : public ChildNode {

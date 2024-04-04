@@ -4,7 +4,7 @@ ChildNode::ChildNode(Node& _parent):
     parent(_parent) {
 }
 
-Node& ChildNode::get_parent() {
+Node& ChildNode::get_parent() const {
     return parent;
 }
 
@@ -12,7 +12,7 @@ DynamicNode::DynamicNode():
     parent(std::make_unique<NoopNode>()) {    
 }
 
-Node& DynamicNode::get_parent() {
+Node& DynamicNode::get_parent() const {
     return *parent;
 }
 
@@ -26,6 +26,17 @@ void DynamicNode::reset_parent() {
 
 bool DynamicNode::pop(float& sample) {
     return parent->pop(sample);
+}
+
+bool MixingNode::pop(float& sample) {
+    // TODO: Implement
+    sample = 0.0;
+    return true;
+}
+
+std::vector<std::reference_wrapper<Node>> MixingNode::get_parents() const {
+    // TODO: Implement
+    return {};
 }
 
 TrackNode::TrackNode(Node& parent):
