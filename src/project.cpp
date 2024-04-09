@@ -112,5 +112,5 @@ Program& Project::get_program(int program_number) {
             return program;
         }
     }
-    throw OstrostrojException("Program not found!");
+    return programs.at(0);
 }

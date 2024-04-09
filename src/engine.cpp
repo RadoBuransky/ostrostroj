@@ -158,8 +158,12 @@ void Engine::run() {
         next_flag.test_and_set();
         spdlog::trace("Engine waiting...");
         next_flag.wait(true);
-        process_midi();
-        run_tasks();
+        try {
+            process_midi();
+            run_tasks();   
+        } catch(std::exception const& e) {
+            spdlog::error(e.what());
+        }
         i = interrupted.load();
     }
     spdlog::info(std::format("Engine done. [{}]", i));
@@ -190,7 +194,7 @@ void Engine::process_midi() {
             libremidi::message midi_message;
             MidiFifo& midi_fifo = soundCard.get_midi_fifo();
             while (midi_fifo.pop(midi_message)) {
-                spdlog::debug(std::format("Processing MIDI message. [0x{:x}]", static_cast<int>(midi_message.get_message_type())));
+                spdlog::trace(std::format("Processing MIDI message. [0x{:x}]", static_cast<int>(midi_message.get_message_type())));
                 switch (midi_message.get_message_type()) {       
                     case libremidi::message_type::START:
                         midi_start();

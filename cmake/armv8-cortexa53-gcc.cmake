@@ -8,6 +8,6 @@ set(CMAKE_CXX_COMPILER_TARGET "aarch64-none-linux-gnu")
 set(PKG_CONFIG_EXECUTABLE "c:\\msys64\\usr\\bin\\pkgconf.exe")
 
 set(CMAKE_CXX_FLAGS_RELEASE_INIT "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -pedantic -std=c++20 -fexceptions -fno-threadsafe-statics -fdata-sections -ffunction-sections -march=armv8-a -mtune=cortex-a53")
-set(CMAKE_CXX_FLAGS_DEBUG_INIT "-g")
+set(CMAKE_CXX_FLAGS_DEBUG_INIT "-g3")
 
 set(REMOTE_HOSTNAME "ostrostroj")

@@ -82,7 +82,7 @@ void SoundCard::libremidi_message_callback(const libremidi::message& message) {
         case libremidi::message_type::CONTINUE:
         case libremidi::message_type::STOP:
 #ifndef NDEBUG
-            spdlog::debug(std::format("Received MIDI message. [0x{:x}]", static_cast<int>(message.get_message_type())));
+            spdlog::trace(std::format("Received MIDI message. [0x{:x}]", static_cast<int>(message.get_message_type())));
 #endif
             if (!midi_fifo.push(libremidi::message(message))) {
                 spdlog::warn("MIDI FIFO overflow!");
