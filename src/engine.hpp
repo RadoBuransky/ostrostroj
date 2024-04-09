@@ -48,7 +48,7 @@ class Engine {
         std::array<std::unique_ptr<Track>, 6> loop_tracks;
         Track one_shots_track;
 
-        const std::vector<std::thread> threads;
+        std::vector<std::thread> threads;
         TrackTaskFifo tasks;
 
         std::atomic_bool interrupted;
@@ -57,7 +57,7 @@ class Engine {
         volatile bool midi_processed;
         volatile int program_number;
 
-        std::vector<std::thread> create_threads();
+        void create_threads();
 
         void run();
         void create_tasks();

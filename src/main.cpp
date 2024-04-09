@@ -13,9 +13,9 @@
 
 class OstrostrojApp {
     private:
+        SoundCard soundCard;
         Project project;
         Engine engine;
-        SoundCard soundCard;
 
         static void sigaction_handler(int s) {
             spdlog::info(std::format("Signal received [{}].", s));
@@ -49,6 +49,7 @@ class OstrostrojApp {
 };
 
 int main(int argc, char* argv[]) {
+    spdlog::set_pattern("%L [%H:%M:%S] [%t] %v");
     spdlog::set_level(spdlog::level::debug);
     spdlog::info(std::format("Ostrostroj started. [{}]", static_cast<int>(spdlog::get_level())));
     try {

@@ -8,7 +8,16 @@
 
 AudioPortFifo::AudioPortFifo(jack_port_t* const port, jack_nframes_t buffer_size) :
     port(port),
-    fifo(std::unique_ptr<AudioFifo>(new AudioFifo(buffer_size))) {
+    fifo(std::make_unique<AudioFifo>(buffer_size)) {
+}
+
+AudioPortFifo::AudioPortFifo(AudioPortFifo&& other):
+    port(other.port),
+    fifo(std::move(other.fifo)) {
+}
+
+AudioPortFifo::~AudioPortFifo() {
+    spdlog::trace(std::format("~AudioPortFifo({})", jack_port_name(port)));
 }
 
 jack_port_t* AudioPortFifo::get_port() const {
@@ -72,20 +81,25 @@ void SoundCard::libremidi_message_callback(const libremidi::message& message) {
         case libremidi::message_type::START:
         case libremidi::message_type::CONTINUE:
         case libremidi::message_type::STOP:
-            midi_fifo.push(libremidi::message(message));
+#ifndef NDEBUG
+            spdlog::debug(std::format("Received MIDI message. [0x{:x}]", static_cast<int>(message.get_message_type())));
+#endif
+            if (!midi_fifo.push(libremidi::message(message))) {
+                spdlog::warn("MIDI FIFO overflow!");
+            }
             break;
     }
 }
 
 std::vector<AudioPortFifo> SoundCard::create_audio_outputs(jack_client_t * jack_client) {
-    const auto buffer_size = jack_get_buffer_size(jack_client);
-    std::vector<AudioPortFifo> result = {};
+    const jack_nframes_t buffer_size = jack_get_buffer_size(jack_client);
+    std::vector<AudioPortFifo> result;
     for (auto i = 1; i <= AUDIO_OUTPUT_PORT_COUNT; i++) {
-        const auto jack_port = jack_port_register(jack_client, std::format("{}{}", LOCAL_AUDIO_OUTPUT_PORT_PREFIX, i).c_str(),
+        jack_port_t* const jack_port = jack_port_register(jack_client, std::format("{}{}", LOCAL_AUDIO_OUTPUT_PORT_PREFIX, i).c_str(),
             JACK_DEFAULT_AUDIO_TYPE, JackPortFlags::JackPortIsOutput, 0);
-        result.push_back(AudioPortFifo(jack_port, buffer_size));
+        result.emplace_back(jack_port, buffer_size);
     }
-    return result;
+    return std::move(result);
 }
 
 libremidi::midi_in SoundCard::create_midiin(std::vector<libremidi::jack_callback> & midiin_callbacks, jack_client_t * jack_client) {

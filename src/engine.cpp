@@ -69,8 +69,7 @@ Track::Track(AudioFifo& left_channel, AudioFifo& right_channel):
 Track::Track(std::vector<std::reference_wrapper<AudioFifo>> _channels):
     channels(_channels),
     dynamic_node(DynamicNode()),
-    track_node(TrackNode(dynamic_node)),
-    next_frame({}) {
+    track_node(TrackNode(dynamic_node)) {
 }
 
 void Track::set_mute(bool mute) {
@@ -130,35 +129,40 @@ Engine::Engine(Project& project, SoundCard& soundCard):
         std::make_unique<Track>(soundCard.get_audio_output_fifo(6), soundCard.get_audio_output_fifo(7)),
     },
     one_shots_track(Track(soundCard.get_audio_output_fifo(8), soundCard.get_audio_output_fifo(9))),
-    threads(create_threads()),
     tasks(TrackTaskFifo(16)),
     interrupted(false),
     next_flag(ATOMIC_FLAG_INIT),
     midi_processed(false),
     program_number(0) {
+    create_threads();
 }
 
 Engine::~Engine() {   
-    interrupted = true;
+    spdlog::trace("~Engine()");
+    interrupted.store(true);
     next_flag.clear();
     next_flag.notify_all();    
 }
 
-std::vector<std::thread> Engine::create_threads() {
-    std::vector<std::thread> result(0);
+void Engine::create_threads() {
     for (auto i = 0; i < std::thread::hardware_concurrency(); i++) {
-        result.push_back(std::thread(&Engine::run, this));
+        threads.emplace_back(std::bind(&Engine::run, this));
     }
-    return result;
+    spdlog::info(std::format("{} worker threads created.", threads.size()));
 }
 
 void Engine::run() {
-    while (!interrupted) {
+    bool i = interrupted.load();
+    spdlog::info(std::format("Engine started. [{}]", i));
+    while (!i) {
         next_flag.test_and_set();
+        spdlog::trace("Engine waiting...");
         next_flag.wait(true);
         process_midi();
         run_tasks();
+        i = interrupted.load();
     }
+    spdlog::info(std::format("Engine done. [{}]", i));
 }
 
 void Engine::create_tasks() {
@@ -186,6 +190,7 @@ void Engine::process_midi() {
             libremidi::message midi_message;
             MidiFifo& midi_fifo = soundCard.get_midi_fifo();
             while (midi_fifo.pop(midi_message)) {
+                spdlog::debug(std::format("Processing MIDI message. [0x{:x}]", static_cast<int>(midi_message.get_message_type())));
                 switch (midi_message.get_message_type()) {       
                     case libremidi::message_type::START:
                         midi_start();
@@ -212,18 +217,21 @@ void Engine::midi_start() {
     for (std::unique_ptr<Track>& track : loop_tracks) {
         track->start();
     }
+    spdlog::info("Started.");
 }
 
 void Engine::midi_stop() {
     for (std::unique_ptr<Track>& track : loop_tracks) {
         track->stop();
     }
+    spdlog::info("Stopped.");
 }
 
 void Engine::midi_continue() {
     for (std::unique_ptr<Track>& track : loop_tracks) {
         track->start();
     }
+    spdlog::info("Continued.");
 }
 
 void Engine::play_one_shot(uint8_t note) {
@@ -240,10 +248,14 @@ void Engine::set_program(int program_number) {
         auto sample_node = std::make_unique<ClipNode>(loop_sample, true);
         loop_tracks[loop_sample.get_track()]->set_node(std::move(sample_node));
     }
+    spdlog::info(std::format("Program set. [{}]", program_number));
 }
 
 void Engine::next() {
     midi_processed = false;
     next_flag.clear();
     next_flag.notify_all();
+#ifndef NDEBUG
+    // spdlog::trace("Engine::next()");
+#endif
 }

@@ -7,18 +7,18 @@
 #include "farbot/fifo.hpp"
 
 typedef farbot::fifo<jack_default_audio_sample_t,
-            farbot::fifo_options::concurrency::single,
-            farbot::fifo_options::concurrency::single,
+            farbot::fifo_options::concurrency::multiple,
+            farbot::fifo_options::concurrency::multiple,
             farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
             farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
-            1> AudioFifo;
+            8> AudioFifo;
 
 typedef farbot::fifo<libremidi::message,
-            farbot::fifo_options::concurrency::single,
-            farbot::fifo_options::concurrency::single,
+            farbot::fifo_options::concurrency::multiple,
+            farbot::fifo_options::concurrency::multiple,
             farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
             farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
-            1> MidiFifo;
+            8> MidiFifo;
 
 class AudioPortFifo {
     private:
@@ -26,6 +26,8 @@ class AudioPortFifo {
         std::unique_ptr<AudioFifo> fifo;
     public:
         AudioPortFifo(jack_port_t* const port, jack_nframes_t buffer_size);
+        AudioPortFifo(AudioPortFifo&&);
+        virtual ~AudioPortFifo();
 
         jack_port_t* get_port() const;
         AudioFifo& get_fifo();
