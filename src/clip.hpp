@@ -27,6 +27,7 @@ class Clip {
     private:
         static constexpr std::chrono::seconds PRELOAD_TIME = std::chrono::seconds(2);
         friend ClipBlock;
+        const std::filesystem::path path;
         SNDFILE* snd_file;
         SF_INFO info;
         ClipBlock head;
@@ -38,6 +39,7 @@ class Clip {
         Clip& operator =(Clip&&) = default;
         virtual ~Clip();
         SF_INFO get_info() const;
+        void assert_sample_rate(const int expected_sample_rate) const;
         ClipBlock& get_head();
         bool load_next();
         void unload();

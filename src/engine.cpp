@@ -114,10 +114,8 @@ void Track::fill_output() {
             return;
         }
         pop_next_frame(sample);
-    } else {
-        preload_clips();
-        // TODO: ...or when we're done, reset/unload one shot clip.        
     }
+    preload_clips();
 }
 
 Engine::Engine(Project& project, SoundCard& soundCard):
@@ -135,8 +133,9 @@ Engine::Engine(Project& project, SoundCard& soundCard):
     threads(create_threads()),
     tasks(TrackTaskFifo(16)),
     interrupted(false),
-    next_flag(ATOMIC_FLAG_INIT) {
-    set_program(0);
+    next_flag(ATOMIC_FLAG_INIT),
+    midi_processed(false),
+    program_number(0) {
 }
 
 Engine::~Engine() {   
@@ -209,7 +208,7 @@ void Engine::process_midi() {
 }
 
 void Engine::midi_start() {
-    // TODO: Reset position (start from beginning)
+    set_program(program_number);
     for (std::unique_ptr<Track>& track : loop_tracks) {
         track->start();
     }
@@ -232,11 +231,11 @@ void Engine::play_one_shot(uint8_t note) {
 }
 
 void Engine::set_program(int program_number) {
+    this->program_number = program_number;
     for (std::unique_ptr<Track>& track : loop_tracks) {
         track->reset_node();
     }
-
-    Program& active_program = project.get_program(program_number);
+    Program& active_program = project.get_program(this->program_number);
     for (LoopClip& loop_sample : active_program.get_loops()) {
         auto sample_node = std::make_unique<ClipNode>(loop_sample, true);
         loop_tracks[loop_sample.get_track()]->set_node(std::move(sample_node));

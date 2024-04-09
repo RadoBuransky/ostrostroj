@@ -34,9 +34,10 @@ class OstrostrojApp {
     public:
         OstrostrojApp():
             soundCard(SoundCard("ostrostroj")),
-            project(Project("/home/ostrostroj/project/", soundCard.get_sample_rate())),
+            project(Project("/home/ostrostroj/project/")),
             engine(Engine(project, soundCard)) {
             soundCard.start(std::bind(&Engine::next, &engine));
+            project.assert_sample_rate(soundCard.get_sample_rate());
         }
 
         virtual ~OstrostrojApp() {            

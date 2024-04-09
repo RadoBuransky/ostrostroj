@@ -29,14 +29,26 @@ bool DynamicNode::pop(float& sample) {
 }
 
 bool MixingNode::pop(float& sample) {
-    // TODO: Implement
+    float node_sample;
     sample = 0.0;
-    return true;
+    std::vector<std::unique_ptr<Node>>::iterator it = nodes.begin();
+    while (it != nodes.end()) {
+        if (it->get()->pop(node_sample)) {
+            sample += node_sample;
+            it++;
+        } else {
+            it = nodes.erase(it);
+        }
+    }
+    return !nodes.empty();
 }
 
 std::vector<std::reference_wrapper<Node>> MixingNode::get_parents() const {
-    // TODO: Implement
-    return {};
+    std::vector<std::reference_wrapper<Node>> result = {};
+    for (const std::unique_ptr<Node>& node : nodes) {
+        result.push_back(*node.get());
+    }
+    return result;
 }
 
 TrackNode::TrackNode(Node& parent):

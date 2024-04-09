@@ -50,7 +50,10 @@ class DynamicNode : public Node {
 class ClipNode : public Node {
     private:
         Clip& clip;
-        sf_count_t position;
+        std::reference_wrapper<ClipBlock> block;
+        bool loop;
+        std::vector<float>::const_iterator it_next;
+        std::vector<float>::const_iterator it_end;
     public:
         ClipNode(Clip& clip, bool loop);
         virtual ~ClipNode();

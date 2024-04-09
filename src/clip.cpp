@@ -19,7 +19,8 @@ void Clip::preload() {
     }
 }
 
-Clip::Clip(std::filesystem::path path) :
+Clip::Clip(const std::filesystem::path path) :
+    path(path),
     snd_file(sf_open(path.c_str(), SFM_READ, &info)),
     head(ClipBlock(*this, 0)) {
     if (snd_file == nullptr) {
@@ -38,6 +39,13 @@ Clip::~Clip() {
 
 SF_INFO Clip::get_info() const {
     return info;
+}
+
+
+void Clip::assert_sample_rate(const int expected_sample_rate) const {
+    if (expected_sample_rate != info.samplerate) {
+        throw OstrostrojException(std::format("{}Hz sample rate expected! [{}Hz, {}]", expected_sample_rate, info.samplerate, path.string()));
+    }
 }
 
 ClipBlock& Clip::get_head() {

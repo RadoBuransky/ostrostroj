@@ -55,6 +55,7 @@ class Engine {
         std::atomic_flag next_flag;
         std::mutex midi_processing_mutex;
         volatile bool midi_processed;
+        volatile int program_number;
 
         std::vector<std::thread> create_threads();
 
