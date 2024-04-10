@@ -8,7 +8,7 @@ bool Track::push_next_frame() {
     if (next_frame.empty()) {
         return true;
     }
-    for (int channel = 0; channel < next_frame.size(); channel++) {
+    for (unsigned int channel = 0; channel < next_frame.size(); channel++) {
         AudioFifo& channel_fifo = channels.at(channel);
         if (!channel_fifo.push(std::move(next_frame.at(channel)))) {
             return false;
@@ -19,7 +19,7 @@ bool Track::push_next_frame() {
 }
 
 void Track::pop_next_frame(float sample) {
-    for (int channel = 0; channel < channels.size(); channel++) {
+    for (unsigned int channel = 0; channel < channels.size(); channel++) {
         next_frame.push_back(sample);
         if (!track_node.pop(sample)) {
             spdlog::warn("Next frame underrun!");
@@ -117,18 +117,18 @@ void Track::fill_output() {
     preload_clips();
 }
 
-Engine::Engine(Project& project, SoundCard& soundCard):
-    project(project),
-    soundCard(soundCard),
+Engine::Engine(Project& _project, SoundCard& _soundCard):
+    project(_project),
+    soundCard(_soundCard),
     loop_tracks {
-        std::make_unique<Track>(soundCard.get_audio_output_fifo(0)),
-        std::make_unique<Track>(soundCard.get_audio_output_fifo(1)),
-        std::make_unique<Track>(soundCard.get_audio_output_fifo(2)),
-        std::make_unique<Track>(soundCard.get_audio_output_fifo(3)),
-        std::make_unique<Track>(soundCard.get_audio_output_fifo(4), soundCard.get_audio_output_fifo(5)),
-        std::make_unique<Track>(soundCard.get_audio_output_fifo(6), soundCard.get_audio_output_fifo(7)),
+        std::make_unique<Track>(_soundCard.get_audio_output_fifo(0)),
+        std::make_unique<Track>(_soundCard.get_audio_output_fifo(1)),
+        std::make_unique<Track>(_soundCard.get_audio_output_fifo(2)),
+        std::make_unique<Track>(_soundCard.get_audio_output_fifo(3)),
+        std::make_unique<Track>(_soundCard.get_audio_output_fifo(4), _soundCard.get_audio_output_fifo(5)),
+        std::make_unique<Track>(_soundCard.get_audio_output_fifo(6), _soundCard.get_audio_output_fifo(7)),
     },
-    one_shots_track(Track(soundCard.get_audio_output_fifo(8), soundCard.get_audio_output_fifo(9))),
+    one_shots_track(Track(_soundCard.get_audio_output_fifo(8), _soundCard.get_audio_output_fifo(9))),
     tasks(TrackTaskFifo(16)),
     interrupted(false),
     next_flag(ATOMIC_FLAG_INIT),
@@ -145,7 +145,7 @@ Engine::~Engine() {
 }
 
 void Engine::create_threads() {
-    for (auto i = 0; i < std::thread::hardware_concurrency(); i++) {
+    for (unsigned int i = 0; i < std::thread::hardware_concurrency(); i++) {
         threads.emplace_back(std::bind(&Engine::run, this));
     }
     spdlog::info(std::format("{} worker threads created.", threads.size()));
@@ -195,7 +195,7 @@ void Engine::process_midi() {
             MidiFifo& midi_fifo = soundCard.get_midi_fifo();
             while (midi_fifo.pop(midi_message)) {
                 spdlog::trace(std::format("Processing MIDI message. [0x{:x}]", static_cast<int>(midi_message.get_message_type())));
-                switch (midi_message.get_message_type()) {       
+                switch (midi_message.get_message_type()) {
                     case libremidi::message_type::START:
                         midi_start();
                         break;
@@ -207,6 +207,8 @@ void Engine::process_midi() {
                         break;
                     case libremidi::message_type::PROGRAM_CHANGE:
                         set_program(midi_message.bytes[0]); // TODO: Is this ok?
+                        break;
+                    default:
                         break;
                 }
             }
@@ -238,16 +240,16 @@ void Engine::midi_continue() {
     spdlog::info("Continued.");
 }
 
-void Engine::play_one_shot(uint8_t note) {
+void Engine::play_one_shot(uint8_t _note) {
     // TODO: Unload sample from memory once done
 }
 
-void Engine::set_program(int program_number) {
-    this->program_number = program_number;
+void Engine::set_program(int _program_number) {
+    program_number = _program_number;
     for (std::unique_ptr<Track>& track : loop_tracks) {
         track->reset_node();
     }
-    Program& active_program = project.get_program(this->program_number);
+    Program& active_program = project.get_program(program_number);
     for (LoopClip& loop_sample : active_program.get_loops()) {
         auto sample_node = std::make_unique<ClipNode>(loop_sample, true);
         loop_tracks[loop_sample.get_track()]->set_node(std::move(sample_node));

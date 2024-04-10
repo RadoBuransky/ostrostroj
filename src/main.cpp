@@ -50,7 +50,7 @@ class OstrostrojApp {
 
 int main(int argc, char* argv[]) {
     spdlog::set_pattern("%L [%H:%M:%S] [%t] %v");
-    spdlog::set_level(spdlog::level::debug);
+    spdlog::set_level(spdlog::level::trace);
     spdlog::info(std::format("Ostrostroj started. [{}]", static_cast<int>(spdlog::get_level())));
     try {
         if ((argc > 1) && (strcmp(argv[1], "shutdown") == 0)) {

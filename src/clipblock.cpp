@@ -7,14 +7,14 @@ const std::vector<float> ClipBlock::read_buffer() {
     sf_count_t frames_read = sf_readf_float(clip.snd_file, samples, BUFFER_LEN / clip.info.channels);
     std::vector<float> result = std::vector<float>();
     result.assign(samples, samples + (frames_read * clip.info.channels));
-    return std::move(result);
+    return result;
 }
 
-ClipBlock::ClipBlock(Clip& clip, sf_count_t _start_pos):
-    clip(clip),
+ClipBlock::ClipBlock(Clip& _clip, sf_count_t _start_pos):
+    clip(_clip),
     start_pos(_start_pos),
     buffer(std::move(read_buffer())) {
-    if ((BUFFER_LEN % clip.info.channels) != 0) {
+    if ((BUFFER_LEN % _clip.info.channels) != 0) {
         throw OstrostrojException("Invalid buffer length!");
     }
 }

@@ -1,11 +1,11 @@
 #include "graph.hpp"
 
-ClipNode::ClipNode(Clip& clip, bool loop):
-    clip(clip),
-    block(clip.get_head()),
-    loop(loop),
-    it_next(clip.get_head().get_buffer().cbegin()),
-    it_end(clip.get_head().get_buffer().cend()) {
+ClipNode::ClipNode(Clip& _clip, bool _loop):
+    clip(_clip),
+    block(_clip.get_head()),
+    loop(_loop),
+    it_next(_clip.get_head().get_buffer().cbegin()),
+    it_end(_clip.get_head().get_buffer().cend()) {
 }
 
 ClipNode::~ClipNode() {    

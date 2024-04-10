@@ -6,6 +6,7 @@
 
 class Node {
     public:
+        virtual ~Node() {};
         /**
          * Stateful operation. For stereo, first call returns left, second call right channel.
          * @returns `false` if this node is done and will never produce a sample.

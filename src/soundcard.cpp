@@ -6,8 +6,8 @@
 #include "soundcard.hpp"
 #include "common.hpp"
 
-AudioPortFifo::AudioPortFifo(jack_port_t* const port, jack_nframes_t buffer_size) :
-    port(port),
+AudioPortFifo::AudioPortFifo(jack_port_t* const _port, jack_nframes_t buffer_size) :
+    port(_port),
     fifo(std::make_unique<AudioFifo>(buffer_size)) {
 }
 
@@ -30,8 +30,8 @@ AudioFifo& AudioPortFifo::get_fifo() {
 
 void AudioPortFifo::copy_to_buffer(const jack_nframes_t nframes) const {
     jack_default_audio_sample_t* buffer = static_cast<jack_default_audio_sample_t*>(jack_port_get_buffer(port, nframes));
-    int counter = 0;
-    while (counter < nframes && fifo->pop(*buffer)) {
+    jack_nframes_t counter = 0;
+    while ((counter < nframes) && fifo->pop(*buffer)) {
         counter++;
         buffer++;
     }
@@ -39,8 +39,8 @@ void AudioPortFifo::copy_to_buffer(const jack_nframes_t nframes) const {
 
 SoundCard::SoundCard(const std::string &name) :
     jack_client(create_client(name)),
-    midiin_callbacks({}),
-    midiin(create_midiin(midiin_callbacks, jack_client)),
+    midiin_callbacks(),
+    midiin(create_midiin()),
     midi_fifo(MidiFifo(512)),
     audio_outputs(create_audio_outputs(jack_client)),
     buffer_size(jack_get_buffer_size(jack_client)) {
@@ -88,30 +88,34 @@ void SoundCard::libremidi_message_callback(const libremidi::message& message) {
                 spdlog::warn("MIDI FIFO overflow!");
             }
             break;
+        default:
+            break;
     }
 }
 
-std::vector<AudioPortFifo> SoundCard::create_audio_outputs(jack_client_t * jack_client) {
-    const jack_nframes_t buffer_size = jack_get_buffer_size(jack_client);
+std::vector<AudioPortFifo> SoundCard::create_audio_outputs(jack_client_t * _jack_client) {
+    const jack_nframes_t _buffer_size = jack_get_buffer_size(_jack_client);
     std::vector<AudioPortFifo> result;
     for (auto i = 1; i <= AUDIO_OUTPUT_PORT_COUNT; i++) {
-        jack_port_t* const jack_port = jack_port_register(jack_client, std::format("{}{}", LOCAL_AUDIO_OUTPUT_PORT_PREFIX, i).c_str(),
+        jack_port_t* const jack_port = jack_port_register(_jack_client, std::format("{}{}", LOCAL_AUDIO_OUTPUT_PORT_PREFIX, i).c_str(),
             JACK_DEFAULT_AUDIO_TYPE, JackPortFlags::JackPortIsOutput, 0);
-        result.emplace_back(jack_port, buffer_size);
+        result.emplace_back(jack_port, _buffer_size);
     }
-    return std::move(result);
+    return result;
 }
 
-libremidi::midi_in SoundCard::create_midiin(std::vector<libremidi::jack_callback> & midiin_callbacks, jack_client_t * jack_client) {
+libremidi::midi_in SoundCard::create_midiin() {
+    spdlog::trace("create_midiin()");
     auto api_input_config = libremidi::jack_input_configuration{
         .context = jack_client,
-        .set_process_func = [&midiin_callbacks](libremidi::jack_callback cb) {
+        .set_process_func = [&](libremidi::jack_callback cb) {
             midiin_callbacks.push_back(std::move(cb));
         },
-        .clear_process_func = [&midiin_callbacks](int) {
+        .clear_process_func = [&](int) {
             midiin_callbacks.clear();
         }
     };
+    spdlog::trace("api_input_config created.");
     libremidi::midi_in result = libremidi::midi_in(
           libremidi::input_configuration{
             .on_message = [&](libremidi::message m) {
@@ -121,7 +125,9 @@ libremidi::midi_in SoundCard::create_midiin(std::vector<libremidi::jack_callback
                 return t;
             }},
             api_input_config);
+    spdlog::trace("midi_in created.");
     result.open_virtual_port(LOCAL_MIDI_PORT);
+    spdlog::debug(std::format("{} open.", LOCAL_MIDI_PORT.c_str()));
     return result;
 }
 
@@ -178,27 +184,27 @@ void SoundCard::activate() {
     }
 }
 
-void SoundCard::connect(jack_client_t * jack_client) {
-    std::string destination_port = std::format("{}:{}", jack_get_client_name(jack_client), LOCAL_MIDI_PORT);
-    const auto connect_result = jack_connect(jack_client, INPUT_MIDI_PORT.c_str(), destination_port.c_str());
-    if (connect_result != 0) {
-        throw OstrostrojException(std::format("Jack connect failed! [status=0x{:x}]", connect_result));        
+void SoundCard::connect(jack_client_t * _jack_client) {
+    std::string destination_port = std::format("{}:{}", jack_get_client_name(_jack_client), LOCAL_MIDI_PORT);
+    const auto connect_result_1 = jack_connect(_jack_client, INPUT_MIDI_PORT.c_str(), destination_port.c_str());
+    if (connect_result_1 != 0) {
+        throw OstrostrojException(std::format("Jack connect failed! [status=0x{:x}]", connect_result_1));
     }
     spdlog::debug("MIDI ports connected.");
 
-    for (auto i = 0; i < audio_outputs.size(); i++) {
+    for (unsigned int i = 0; i < audio_outputs.size(); i++) {
         const auto src_port = jack_port_name(audio_outputs.at(i).get_port());
         const auto dst_port = std::format("{}{}", AUDIO_OUTPUT_PORT_PREFIX, i + 1);
-        const auto connect_result = jack_connect(jack_client, src_port, dst_port.c_str());
-        if (connect_result != 0) {
-            throw OstrostrojException(std::format("Jack connect failed! [status=0x{:x}]", connect_result));        
+        const auto connect_result_2 = jack_connect(_jack_client, src_port, dst_port.c_str());
+        if (connect_result_2 != 0) {
+            throw OstrostrojException(std::format("Jack connect failed! [status=0x{:x}]", connect_result_2));
         }        
     }
     spdlog::debug("Audio output ports connected.");
 }
 
-void SoundCard::start(std::function<void(void)> callback) {
-    this->callback = callback;
+void SoundCard::start(std::function<void(void)> _callback) {
+    callback = _callback;
     registerCallbacks();
     activate();
     connect(jack_client);

@@ -34,7 +34,7 @@ class Clip {
         ClipBlock& get_last_loaded();
         void preload();
     public:
-        Clip(const std::filesystem::path path);
+        Clip(const std::filesystem::path _path);
         Clip(Clip&&) = default;
         Clip& operator =(Clip&&) = default;
         virtual ~Clip();
@@ -48,10 +48,10 @@ class Clip {
 class LoopClip: public Clip {
     private:
         const int track;
-        int get_track(std::filesystem::path path) const;
+        int get_track(std::filesystem::path _path) const;
 
     public:
-        LoopClip(std::filesystem::path path);
+        LoopClip(std::filesystem::path _path);
         int get_track() const;
 };
 
@@ -59,9 +59,9 @@ class OneShotClip: public Clip {
     private:
         const static inline std::vector<std::string> NOTE_NAMES = {"C_", "C#", "D_", "D#", "E_", "F_", "F#", "G_", "G#", "A_", "A#", "B_"};
         const uint8_t note;
-        uint8_t get_note(std::filesystem::path path) const;
+        uint8_t get_note(std::filesystem::path _path) const;
 
     public:
-        OneShotClip(const std::filesystem::path path);
+        OneShotClip(const std::filesystem::path _path);
         uint8_t get_note() const;
 };

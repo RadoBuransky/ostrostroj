@@ -19,15 +19,15 @@ void Clip::preload() {
     }
 }
 
-Clip::Clip(const std::filesystem::path path) :
-    path(path),
-    snd_file(sf_open(path.c_str(), SFM_READ, &info)),
+Clip::Clip(const std::filesystem::path _path) :
+    path(_path),
+    snd_file(sf_open(_path.c_str(), SFM_READ, &info)),
     head(ClipBlock(*this, 0)) {
     if (snd_file == nullptr) {
-        throw OstrostrojException(std::format("Can't open file! [{}]", path.c_str()));   
+        throw OstrostrojException(std::format("Can't open file! [{}]", _path.c_str()));   
     }
     preload();
-    spdlog::debug(std::format("File preloaded. [{}, {} Hz, {} ch, {:x}]", path.c_str(), info.samplerate, info.channels, info.format));
+    spdlog::debug(std::format("File preloaded. [{}, {} Hz, {} ch, {:x}]", _path.c_str(), info.samplerate, info.channels, info.format));
 };
 
 Clip::~Clip() {
@@ -74,14 +74,14 @@ void Clip::unload() {
     }
 }
 
-LoopClip::LoopClip(const std::filesystem::path path):
-    Clip(path),
-    track(get_track(path)) {
-  spdlog::info(std::format("Loop sample loaded. [{}, {}]", track, path.string()));    
+LoopClip::LoopClip(const std::filesystem::path _path):
+    Clip(_path),
+    track(get_track(_path)) {
+  spdlog::info(std::format("Loop sample loaded. [{}, {}]", track, _path.string()));
 }
 
-int LoopClip::get_track(std::filesystem::path path) const {
-    const auto path_filename = path.filename().string();
+int LoopClip::get_track(std::filesystem::path _path) const {
+    const auto path_filename = _path.filename().string();
     return std::stoi(path_filename.substr(1, 1));
 }
 
@@ -89,17 +89,17 @@ int LoopClip::get_track() const {
     return track;
 }
 
-OneShotClip::OneShotClip(const std::filesystem::path path):
-    Clip(path),
-    note(get_note(path)) {
-  spdlog::info(std::format("One-shot sample loaded. [{}, {}]", note, path.string()));    
+OneShotClip::OneShotClip(const std::filesystem::path _path):
+    Clip(_path),
+    note(get_note(_path)) {
+  spdlog::info(std::format("One-shot sample loaded. [{}, {}]", note, _path.string()));    
 }
 
-uint8_t OneShotClip::get_note(std::filesystem::path path) const {
-    const auto path_filename = path.filename().string();
+uint8_t OneShotClip::get_note(std::filesystem::path _path) const {
+    const auto path_filename = _path.filename().string();
     const auto octave = std::stoi(path_filename.substr(1, 1));
     const auto note_name = path_filename.substr(2, 2);
-    const auto note_name_index = std::distance(NOTE_NAMES.cbegin(), std::find(NOTE_NAMES.cbegin(), NOTE_NAMES.cend(), note_name));
+    const unsigned int note_name_index = std::distance(NOTE_NAMES.cbegin(), std::find(NOTE_NAMES.cbegin(), NOTE_NAMES.cend(), note_name));
     if (note_name_index >= NOTE_NAMES.size()) {
         throw OstrostrojException(std::format("Invalid note name! [{}]", note_name));
     }

@@ -51,8 +51,8 @@ std::vector<std::reference_wrapper<Node>> MixingNode::get_parents() const {
     return result;
 }
 
-TrackNode::TrackNode(Node& parent):
-    ChildNode(parent),
+TrackNode::TrackNode(Node& _parent):
+    ChildNode(_parent),
     started(false),
     muted(false) {
 }
