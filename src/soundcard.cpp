@@ -17,12 +17,16 @@ AudioPortFifo::AudioPortFifo(AudioPortFifo&& other):
     jack_client(other.jack_client),
     port(other.port),
     fifo(std::move(other.fifo)) {
+    other.jack_client = nullptr;
+    other.port = nullptr;
 }
 
 AudioPortFifo::~AudioPortFifo() {
-    spdlog::trace(std::format("~AudioPortFifo({})", jack_port_name(port)));
-    jack_port_unregister(jack_client, port);
-    port = nullptr;
+    if (port != nullptr) {
+        spdlog::trace(std::format("~AudioPortFifo({})", jack_port_name(port)));
+        jack_port_unregister(jack_client, port);
+        port = nullptr;
+    }
 }
 
 jack_port_t* AudioPortFifo::get_port() const {

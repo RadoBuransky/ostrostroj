@@ -23,7 +23,7 @@ typedef farbot::fifo<libremidi::message,
 class AudioPortFifo {
     private:
         inline static const std::string LOCAL_AUDIO_OUTPUT_PORT_PREFIX = "audio_output_";
-        jack_client_t* const jack_client;
+        jack_client_t* jack_client;
         jack_port_t* port;
         std::unique_ptr<AudioFifo> fifo;
     public:

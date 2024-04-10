@@ -27,16 +27,16 @@ class Clip {
     private:
         static constexpr std::chrono::seconds PRELOAD_TIME = std::chrono::seconds(2);
         friend ClipBlock;
-        const std::filesystem::path path;
+        std::filesystem::path path;
         SNDFILE* snd_file;
         SF_INFO info;
-        ClipBlock head;
+        std::unique_ptr<ClipBlock> head;
         ClipBlock& get_last_loaded();
         void preload();
     public:
         Clip(const std::filesystem::path _path);
-        Clip(Clip&&) = default;
-        Clip& operator =(Clip&&) = default;
+        Clip(Clip&&);
+        Clip& operator =(Clip&&);
         virtual ~Clip();
         const std::filesystem::path& get_path() const;
         SF_INFO get_info() const;

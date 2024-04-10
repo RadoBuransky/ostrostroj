@@ -4,15 +4,17 @@
 #include "clip.hpp"
 
 ClipBlock& Clip::get_last_loaded() {
-    ClipBlock* result = &head;
+    spdlog::trace(std::format("{}", __FUNCTION__));
+    ClipBlock* result = head.get();
     while (result->is_next_loaded()) {
         result = &result->get_next();
     }
+    spdlog::trace(std::format("{} done", __FUNCTION__));
     return *result;
 }
 
 void Clip::preload() {
-    ClipBlock* last = &head;
+    ClipBlock* last = head.get();
     const sf_count_t preload_frames = info.samplerate * PRELOAD_TIME.count();
     while ((last->get_start_pos() < preload_frames) && last->has_next()) {
         last = &last->get_next();
@@ -21,20 +23,37 @@ void Clip::preload() {
 
 Clip::Clip(const std::filesystem::path _path) :
     path(_path),
-    snd_file(sf_open(_path.c_str(), SFM_READ, &info)),
-    head(ClipBlock(*this, 0)) {
+    snd_file(sf_open(_path.c_str(), SFM_READ, &info)) {
     if (snd_file == nullptr) {
         throw OstrostrojException(std::format("Can't open file! [{}]", _path.c_str()));   
     }
+    head = std::make_unique<ClipBlock>(*this, 0);
     preload();
     spdlog::debug(std::format("File preloaded. [{}, {} Hz, {} ch, {:x}]", _path.c_str(), info.samplerate, info.channels, info.format));
 };
+
+Clip::Clip(Clip&& other):
+    path(other.path),
+    snd_file(other.snd_file),
+    head(std::move(other.head)) {
+    other.snd_file = nullptr;
+}
+
+Clip& Clip::operator =(Clip&& other) {    
+    path = other.path;
+    snd_file = other.snd_file;
+    other.snd_file = nullptr;
+    head = std::move(other.head);
+    return *this;
+}
 
 Clip::~Clip() {
     if (snd_file != nullptr) {
         sf_close(snd_file);
         snd_file = nullptr;
+        spdlog::debug(std::format("Clip closed. [{}]", path.c_str()));
     }
+    spdlog::trace(std::format("{} done", __FUNCTION__));
 }
 
 const std::filesystem::path& Clip::get_path() const {
@@ -52,20 +71,23 @@ void Clip::assert_sample_rate(const int expected_sample_rate) const {
 }
 
 ClipBlock& Clip::get_head() {
-    return head;
+    return *head;
 }
 
 bool Clip::load_next() {
+    spdlog::trace(std::format("{}", __FUNCTION__));
     ClipBlock* last = &get_last_loaded();
     if (last->has_next()) {
         last->get_next();
+        spdlog::trace(std::format("{} done 1", __FUNCTION__));
         return true;
-    }
+    }    
+    spdlog::trace(std::format("{} done 2", __FUNCTION__));
     return false;
 }
 
 void Clip::unload() {
-    ClipBlock* block = &head;
+    ClipBlock* block = head.get();
     ClipBlock* prev = block;
     const sf_count_t preload_end_pos = info.samplerate * PRELOAD_TIME.count();
     while ((block->get_start_pos() < preload_end_pos) && block->is_next_loaded()) {

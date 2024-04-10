@@ -7,12 +7,12 @@ ClipNode::ClipNode(Clip& _clip, bool _loop):
     loop(_loop),
     it_next(_clip.get_head().get_buffer().cbegin()),
     it_end(_clip.get_head().get_buffer().cend()) {
-    spdlog::debug(std::format("{} (this=0x{:x})", __FUNCTION__, reinterpret_cast<intptr_t>(this)));
+    spdlog::trace(std::format("{} (this=0x{:x})", __FUNCTION__, reinterpret_cast<intptr_t>(this)));
 }
 
 ClipNode::~ClipNode() {    
     clip.unload();
-    spdlog::debug("~ClipNode"); 
+    spdlog::trace("~ClipNode"); 
 }
 
 bool ClipNode::pop(float& sample) {

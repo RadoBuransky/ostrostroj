@@ -21,7 +21,7 @@ std::vector<LoopClip> Program::load_loops(const std::filesystem::path dir) {
     for (auto const& wav_file : wav_files(dir)) {
         if (wav_file.filename().string().starts_with("L")) {
             auto loop = LoopClip(wav_file);
-            const int expected_channels = (loop.get_track() < 5) ? 1 : 2;
+            const int expected_channels = (loop.get_track() < MONO_LOOP_TRACKS) ? 1 : 2;
             check_sample_format(wav_file, loop.get_info(), expected_channels);
             result.push_back(std::move(loop));
         }
@@ -97,16 +97,22 @@ std::vector<Program> Project::load_programs(const std::filesystem::path dir) {
 
 void Project::verify(const int expected_sample_rate, const int loop_track_count) {
     for (Program& program : programs) {
-        for (const LoopClip& loop : program.get_loops()) {
-            loop.assert_sample_rate(expected_sample_rate);
-            if (loop.get_track() < 0 || loop.get_track() >= loop_track_count) {
-                throw OstrostrojException(std::format("Invalid loop track! [{}, {}]", loop.get_track(), loop.get_path().c_str()));
+        try {
+            for (const LoopClip& loop : program.get_loops()) {
+                loop.assert_sample_rate(expected_sample_rate);
+                if (loop.get_track() < 0 || loop.get_track() >= loop_track_count) {
+                    throw OstrostrojException(std::format("Invalid loop track! [{}, {}]", loop.get_track(), loop.get_path().c_str()));
+                }
             }
-        }
-        for (const auto& [note, one_shot] : program.get_one_shots()) {
-            one_shot.assert_sample_rate(expected_sample_rate);
+            for (const auto& [note, one_shot] : program.get_one_shots()) {
+                one_shot.assert_sample_rate(expected_sample_rate);
+            }
+        } catch(...) {
+            spdlog::error(std::format("Program verification failed! [{}]", program.get_start_number()));
+            std::rethrow_exception(std::current_exception());
         }
     }
+    spdlog::info("Project verified.");
 }
 
 Program& Project::get_program(int program_number) {

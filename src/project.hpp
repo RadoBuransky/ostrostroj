@@ -6,6 +6,7 @@
 
 class Program {
     private:
+        static constexpr int MONO_LOOP_TRACKS = 4;
         int start_number;
         std::vector<LoopClip> loops;
         std::map<uint8_t, OneShotClip> one_shots;

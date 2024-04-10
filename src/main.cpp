@@ -61,8 +61,14 @@ int main(int argc, char* argv[]) {
             auto ostrostrojApp = OstrostrojApp();
             ostrostrojApp.main();
         }    
-    } catch(std::exception const& e) {
-        spdlog::error(e.what());
+    } catch(...) {
+        try {
+            std::rethrow_exception(std::current_exception());
+            spdlog::error("Fatal error!");
+        }
+        catch (std::exception const &ex) {
+            spdlog::error(ex.what());
+        }
     }
     spdlog::info("Ostrostroj finished.");
 }

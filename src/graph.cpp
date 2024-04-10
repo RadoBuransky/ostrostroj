@@ -2,19 +2,19 @@
 #include "graph.hpp"
 
 Node::Node() {
-    spdlog::debug(std::format("{} (this=0x{:x})", __FUNCTION__, reinterpret_cast<intptr_t>(this)));
+    spdlog::trace(std::format("{} (this=0x{:x})", __FUNCTION__, reinterpret_cast<intptr_t>(this)));
 }
 
 Node::~Node() {
-    spdlog::debug(std::format("{} (this=0x{:x})", __FUNCTION__, reinterpret_cast<intptr_t>(this)));
+    spdlog::trace(std::format("{} (this=0x{:x})", __FUNCTION__, reinterpret_cast<intptr_t>(this)));
 }
 
 NoopNode::NoopNode() {
-    spdlog::debug(std::format("{} (this=0x{:x})", __FUNCTION__, reinterpret_cast<intptr_t>(this)));
+    spdlog::trace(std::format("{} (this=0x{:x})", __FUNCTION__, reinterpret_cast<intptr_t>(this)));
 }
 
 NoopNode::~NoopNode() {
-    spdlog::debug(std::format("{} (this=0x{:x})", __FUNCTION__, reinterpret_cast<intptr_t>(this)));
+    spdlog::trace(std::format("{} (this=0x{:x})", __FUNCTION__, reinterpret_cast<intptr_t>(this)));
 }
 
 bool NoopNode::pop(float& sample) {
@@ -24,11 +24,11 @@ bool NoopNode::pop(float& sample) {
 
 ChildNode::ChildNode(Node& _parent):
     parent(_parent) {
-    spdlog::debug(std::format("{} (this=0x{:x})", __FUNCTION__, reinterpret_cast<intptr_t>(this)));
+    spdlog::trace(std::format("{} (this=0x{:x})", __FUNCTION__, reinterpret_cast<intptr_t>(this)));
 }
 
 ChildNode::~ChildNode() {
-    spdlog::debug("~ChildNode"); 
+    spdlog::trace("~ChildNode"); 
 }
 
 Node& ChildNode::get_parent() const {
@@ -37,11 +37,11 @@ Node& ChildNode::get_parent() const {
 
 DynamicNode::DynamicNode():
     parent(std::make_unique<NoopNode>()) {
-    spdlog::debug(std::format("{} (this=0x{:x}, parent=0x{:x})", __FUNCTION__, reinterpret_cast<intptr_t>(this), reinterpret_cast<intptr_t>(parent.get())));
+    spdlog::trace(std::format("{} (this=0x{:x}, parent=0x{:x})", __FUNCTION__, reinterpret_cast<intptr_t>(this), reinterpret_cast<intptr_t>(parent.get())));
 }
 
 DynamicNode::~DynamicNode() {
-    spdlog::debug("~DynamicNode"); 
+    spdlog::trace("~DynamicNode"); 
 }
 
 Node& DynamicNode::get_parent() const {
@@ -50,21 +50,16 @@ Node& DynamicNode::get_parent() const {
 
 void DynamicNode::set_parent(std::unique_ptr<Node>&& _parent) {    
     const Node* before = parent.get();
-    spdlog::debug(std::format("{} 1 (this=0x{:x}, before=0x{:x}, _parent=0x{:x})",
-    __FUNCTION__, reinterpret_cast<intptr_t>(this), reinterpret_cast<intptr_t>(before), reinterpret_cast<intptr_t>(_parent.get())));
     float sample;
     pop(sample);
     parent.reset();
     parent = std::move(_parent);
-    spdlog::debug(std::format("{} 2 (this=0x{:x}, before=0x{:x}, after=0x{:x})",
-    __FUNCTION__, reinterpret_cast<intptr_t>(this), reinterpret_cast<intptr_t>(before), reinterpret_cast<intptr_t>(parent.get())));
+    spdlog::trace(std::format("{} (this=0x{:x}, before=0x{:x}, after=0x{:x})",
+        __FUNCTION__, reinterpret_cast<intptr_t>(this), reinterpret_cast<intptr_t>(before), reinterpret_cast<intptr_t>(parent.get())));
 }
 
 void DynamicNode::reset_parent() {
-    const Node* before = parent.get();
     parent = std::make_unique<NoopNode>();
-    spdlog::debug(std::format("{} (this=0x{:x}, before=0x{:x}, after=0x{:x})",
-    __FUNCTION__, reinterpret_cast<intptr_t>(this), reinterpret_cast<intptr_t>(before), reinterpret_cast<intptr_t>(parent.get())));
 }
 
 bool DynamicNode::pop(float& sample) {
@@ -72,7 +67,7 @@ bool DynamicNode::pop(float& sample) {
 }
 
 MixingNode::~MixingNode() {
-    spdlog::debug("~MixingNode"); 
+    spdlog::trace("~MixingNode"); 
 }
 
 bool MixingNode::pop(float& sample) {
@@ -105,7 +100,7 @@ TrackNode::TrackNode(Node& _parent):
 }
 
 TrackNode::~TrackNode() {
-    spdlog::debug("~TrackNode"); 
+    spdlog::trace("~TrackNode"); 
 }
 
 bool TrackNode::pop(float& sample) {
