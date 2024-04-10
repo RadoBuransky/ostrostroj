@@ -38,6 +38,7 @@ class Clip {
         Clip(Clip&&) = default;
         Clip& operator =(Clip&&) = default;
         virtual ~Clip();
+        const std::filesystem::path& get_path() const;
         SF_INFO get_info() const;
         void assert_sample_rate(const int expected_sample_rate) const;
         ClipBlock& get_head();
@@ -49,7 +50,6 @@ class LoopClip: public Clip {
     private:
         const int track;
         int get_track(std::filesystem::path _path) const;
-
     public:
         LoopClip(std::filesystem::path _path);
         int get_track() const;

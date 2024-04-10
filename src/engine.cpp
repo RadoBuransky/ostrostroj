@@ -84,9 +84,11 @@ void Track::stop() {
     track_node.stop();
 }
 
-void Track::set_node(std::unique_ptr<Node> node) {
+void Track::set_node(std::unique_ptr<Node>&& node) {
     clips_to_load.clear();
     get_clip_nodes(*node, clips_to_load);
+    spdlog::debug(std::format("{} (this=0x{:x}, node=0x{:x})",
+    __FUNCTION__, reinterpret_cast<intptr_t>(this), reinterpret_cast<intptr_t>(node.get())));
     dynamic_node.set_parent(std::move(node));
 }
 
@@ -248,11 +250,12 @@ void Engine::set_program(int _program_number) {
     program_number = _program_number;
     for (std::unique_ptr<Track>& track : loop_tracks) {
         track->reset_node();
+        spdlog::debug("track reset");
     }
     Program& active_program = project.get_program(program_number);
-    for (LoopClip& loop_sample : active_program.get_loops()) {
-        auto sample_node = std::make_unique<ClipNode>(loop_sample, true);
-        loop_tracks[loop_sample.get_track()]->set_node(std::move(sample_node));
+    for (LoopClip& loop_clip : active_program.get_loops()) {
+        loop_tracks.at(loop_clip.get_track())->set_node(std::make_unique<ClipNode>(loop_clip, true));
+        spdlog::debug("node set");
     }
     spdlog::info(std::format("Program set. [{}]", program_number));
 }
@@ -264,4 +267,8 @@ void Engine::next() {
 #ifndef NDEBUG
     // spdlog::trace("Engine::next()");
 #endif
+}
+
+int Engine::get_loop_track_count() const {
+    return loop_tracks.size();
 }

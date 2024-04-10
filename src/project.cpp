@@ -95,10 +95,13 @@ std::vector<Program> Project::load_programs(const std::filesystem::path dir) {
     return result;
 }
 
-void Project::assert_sample_rate(const int expected_sample_rate) {
+void Project::verify(const int expected_sample_rate, const int loop_track_count) {
     for (Program& program : programs) {
         for (const LoopClip& loop : program.get_loops()) {
             loop.assert_sample_rate(expected_sample_rate);
+            if (loop.get_track() < 0 || loop.get_track() >= loop_track_count) {
+                throw OstrostrojException(std::format("Invalid loop track! [{}, {}]", loop.get_track(), loop.get_path().c_str()));
+            }
         }
         for (const auto& [note, one_shot] : program.get_one_shots()) {
             one_shot.assert_sample_rate(expected_sample_rate);

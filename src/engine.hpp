@@ -25,7 +25,7 @@ class Track {
         Track(AudioFifo& channel);
         Track(AudioFifo& left_channel, AudioFifo& right_channel);
         Track(std::vector<std::reference_wrapper<AudioFifo>> channels);
-        void set_node(std::unique_ptr<Node> node);
+        void set_node(std::unique_ptr<Node>&& node);
         void reset_node();
         void fill_output();
         void set_mute(bool mute);
@@ -77,4 +77,5 @@ class Engine {
         virtual ~Engine();
 
         void next();
+        int get_loop_track_count() const;
 };

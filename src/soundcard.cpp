@@ -6,18 +6,23 @@
 #include "soundcard.hpp"
 #include "common.hpp"
 
-AudioPortFifo::AudioPortFifo(jack_port_t* const _port, jack_nframes_t buffer_size) :
-    port(_port),
-    fifo(std::make_unique<AudioFifo>(buffer_size)) {
+AudioPortFifo::AudioPortFifo(jack_client_t* _jack_client, int num) :
+    jack_client(_jack_client),
+    port(jack_port_register(_jack_client, std::format("{}{}", LOCAL_AUDIO_OUTPUT_PORT_PREFIX, num).c_str(),
+            JACK_DEFAULT_AUDIO_TYPE, JackPortFlags::JackPortIsOutput, 0)),
+    fifo(std::make_unique<AudioFifo>(jack_get_buffer_size(_jack_client))) {
 }
 
 AudioPortFifo::AudioPortFifo(AudioPortFifo&& other):
+    jack_client(other.jack_client),
     port(other.port),
     fifo(std::move(other.fifo)) {
 }
 
 AudioPortFifo::~AudioPortFifo() {
     spdlog::trace(std::format("~AudioPortFifo({})", jack_port_name(port)));
+    jack_port_unregister(jack_client, port);
+    port = nullptr;
 }
 
 jack_port_t* AudioPortFifo::get_port() const {
@@ -48,9 +53,7 @@ SoundCard::SoundCard(const std::string &name) :
 
 SoundCard::~SoundCard() {
     midiin.close_port();
-    for (const AudioPortFifo& audio_output : audio_outputs) {
-        jack_port_unregister(jack_client, audio_output.get_port());
-    }
+    audio_outputs.clear();
     jack_client_close(jack_client);
     spdlog::info("Jack client closed.");
 }
@@ -94,12 +97,9 @@ void SoundCard::libremidi_message_callback(const libremidi::message& message) {
 }
 
 std::vector<AudioPortFifo> SoundCard::create_audio_outputs(jack_client_t * _jack_client) {
-    const jack_nframes_t _buffer_size = jack_get_buffer_size(_jack_client);
     std::vector<AudioPortFifo> result;
     for (auto i = 1; i <= AUDIO_OUTPUT_PORT_COUNT; i++) {
-        jack_port_t* const jack_port = jack_port_register(_jack_client, std::format("{}{}", LOCAL_AUDIO_OUTPUT_PORT_PREFIX, i).c_str(),
-            JACK_DEFAULT_AUDIO_TYPE, JackPortFlags::JackPortIsOutput, 0);
-        result.emplace_back(jack_port, _buffer_size);
+        result.emplace_back(_jack_client, i);
     }
     return result;
 }

@@ -37,10 +37,13 @@ Clip::~Clip() {
     }
 }
 
+const std::filesystem::path& Clip::get_path() const {
+    return path;
+}
+
 SF_INFO Clip::get_info() const {
     return info;
 }
-
 
 void Clip::assert_sample_rate(const int expected_sample_rate) const {
     if (expected_sample_rate != info.samplerate) {
@@ -82,7 +85,7 @@ LoopClip::LoopClip(const std::filesystem::path _path):
 
 int LoopClip::get_track(std::filesystem::path _path) const {
     const auto path_filename = _path.filename().string();
-    return std::stoi(path_filename.substr(1, 1));
+    return std::stoi(path_filename.substr(1, 1)) - 1;
 }
 
 int LoopClip::get_track() const {

@@ -30,6 +30,6 @@ class Project {
         std::vector<Program> load_programs(const std::filesystem::path dir);
     public:
         Project(const std::filesystem::path dir);
-        void assert_sample_rate(const int expected_sample_rate);
+        void verify(const int expected_sample_rate, const int loop_track_count);
         Program& get_program(int program_number);
 };

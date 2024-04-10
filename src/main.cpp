@@ -37,7 +37,7 @@ class OstrostrojApp {
             project(Project("/home/ostrostroj/project/")),
             engine(Engine(project, soundCard)) {
             soundCard.start(std::bind(&Engine::next, &engine));
-            project.assert_sample_rate(soundCard.get_sample_rate());
+            project.verify(soundCard.get_sample_rate(), engine.get_loop_track_count());
         }
 
         virtual ~OstrostrojApp() {            
@@ -50,7 +50,7 @@ class OstrostrojApp {
 
 int main(int argc, char* argv[]) {
     spdlog::set_pattern("%L [%H:%M:%S] [%t] %v");
-    spdlog::set_level(spdlog::level::trace);
+    spdlog::set_level(spdlog::level::debug);
     spdlog::info(std::format("Ostrostroj started. [{}]", static_cast<int>(spdlog::get_level())));
     try {
         if ((argc > 1) && (strcmp(argv[1], "shutdown") == 0)) {

@@ -22,10 +22,12 @@ typedef farbot::fifo<libremidi::message,
 
 class AudioPortFifo {
     private:
-        jack_port_t* const port;
+        inline static const std::string LOCAL_AUDIO_OUTPUT_PORT_PREFIX = "audio_output_";
+        jack_client_t* const jack_client;
+        jack_port_t* port;
         std::unique_ptr<AudioFifo> fifo;
     public:
-        AudioPortFifo(jack_port_t* const port, jack_nframes_t buffer_size);
+        AudioPortFifo(jack_client_t* _jack_client, int num);
         AudioPortFifo(AudioPortFifo&&);
         virtual ~AudioPortFifo();
 
@@ -40,7 +42,6 @@ class SoundCard {
         inline static const std::string AUDIO_OUTPUT_PORT_PREFIX = "alsa_pcm:hw:UMC1820:in";
         static constexpr int AUDIO_OUTPUT_PORT_COUNT = 10;
         inline static const std::string LOCAL_MIDI_PORT = "libremidi_input";
-        inline static const std::string LOCAL_AUDIO_OUTPUT_PORT_PREFIX = "audio_output_";
         jack_client_t * const jack_client;
         std::vector<libremidi::jack_callback> midiin_callbacks;
         libremidi::midi_in midiin;
