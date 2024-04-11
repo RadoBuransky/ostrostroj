@@ -163,21 +163,20 @@ void Engine::create_threads() {
 }
 
 void Engine::run() {
-    bool i = interrupted.load();
-    spdlog::info(std::format("Engine started. [{}]", i));
-    while (!i) {
-        next_flag.test_and_set();
-        spdlog::trace("Engine waiting...");
-        next_flag.wait(true);
-        try {
-            process_midi();
-            run_tasks();   
-        } catch(std::exception const& e) {
-            spdlog::error(e.what());
+    spdlog::info("Engine started.");
+    try {
+        while (!interrupted) {
+            next_flag.test_and_set();
+            spdlog::trace("Engine waiting...");
+            next_flag.wait(true);
+                process_midi();
+                run_tasks();
         }
-        i = interrupted.load();
+        spdlog::info("Engine interrupted.");
+    } catch(std::exception const& e) {
+        spdlog::error(e.what());
     }
-    spdlog::info(std::format("Engine done. [{}]", i));
+    spdlog::info("Engine done.");
 }
 
 void Engine::create_tasks() {

@@ -5,16 +5,18 @@
 #include <chrono>
 #include <sndfile.hh>
 
+class Clip;
+
 class ClipBlock {
     private:
         static constexpr sf_count_t BUFFER_LEN = 8192;
-        class Clip& clip;
+        std::reference_wrapper<Clip>& clip;
         const sf_count_t start_pos;
         const std::vector<float> buffer;
         std::unique_ptr<ClipBlock> next;
         const std::vector<float> read_buffer();
     public:
-        ClipBlock(Clip& clip, sf_count_t _start_pos);
+        ClipBlock(std::reference_wrapper<Clip>& clip, sf_count_t _start_pos);
         const std::vector<float>& get_buffer() const;
         sf_count_t get_start_pos() const;
         bool is_next_loaded() const;
@@ -31,6 +33,7 @@ class Clip {
         SNDFILE* snd_file;
         SF_INFO info;
         std::unique_ptr<ClipBlock> head;
+        std::unique_ptr<std::reference_wrapper<Clip>> self;
         ClipBlock& get_last_loaded();
         void preload();
     public:

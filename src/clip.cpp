@@ -23,11 +23,12 @@ void Clip::preload() {
 
 Clip::Clip(const std::filesystem::path _path) :
     path(_path),
-    snd_file(sf_open(_path.c_str(), SFM_READ, &info)) {
+    snd_file(sf_open(_path.c_str(), SFM_READ, &info)),
+    self(std::make_unique<std::reference_wrapper<Clip>>(*this)) {
     if (snd_file == nullptr) {
         throw OstrostrojException(std::format("Can't open file! [{}]", _path.c_str()));   
     }
-    head = std::make_unique<ClipBlock>(*this, 0);
+    head = std::make_unique<ClipBlock>(*self.get(), 0);
     preload();
     spdlog::trace(std::format("File preloaded. [{}, {} Hz, {} ch, {:x}]", _path.c_str(), info.samplerate, info.channels, info.format));
 };
@@ -36,8 +37,10 @@ Clip::Clip(Clip&& other):
     path(other.path),
     snd_file(other.snd_file),
     info(other.info),
-    head(std::move(other.head)) {
-    spdlog::trace(std::format("Clip moved. [{}]", path.c_str()));
+    head(std::move(other.head)),
+    self(std::move(other.self)) {
+    *self.get() = *this;
+    spdlog::debug(std::format("Clip moved (other=0x{:x}). [{}]", reinterpret_cast<intptr_t>(&other), path.c_str()));
     other.path.clear();
     other.snd_file = nullptr;
     other.info = {};
@@ -51,7 +54,9 @@ Clip& Clip::operator =(Clip&& other) {
     info = other.info;
     other.info = {};
     head = std::move(other.head);
-    spdlog::trace("Clip move-assigned.");
+    self = std::move(other.self);
+    *self.get() = *this;
+    spdlog::debug("Clip move-assigned.");
     return *this;
 }
 
