@@ -29,21 +29,29 @@ Clip::Clip(const std::filesystem::path _path) :
     }
     head = std::make_unique<ClipBlock>(*this, 0);
     preload();
-    spdlog::debug(std::format("File preloaded. [{}, {} Hz, {} ch, {:x}]", _path.c_str(), info.samplerate, info.channels, info.format));
+    spdlog::trace(std::format("File preloaded. [{}, {} Hz, {} ch, {:x}]", _path.c_str(), info.samplerate, info.channels, info.format));
 };
 
 Clip::Clip(Clip&& other):
     path(other.path),
     snd_file(other.snd_file),
+    info(other.info),
     head(std::move(other.head)) {
+    spdlog::trace(std::format("Clip moved. [{}]", path.c_str()));
+    other.path.clear();
     other.snd_file = nullptr;
+    other.info = {};
 }
 
 Clip& Clip::operator =(Clip&& other) {    
     path = other.path;
+    other.path.clear();
     snd_file = other.snd_file;
     other.snd_file = nullptr;
+    info = other.info;
+    other.info = {};
     head = std::move(other.head);
+    spdlog::trace("Clip move-assigned.");
     return *this;
 }
 
@@ -60,7 +68,7 @@ const std::filesystem::path& Clip::get_path() const {
     return path;
 }
 
-SF_INFO Clip::get_info() const {
+SF_INFO& Clip::get_info() {
     return info;
 }
 
@@ -102,7 +110,7 @@ void Clip::unload() {
 LoopClip::LoopClip(const std::filesystem::path _path):
     Clip(_path),
     track(get_track(_path)) {
-  spdlog::info(std::format("Loop sample loaded. [{}, {}]", track, _path.string()));
+  spdlog::info(std::format("Loop sample loaded. [{}, {}, {} Hz, {} ch, {:x}]", track, _path.string(), info.samplerate, info.channels, info.format));
 }
 
 int LoopClip::get_track(std::filesystem::path _path) const {
@@ -117,7 +125,7 @@ int LoopClip::get_track() const {
 OneShotClip::OneShotClip(const std::filesystem::path _path):
     Clip(_path),
     note(get_note(_path)) {
-  spdlog::info(std::format("One-shot sample loaded. [{}, {}]", note, _path.string()));    
+  spdlog::info(std::format("One-shot sample loaded. [{}, {}, {} Hz, {} ch, {:x}]", note, _path.string(), info.samplerate, info.channels, info.format));    
 }
 
 uint8_t OneShotClip::get_note(std::filesystem::path _path) const {

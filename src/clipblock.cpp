@@ -7,9 +7,9 @@ const std::vector<float> ClipBlock::read_buffer() {
     spdlog::trace(std::format("{}", __FUNCTION__));
     std::vector<float> result = std::vector<float>();
     result.reserve(BUFFER_LEN);
-    spdlog::debug(std::format("Reading... [{}]", clip.info.channels));
+    spdlog::trace(std::format("Reading... [{}]", clip.info.channels));
     sf_count_t frames_read = sf_readf_float(clip.snd_file, &(*result.begin()), BUFFER_LEN / clip.info.channels);  
-    spdlog::debug(std::format("Read. [{}]", frames_read));  
+    spdlog::trace(std::format("Read. [{}]", frames_read));  
     result.resize(frames_read * clip.info.channels);
     spdlog::trace(std::format("{} done", __FUNCTION__));
     return result;
@@ -49,7 +49,7 @@ ClipBlock& ClipBlock::get_next() {
         throw OstrostrojException("No more samples!");
     }
     if (next.get() == nullptr) {
-        spdlog::debug(std::format("get_next make_unique({}, {})", clip.get_path().c_str(), clip.info.channels));
+        spdlog::trace(std::format("get_next make_unique({}, {})", clip.get_path().c_str(), clip.info.channels));
         next = std::make_unique<ClipBlock>(clip, start_pos + (buffer.size() / clip.info.channels));
     }
     spdlog::trace(std::format("{} done", __FUNCTION__));

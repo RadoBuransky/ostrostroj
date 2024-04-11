@@ -36,8 +36,13 @@ class OstrostrojApp {
             soundCard(SoundCard("ostrostroj")),
             project(Project("/home/ostrostroj/project/")),
             engine(Engine(project, soundCard)) {
-            soundCard.start(std::bind(&Engine::next, &engine));
-            project.verify(soundCard.get_sample_rate(), engine.get_loop_track_count());
+            try {
+                soundCard.start(std::bind(&Engine::next, &engine));
+                project.verify(soundCard.get_sample_rate(), engine.get_loop_track_count());
+            } catch (std::exception const &ex) {
+                spdlog::error(ex.what());
+                throw;
+            }
         }
 
         virtual ~OstrostrojApp() {            
@@ -52,22 +57,17 @@ int main(int argc, char* argv[]) {
     spdlog::set_pattern("%L [%H:%M:%S] [%t] %v");
     spdlog::set_level(spdlog::level::debug);
     spdlog::info(std::format("Ostrostroj started. [{}]", static_cast<int>(spdlog::get_level())));
-    try {
-        if ((argc > 1) && (strcmp(argv[1], "shutdown") == 0)) {
-            sync();
-            reboot(RB_POWER_OFF); 
-            spdlog::info("Shutdown!");
-        } else {
+    if ((argc > 1) && (strcmp(argv[1], "shutdown") == 0)) {
+        sync();
+        reboot(RB_POWER_OFF); 
+        spdlog::info("Shutdown!");
+    } else {
+        try {
             auto ostrostrojApp = OstrostrojApp();
             ostrostrojApp.main();
-        }    
-    } catch(...) {
-        try {
-            std::rethrow_exception(std::current_exception());
-            spdlog::error("Fatal error!");
-        }
-        catch (std::exception const &ex) {
+        } catch (std::exception const &ex) {
             spdlog::error(ex.what());
+            throw;
         }
     }
     spdlog::info("Ostrostroj finished.");

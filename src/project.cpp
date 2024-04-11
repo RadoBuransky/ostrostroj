@@ -18,14 +18,15 @@ int Program::program_start_number(const std::filesystem::path dir) {
 std::vector<LoopClip> Program::load_loops(const std::filesystem::path dir) {
     spdlog::debug(std::format("Loading loops {} ", dir.string()));
     auto result = std::vector<LoopClip>();
+    result.reserve(32);
     for (auto const& wav_file : wav_files(dir)) {
         if (wav_file.filename().string().starts_with("L")) {
-            auto loop = LoopClip(wav_file);
-            const int expected_channels = (loop.get_track() < MONO_LOOP_TRACKS) ? 1 : 2;
-            check_sample_format(wav_file, loop.get_info(), expected_channels);
-            result.push_back(std::move(loop));
+            auto& loop_clip = result.emplace_back<LoopClip>(wav_file);
+            const int expected_channels = (loop_clip.get_track() < MONO_LOOP_TRACKS) ? 1 : 2;
+            check_sample_format(wav_file, loop_clip.get_info(), expected_channels);
         }
     }
+    result.shrink_to_fit();
     return result;
 }
 
@@ -36,7 +37,8 @@ std::map<uint8_t, OneShotClip> Program::load_one_shots(const std::filesystem::pa
         if (wav_file.filename().string().starts_with("S")) {
             auto one_shot_sample = OneShotClip(wav_file);
             check_sample_format(wav_file, one_shot_sample.get_info(), 2);
-            result.insert(std::make_pair(one_shot_sample.get_note(), std::move(one_shot_sample)));
+            const uint8_t note = one_shot_sample.get_note();
+            result.emplace(note, std::move(one_shot_sample));
         }
     }
     return result;
@@ -97,19 +99,15 @@ std::vector<Program> Project::load_programs(const std::filesystem::path dir) {
 
 void Project::verify(const int expected_sample_rate, const int loop_track_count) {
     for (Program& program : programs) {
-        try {
-            for (const LoopClip& loop : program.get_loops()) {
-                loop.assert_sample_rate(expected_sample_rate);
-                if (loop.get_track() < 0 || loop.get_track() >= loop_track_count) {
-                    throw OstrostrojException(std::format("Invalid loop track! [{}, {}]", loop.get_track(), loop.get_path().c_str()));
-                }
+        for (const LoopClip& loop : program.get_loops()) {
+            loop.assert_sample_rate(expected_sample_rate);
+            spdlog::debug(std::format("Loop asserted. [{}]", loop.get_path().c_str()));
+            if (loop.get_track() < 0 || loop.get_track() >= loop_track_count) {
+                throw OstrostrojException(std::format("Invalid loop track! [{}, {}]", loop.get_track(), loop.get_path().c_str()));
             }
-            for (const auto& [note, one_shot] : program.get_one_shots()) {
-                one_shot.assert_sample_rate(expected_sample_rate);
-            }
-        } catch(...) {
-            spdlog::error(std::format("Program verification failed! [{}]", program.get_start_number()));
-            std::rethrow_exception(std::current_exception());
+        }
+        for (const auto& [note, one_shot] : program.get_one_shots()) {
+            one_shot.assert_sample_rate(expected_sample_rate);
         }
     }
     spdlog::info("Project verified.");
