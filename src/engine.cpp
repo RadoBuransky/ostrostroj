@@ -233,21 +233,24 @@ void Engine::midi_start() {
     for (std::unique_ptr<Track>& track : loop_tracks) {
         track->start();
     }
-    spdlog::info("Started.");
+    one_shots_track.start();
+    spdlog::info("Engine started.");
 }
 
 void Engine::midi_stop() {
     for (std::unique_ptr<Track>& track : loop_tracks) {
         track->stop();
     }
-    spdlog::info("Stopped.");
+    one_shots_track.stop();
+    spdlog::info("Engine stopped.");
 }
 
 void Engine::midi_continue() {
     for (std::unique_ptr<Track>& track : loop_tracks) {
         track->start();
     }
-    spdlog::info("Continued.");
+    one_shots_track.start();
+    spdlog::info("Engine continued.");
 }
 
 void Engine::play_one_shot(uint8_t _note) {

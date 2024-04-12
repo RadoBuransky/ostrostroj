@@ -57,10 +57,10 @@ std::vector<std::filesystem::path> Program::wav_files(const std::filesystem::pat
 
 void Program::check_sample_format(const std::filesystem::path wav_file, const SF_INFO &format, const int expected_channels) const {
     if ((format.format & SF_FORMAT_WAV) == 0) {
-        throw OstrostrojException(std::format("WAV file expected! [{:x}, {}]", format.format, wav_file.string()));
+        throw OstrostrojException(std::format("WAV file expected! [0x{:x}, {}]", format.format, wav_file.string()));
     }
     if ((format.format & SF_FORMAT_FLOAT) == 0) {
-        throw OstrostrojException(std::format("32-bit float expected! [{:x}, {}]", format.format, wav_file.string()));
+        throw OstrostrojException(std::format("32-bit float expected! [0x{:x}, {}]", format.format, wav_file.string()));
     }
     if (format.channels != expected_channels) {
         throw OstrostrojException(std::format("{} channels expected! [{}, {}]", expected_channels, format.channels, wav_file.string()));

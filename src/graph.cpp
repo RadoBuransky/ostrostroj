@@ -106,21 +106,25 @@ TrackNode::~TrackNode() {
 bool TrackNode::pop(float& sample) {
     if (started) {
         if (muted) {
-            float other_sample;
-            return parent.pop(other_sample);
+            float ignored_sample;
+            spdlog::trace(std::format("TrackNode muted. (this=0x{:x})", reinterpret_cast<intptr_t>(this)));
+            return parent.pop(ignored_sample);
         }
         return parent.pop(sample);
     }
+    spdlog::trace(std::format("TrackNode not started. (this=0x{:x})", reinterpret_cast<intptr_t>(this)));
     sample = 0.0;
     return true;
 }
 
 void TrackNode::start() {
     started = true;
+    spdlog::debug(std::format("TrackNode started. (this=0x{:x})", reinterpret_cast<intptr_t>(this)));
 }
 
 void TrackNode::stop() {
     started = false;
+    spdlog::debug(std::format("TrackNode stopped. (this=0x{:x})", reinterpret_cast<intptr_t>(this)));
 }
 
 void TrackNode::set_mute(bool mute) {

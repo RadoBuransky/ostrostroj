@@ -28,6 +28,9 @@ Clip::Clip(const std::filesystem::path _path) :
     if (snd_file == nullptr) {
         throw OstrostrojException(std::format("Can't open file! [{}]", _path.c_str()));   
     }
+    if (sf_error(snd_file) != SF_ERR_NO_ERROR) {
+        throw OstrostrojException(std::format("File error! [{}]", sf_error(snd_file)));   
+    }
     head = std::make_unique<ClipBlock>(*self.get(), 0);
     preload();
     spdlog::trace(std::format("File preloaded. [{}, {} Hz, {} ch, {:x}]", _path.c_str(), info.samplerate, info.channels, info.format));

@@ -73,8 +73,8 @@ class MixingNode : public Node {
 
 class TrackNode : public ChildNode {
     private:
-        bool started;
-        bool muted;
+        std::atomic_bool started;
+        std::atomic_bool muted;
     public:
         TrackNode(Node& parent);
         virtual ~TrackNode();

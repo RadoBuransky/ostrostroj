@@ -12,9 +12,9 @@ class ClipBlock {
         static constexpr sf_count_t BUFFER_LEN = 8192;
         std::reference_wrapper<Clip>& clip;
         const sf_count_t start_pos;
-        const std::vector<float> buffer;
+        std::vector<float> buffer;
         std::unique_ptr<ClipBlock> next;
-        const std::vector<float> read_buffer();
+        void read_buffer();
     public:
         ClipBlock(std::reference_wrapper<Clip>& clip, sf_count_t _start_pos);
         const std::vector<float>& get_buffer() const;
