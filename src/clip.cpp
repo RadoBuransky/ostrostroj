@@ -4,12 +4,10 @@
 #include "clip.hpp"
 
 ClipBlock& Clip::get_last_loaded() {
-    spdlog::trace(std::format("{}", __FUNCTION__));
     ClipBlock* result = head.get();
     while (result->is_next_loaded()) {
         result = &result->get_next();
     }
-    spdlog::trace(std::format("{} done", __FUNCTION__));
     return *result;
 }
 
@@ -43,7 +41,6 @@ Clip::Clip(Clip&& other):
     head(std::move(other.head)),
     self(std::move(other.self)) {
     *self.get() = *this;
-    spdlog::debug(std::format("Clip moved (other=0x{:x}). [{}]", reinterpret_cast<intptr_t>(&other), path.c_str()));
     other.path.clear();
     other.snd_file = nullptr;
     other.info = {};
@@ -59,7 +56,6 @@ Clip& Clip::operator =(Clip&& other) {
     head = std::move(other.head);
     self = std::move(other.self);
     *self.get() = *this;
-    spdlog::debug("Clip move-assigned.");
     return *this;
 }
 
@@ -69,7 +65,6 @@ Clip::~Clip() {
         snd_file = nullptr;
         spdlog::debug(std::format("Clip closed. [{}]", path.c_str()));
     }
-    spdlog::trace(std::format("{} done", __FUNCTION__));
 }
 
 const std::filesystem::path& Clip::get_path() const {
@@ -91,14 +86,11 @@ ClipBlock& Clip::get_head() {
 }
 
 bool Clip::load_next() {
-    spdlog::trace(std::format("{}", __FUNCTION__));
     ClipBlock* last = &get_last_loaded();
     if (last->has_next()) {
         last->get_next();
-        spdlog::trace(std::format("{} done 1", __FUNCTION__));
         return true;
     }    
-    spdlog::trace(std::format("{} done 2", __FUNCTION__));
     return false;
 }
 

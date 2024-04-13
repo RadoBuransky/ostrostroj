@@ -2,19 +2,15 @@
 #include "graph.hpp"
 
 Node::Node() {
-    spdlog::trace(std::format("{} (this=0x{:x})", __FUNCTION__, reinterpret_cast<intptr_t>(this)));
 }
 
 Node::~Node() {
-    spdlog::trace(std::format("{} (this=0x{:x})", __FUNCTION__, reinterpret_cast<intptr_t>(this)));
 }
 
 NoopNode::NoopNode() {
-    spdlog::trace(std::format("{} (this=0x{:x})", __FUNCTION__, reinterpret_cast<intptr_t>(this)));
 }
 
 NoopNode::~NoopNode() {
-    spdlog::trace(std::format("{} (this=0x{:x})", __FUNCTION__, reinterpret_cast<intptr_t>(this)));
 }
 
 bool NoopNode::pop(float& sample) {
@@ -24,11 +20,9 @@ bool NoopNode::pop(float& sample) {
 
 ChildNode::ChildNode(Node& _parent):
     parent(_parent) {
-    spdlog::trace(std::format("{} (this=0x{:x})", __FUNCTION__, reinterpret_cast<intptr_t>(this)));
 }
 
 ChildNode::~ChildNode() {
-    spdlog::trace("~ChildNode"); 
 }
 
 Node& ChildNode::get_parent() const {
@@ -37,25 +31,17 @@ Node& ChildNode::get_parent() const {
 
 DynamicNode::DynamicNode():
     parent(std::make_unique<NoopNode>()) {
-    spdlog::trace(std::format("{} (this=0x{:x}, parent=0x{:x})", __FUNCTION__, reinterpret_cast<intptr_t>(this), reinterpret_cast<intptr_t>(parent.get())));
 }
 
 DynamicNode::~DynamicNode() {
-    spdlog::trace("~DynamicNode"); 
 }
 
 Node& DynamicNode::get_parent() const {
     return *parent;
 }
 
-void DynamicNode::set_parent(std::unique_ptr<Node>&& _parent) {    
-    const Node* before = parent.get();
-    float sample;
-    pop(sample);
-    parent.reset();
+void DynamicNode::set_parent(std::unique_ptr<Node>&& _parent) {
     parent = std::move(_parent);
-    spdlog::trace(std::format("{} (this=0x{:x}, before=0x{:x}, after=0x{:x})",
-        __FUNCTION__, reinterpret_cast<intptr_t>(this), reinterpret_cast<intptr_t>(before), reinterpret_cast<intptr_t>(parent.get())));
 }
 
 void DynamicNode::reset_parent() {
@@ -67,7 +53,6 @@ bool DynamicNode::pop(float& sample) {
 }
 
 MixingNode::~MixingNode() {
-    spdlog::trace("~MixingNode"); 
 }
 
 bool MixingNode::pop(float& sample) {
@@ -100,31 +85,26 @@ TrackNode::TrackNode(Node& _parent):
 }
 
 TrackNode::~TrackNode() {
-    spdlog::trace("~TrackNode"); 
 }
 
 bool TrackNode::pop(float& sample) {
     if (started) {
         if (muted) {
             float ignored_sample;
-            spdlog::trace(std::format("TrackNode muted. (this=0x{:x})", reinterpret_cast<intptr_t>(this)));
             return parent.pop(ignored_sample);
         }
         return parent.pop(sample);
     }
-    spdlog::trace(std::format("TrackNode not started. (this=0x{:x})", reinterpret_cast<intptr_t>(this)));
     sample = 0.0;
     return true;
 }
 
 void TrackNode::start() {
     started = true;
-    spdlog::debug(std::format("TrackNode started. (this=0x{:x})", reinterpret_cast<intptr_t>(this)));
 }
 
 void TrackNode::stop() {
     started = false;
-    spdlog::debug(std::format("TrackNode stopped. (this=0x{:x})", reinterpret_cast<intptr_t>(this)));
 }
 
 void TrackNode::set_mute(bool mute) {

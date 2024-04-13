@@ -10,6 +10,7 @@
 #include "common.hpp"
 #include "project.hpp"
 #include "engine.hpp"
+#include "profiler.hpp"
 
 class OstrostrojApp {
     private:
@@ -45,7 +46,9 @@ class OstrostrojApp {
             }
         }
 
-        virtual ~OstrostrojApp() {            
+        virtual ~OstrostrojApp() { 
+            spdlog::info("Ostrostroj finished.");
+            spdlog::shutdown();           
         }
 
         void main() const {
@@ -55,20 +58,18 @@ class OstrostrojApp {
 
 int main(int argc, char* argv[]) {
     spdlog::set_pattern("%L [%H:%M:%S] [%t] %v");
-    spdlog::set_level(spdlog::level::debug);
+    spdlog::set_level(spdlog::level::info);
     spdlog::info(std::format("Ostrostroj started. [{}]", static_cast<int>(spdlog::get_level())));
     if ((argc > 1) && (strcmp(argv[1], "shutdown") == 0)) {
         sync();
         reboot(RB_POWER_OFF); 
         spdlog::info("Shutdown!");
     } else {
+        auto ostrostrojApp = OstrostrojApp();
         try {
-            auto ostrostrojApp = OstrostrojApp();
             ostrostrojApp.main();
         } catch (std::exception const &ex) {
             spdlog::error(ex.what());
-            throw;
         }
     }
-    spdlog::info("Ostrostroj finished.");
 }

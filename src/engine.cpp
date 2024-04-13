@@ -1,38 +1,32 @@
 #include <spdlog/spdlog.h>
 #include "engine.hpp"
 #include "common.hpp"
+#include "profiler.hpp"
 
 #define MAX_TASK_COUNT 16
 
 bool Track::push_next_frame() {
-    spdlog::trace(std::format("{}", __FUNCTION__));
     if (next_frame.empty()) {
-        spdlog::trace(std::format("{} done 1.", __FUNCTION__));
         return true;
     }
     for (unsigned int channel = 0; channel < next_frame.size(); channel++) {
         AudioFifo& channel_fifo = channels.at(channel);
         if (!channel_fifo.push(std::move(next_frame.at(channel)))) {
-            spdlog::trace(std::format("{} done 2.", __FUNCTION__));
             return false;
         }
     }
     next_frame.clear();
-    spdlog::trace(std::format("{} done 3.", __FUNCTION__));
     return true;
 }
 
 void Track::pop_next_frame(float sample) {    
-    spdlog::trace(std::format("{}", __FUNCTION__));
     for (unsigned int channel = 0; channel < channels.size(); channel++) {
         next_frame.push_back(sample);
         if (!track_node.pop(sample)) {
-            spdlog::warn("Next frame underrun!");
             next_frame.clear();
             return;
         }
     }
-    spdlog::trace(std::format("{} done.", __FUNCTION__));
 }
 
 void Track::get_clip_nodes(Node& node, std::vector<std::reference_wrapper<ClipNode>>& result) {
@@ -54,7 +48,6 @@ void Track::get_clip_nodes(Node& node, std::vector<std::reference_wrapper<ClipNo
 }
 
 void Track::preload_clips() {
-    spdlog::trace(std::format("{}", __FUNCTION__));
     std::vector<std::reference_wrapper<ClipNode>>::iterator it = clips_to_load.begin();
     while (it != clips_to_load.end()) {
         if (!(*it).get().load_next()) {
@@ -63,7 +56,6 @@ void Track::preload_clips() {
             it++;
         }
     }
-    spdlog::trace(std::format("{} done.", __FUNCTION__));
 }
 
 Track::Track(AudioFifo& channel):
@@ -95,8 +87,6 @@ void Track::stop() {
 void Track::set_node(std::unique_ptr<Node>&& node) {
     clips_to_load.clear();
     get_clip_nodes(*node, clips_to_load);
-    spdlog::trace(std::format("{} (this=0x{:x}, node=0x{:x})",
-        __FUNCTION__, reinterpret_cast<intptr_t>(this), reinterpret_cast<intptr_t>(node.get())));
     dynamic_node.set_parent(std::move(node));
 }
 
@@ -106,7 +96,6 @@ void Track::reset_node() {
 }
 
 void Track::fill_output() {
-    spdlog::trace(std::format("{}", __FUNCTION__));
     float sample;
     bool overflow = false;
     int channel = channels.size() - 1;
@@ -149,7 +138,6 @@ Engine::Engine(Project& _project, SoundCard& _soundCard):
 }
 
 Engine::~Engine() {   
-    spdlog::trace("~Engine()");
     interrupted.store(true);
     next_flag.clear();
     next_flag.notify_all();    
@@ -167,7 +155,6 @@ void Engine::run() {
     try {
         while (!interrupted) {
             next_flag.test_and_set();
-            spdlog::trace("Engine waiting...");
             next_flag.wait(true);
                 process_midi();
                 run_tasks();
@@ -204,7 +191,7 @@ void Engine::process_midi() {
             libremidi::message midi_message;
             MidiFifo& midi_fifo = soundCard.get_midi_fifo();
             while (midi_fifo.pop(midi_message)) {
-                spdlog::trace(std::format("Processing MIDI message. [0x{:x}]", static_cast<int>(midi_message.get_message_type())));
+                // spdlog::trace(std::format("Processing MIDI message. [0x{:x}]", static_cast<int>(midi_message.get_message_type())));
                 switch (midi_message.get_message_type()) {
                     case libremidi::message_type::START:
                         midi_start();
@@ -234,7 +221,6 @@ void Engine::midi_start() {
         track->start();
     }
     one_shots_track.start();
-    spdlog::info("Engine started.");
 }
 
 void Engine::midi_stop() {
@@ -242,7 +228,15 @@ void Engine::midi_stop() {
         track->stop();
     }
     one_shots_track.stop();
-    spdlog::info("Engine stopped.");
+
+    Profiler& profiler = Profiler::get();
+    spdlog::info(std::format("jack_callback_count={}", profiler.jack_callback_count.load()));
+    float avg_duration = 0.0;
+    if (profiler.jack_callback_count > 0) {
+        avg_duration = profiler.jack_callback_total_duration / profiler.jack_callback_count;
+    }
+    spdlog::info(std::format("jack_callback_total_duration={}ms (avg={:g}ms)", profiler.jack_callback_total_duration.load(), avg_duration));
+    spdlog::info(std::format("jack_callback_fifo_underrun={}", profiler.jack_callback_fifo_underrun.load()));
 }
 
 void Engine::midi_continue() {
@@ -250,7 +244,6 @@ void Engine::midi_continue() {
         track->start();
     }
     one_shots_track.start();
-    spdlog::info("Engine continued.");
 }
 
 void Engine::play_one_shot(uint8_t _note) {
@@ -262,12 +255,10 @@ void Engine::set_program(int _program_number) {
     program_number = _program_number;
     for (std::unique_ptr<Track>& track : loop_tracks) {
         track->reset_node();
-        spdlog::trace("track reset");
     }
     Program& active_program = project.get_program(program_number);
     for (LoopClip& loop_clip : active_program.get_loops()) {
         loop_tracks.at(loop_clip.get_track())->set_node(std::make_unique<ClipNode>(loop_clip, true));
-        spdlog::trace("node set");
     }
     spdlog::info(std::format("Program set. [{}]", program_number));
 }

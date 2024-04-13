@@ -5,6 +5,7 @@
 #include <libremidi/backends/jack/midi_in.hpp>
 #include "soundcard.hpp"
 #include "common.hpp"
+#include "profiler.hpp"
 
 AudioPortFifo::AudioPortFifo(jack_client_t* _jack_client, int num) :
     jack_client(_jack_client),
@@ -23,7 +24,6 @@ AudioPortFifo::AudioPortFifo(AudioPortFifo&& other):
 
 AudioPortFifo::~AudioPortFifo() {
     if (port != nullptr) {
-        spdlog::trace(std::format("~AudioPortFifo({})", jack_port_name(port)));
         jack_port_unregister(jack_client, port);
         port = nullptr;
     }
@@ -44,6 +44,7 @@ void AudioPortFifo::copy_to_buffer(const jack_nframes_t nframes) const {
         counter++;
         buffer++;
     }
+    Profiler::get().jack_callback_fifo_underrun += nframes - counter;
 }
 
 SoundCard::SoundCard(const std::string &name) :
@@ -63,6 +64,8 @@ SoundCard::~SoundCard() {
 }
 
 int SoundCard::process_callback(jack_nframes_t nframes, void *arg) {   
+    auto start = std::chrono::high_resolution_clock::now();
+    Profiler::get().jack_callback_count++;
     SoundCard& self = *(SoundCard*)arg; 
     try {
         // Process the midi inputs
@@ -77,6 +80,8 @@ int SoundCard::process_callback(jack_nframes_t nframes, void *arg) {
         spdlog::error(ex.what());
     }
     self.callback();
+    auto end = std::chrono::high_resolution_clock::now();
+    Profiler::get().jack_callback_total_duration += std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     return 0;
 }
 
@@ -88,9 +93,6 @@ void SoundCard::libremidi_message_callback(const libremidi::message& message) {
         case libremidi::message_type::START:
         case libremidi::message_type::CONTINUE:
         case libremidi::message_type::STOP:
-#ifndef NDEBUG
-            spdlog::trace(std::format("Received MIDI message. [0x{:x}]", static_cast<int>(message.get_message_type())));
-#endif
             if (!midi_fifo.push(libremidi::message(message))) {
                 spdlog::warn("MIDI FIFO overflow!");
             }
@@ -109,7 +111,6 @@ std::vector<AudioPortFifo> SoundCard::create_audio_outputs(jack_client_t * _jack
 }
 
 libremidi::midi_in SoundCard::create_midiin() {
-    spdlog::trace("create_midiin()");
     auto api_input_config = libremidi::jack_input_configuration{
         .context = jack_client,
         .set_process_func = [&](libremidi::jack_callback cb) {
@@ -119,7 +120,6 @@ libremidi::midi_in SoundCard::create_midiin() {
             midiin_callbacks.clear();
         }
     };
-    spdlog::trace("api_input_config created.");
     libremidi::midi_in result = libremidi::midi_in(
           libremidi::input_configuration{
             .on_message = [&](libremidi::message m) {
@@ -129,7 +129,6 @@ libremidi::midi_in SoundCard::create_midiin() {
                 return t;
             }},
             api_input_config);
-    spdlog::trace("midi_in created.");
     result.open_virtual_port(LOCAL_MIDI_PORT);
     spdlog::debug(std::format("{} open.", LOCAL_MIDI_PORT.c_str()));
     return result;
@@ -140,9 +139,9 @@ void SoundCard::port_connect_callback(jack_port_id_t a, jack_port_id_t b, int co
     auto a_name = jack_port_name(jack_port_by_id(soundCard->jack_client, a));
     auto b_name = jack_port_name(jack_port_by_id(soundCard->jack_client, b));
     if (connect == 0) {
-        spdlog::info(std::format("Port {} disconnected from {}.", a_name, b_name));
+        spdlog::debug(std::format("Port {} disconnected from {}.", a_name, b_name));
     } else {
-        spdlog::info(std::format("Port {} connected to {}.", a_name, b_name));
+        spdlog::debug(std::format("Port {} connected to {}.", a_name, b_name));
     }
 }
 
@@ -150,9 +149,9 @@ void SoundCard::port_registration_callback(jack_port_id_t port, int registered, 
     const SoundCard *soundCard = static_cast<SoundCard*>(arg);
     auto port_name = jack_port_name(jack_port_by_id(soundCard->jack_client, port));
     if (registered == 0) {
-        spdlog::info(std::format("Port {} unregistered.", port_name));
+        spdlog::debug(std::format("Port {} unregistered.", port_name));
     } else {
-        spdlog::info(std::format("Port {} registered.", port_name));
+        spdlog::debug(std::format("Port {} registered.", port_name));
     }
 }
 
