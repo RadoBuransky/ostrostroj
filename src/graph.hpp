@@ -52,8 +52,9 @@ class ClipNode : public Node {
         Clip& clip;
         std::reference_wrapper<ClipBlock> block;
         bool loop;
-        std::vector<float>::const_iterator it_next;
-        std::vector<float>::const_iterator it_end;
+        const float* current_frame;
+        const float* end_frame;
+        void update_pointers(ClipBlock& _block);
     public:
         ClipNode(Clip& clip, bool loop);
         virtual ~ClipNode();

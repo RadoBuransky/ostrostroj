@@ -7,17 +7,21 @@
 
 class Clip;
 
+typedef std::array<float, 8192> clip_buffer;
+
 class ClipBlock {
     private:
-        static constexpr sf_count_t BUFFER_LEN = 8192;
         std::reference_wrapper<Clip>& clip;
         const sf_count_t start_pos;
-        std::vector<float> buffer;
+        clip_buffer buffer;
+        sf_count_t buffer_capacity_frames;
+        sf_count_t buffer_frames;
         std::unique_ptr<ClipBlock> next;
         void read_buffer();
     public:
         ClipBlock(std::reference_wrapper<Clip>& clip, sf_count_t _start_pos);
-        const std::vector<float>& get_buffer() const;
+        const clip_buffer& get_buffer() const;
+        sf_count_t get_buffer_frames() const;
         sf_count_t get_start_pos() const;
         bool is_next_loaded() const;
         bool has_next() const;

@@ -1,12 +1,16 @@
 #include <spdlog/spdlog.h>
 #include "graph.hpp"
 
+void ClipNode::update_pointers(ClipBlock& _block) {
+    current_frame = _block.get_buffer().data();
+    end_frame = _block.get_buffer().data() + _block.get_buffer_frames();
+}
+
 ClipNode::ClipNode(Clip& _clip, bool _loop):
     clip(_clip),
     block(_clip.get_head()),
-    loop(_loop),
-    it_next(_clip.get_head().get_buffer().cbegin()),
-    it_end(_clip.get_head().get_buffer().cend()) {
+    loop(_loop) {
+    update_pointers(block.get());
     spdlog::trace(std::format("{} (this=0x{:x})", __FUNCTION__, reinterpret_cast<intptr_t>(this)));
 }
 
@@ -16,11 +20,11 @@ ClipNode::~ClipNode() {
 }
 
 bool ClipNode::pop(float& sample) {
-    if (it_next != it_end) {
-        sample = *it_next;
-        it_next++;
+    if (current_frame < end_frame) {
+        sample = *current_frame;
+        current_frame++;
         spdlog::debug(std::format("ClipNode sample popped. [{:g}, this=0x{:x} it_next=0x{:x}]", sample, reinterpret_cast<intptr_t>(this),
-            reinterpret_cast<intptr_t>(&(*it_next))));
+            reinterpret_cast<intptr_t>(&(*current_frame))));
         return true;        
     }
     if (block.get().has_next()) {
@@ -34,12 +38,7 @@ bool ClipNode::pop(float& sample) {
             return false;
         }
     }
-    it_next = block.get().get_buffer().cbegin();
-    it_end = block.get().get_buffer().cend();
-    if (it_next == it_end) {
-        spdlog::warn("ClipNode empty buffer!");
-        return false;
-    }
+    update_pointers(block.get());
     return pop(sample);
 }
 

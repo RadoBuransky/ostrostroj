@@ -255,6 +255,7 @@ void Engine::midi_continue() {
 
 void Engine::play_one_shot(uint8_t _note) {
     // TODO: Unload sample from memory once done
+    spdlog::debug(std::format("play_one_shot({})", _note));
 }
 
 void Engine::set_program(int _program_number) {
