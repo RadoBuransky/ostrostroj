@@ -55,8 +55,8 @@ class Engine {
         std::atomic_bool interrupted;
         std::atomic_flag next_flag;
         std::mutex midi_processing_mutex;
-        volatile bool midi_processed;
-        volatile int program_number;
+        std::atomic_bool midi_processed;
+        std::atomic_int program_number;
 
         std::atomic_long next_timestamp;
         std::atomic_long last_duration_ns;

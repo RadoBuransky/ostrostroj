@@ -52,8 +52,9 @@ SoundCard::SoundCard(const std::string &name) :
     midiin_callbacks(),
     midiin(create_midiin()),
     midi_fifo(MidiFifo(512)),
-    audio_outputs(create_audio_outputs(jack_client)),
+    audio_outputs(),
     buffer_size(jack_get_buffer_size(jack_client)) {
+    create_audio_outputs(jack_client);
 }
 
 SoundCard::~SoundCard() {
@@ -106,12 +107,11 @@ void SoundCard::libremidi_message_callback(const libremidi::message& message) {
     }
 }
 
-std::vector<AudioPortFifo> SoundCard::create_audio_outputs(jack_client_t * _jack_client) {
-    std::vector<AudioPortFifo> result;
+void SoundCard::create_audio_outputs(jack_client_t * _jack_client) {
+    audio_outputs.reserve(AUDIO_OUTPUT_PORT_COUNT);
     for (auto i = 1; i <= AUDIO_OUTPUT_PORT_COUNT; i++) {
-        result.emplace_back(_jack_client, i);
+        audio_outputs.emplace_back(_jack_client, i);
     }
-    return result;
 }
 
 libremidi::midi_in SoundCard::create_midiin() {

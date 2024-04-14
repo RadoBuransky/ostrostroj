@@ -7,18 +7,16 @@
 #include "farbot/fifo.hpp"
 
 typedef farbot::fifo<jack_default_audio_sample_t,
-            farbot::fifo_options::concurrency::multiple,
+            farbot::fifo_options::concurrency::single,
             farbot::fifo_options::concurrency::multiple,
             farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
-            farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
-            8> AudioFifo;
+            farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty> AudioFifo;
 
 typedef farbot::fifo<libremidi::message,
-            farbot::fifo_options::concurrency::multiple,
+            farbot::fifo_options::concurrency::single,
             farbot::fifo_options::concurrency::multiple,
             farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
-            farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
-            8> MidiFifo;
+            farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty> MidiFifo;
 
 class AudioPortFifo {
     private:
@@ -53,7 +51,7 @@ class SoundCard {
         static int process_callback(jack_nframes_t nframes, void *arg);
         void libremidi_message_callback(const libremidi::message& message);
 
-        std::vector<AudioPortFifo> create_audio_outputs(jack_client_t * jack_client);
+        void create_audio_outputs(jack_client_t * jack_client);
         static void port_connect_callback(jack_port_id_t a, jack_port_id_t b, int connect, void*);
         static void port_registration_callback(jack_port_id_t port, int registered, void*);
         static jack_client_t * create_client(const std::string &name);

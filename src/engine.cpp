@@ -143,6 +143,7 @@ Engine::Engine(Project& _project, SoundCard& _soundCard):
     next_flag(ATOMIC_FLAG_INIT),
     midi_processed(false),
     program_number(0) {
+    static_assert(std::atomic_bool::is_always_lock_free);
     create_threads();
 }
 
@@ -279,7 +280,7 @@ void Engine::set_program(int _program_number) {
     for (LoopClip& loop_clip : active_program.get_loops()) {
         loop_tracks.at(loop_clip.get_track())->set_node(std::make_unique<ClipNode>(loop_clip, true));
     }
-    spdlog::info(std::format("Program set. [{}]", program_number));
+    spdlog::info(std::format("Program set. [{}]", program_number.load()));
 }
 
 void Engine::next() {

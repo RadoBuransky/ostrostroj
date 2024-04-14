@@ -10,6 +10,7 @@ Profiler::Profiler():
     engine_samples_pushed(0),
     next_log(std::chrono::steady_clock::now()) {
     static_assert(std::atomic_int::is_always_lock_free);
+    static_assert(std::atomic_long::is_always_lock_free);
 }
 
 void Profiler::log() {
