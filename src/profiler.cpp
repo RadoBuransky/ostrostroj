@@ -28,12 +28,21 @@ void Profiler::log() {
 
     spdlog::info("-----------------------------------------------------------------------------");
     spdlog::info(std::format("jack_callback_count             ={}", jack_callback_count.load()));
-    spdlog::info(std::format("jack_callback_total_frames      ={:L}", jack_callback_total_frames.load()));
+    spdlog::info(std::format("jack_callback_total_frames      ={}", jack_callback_total_frames.load()));
     spdlog::info(std::format("                                 {:g}ms (avg={:g}ms)", total_frames_duration.count(), avg_callback_frames_duration));
     spdlog::info(std::format("jack_callback_total_duration    ={:g}ms (avg={:g}ms)", jack_callback_total_duration_ms.count(), avg_duration));
-    spdlog::info(std::format("jack_callback_total_audio_frames={:L}", jack_callback_total_audio_frames.load()));
-    spdlog::info(std::format("jack_callback_fifo_underrun     ={:L}", jack_callback_fifo_underrun.load()));
-    spdlog::info(std::format("engine_samples_pushed           ={:L}", engine_samples_pushed.load()));
+    spdlog::info(std::format("jack_callback_total_audio_frames={}", jack_callback_total_audio_frames.load()));
+    spdlog::info(std::format("jack_callback_fifo_underrun     ={}", jack_callback_fifo_underrun.load()));
+    
+    const std::chrono::duration<double, std::milli> engine_phase_total_duration_ms = std::chrono::nanoseconds(engine_phase_total_duration);
+    double avg_phase_duration = 0.0;
+    if (engine_phase_count > 0) {
+        avg_phase_duration = engine_phase_total_duration_ms.count() / static_cast<double>(engine_phase_count);
+    }
+    spdlog::info(std::format("engine_run_count                ={}", engine_run_count.load()));
+    spdlog::info(std::format("engine_phase_count              ={}", engine_phase_count.load()));
+    spdlog::info(std::format("engine_phase_total_duration     ={:g}ms (avg={:g}ms)", engine_phase_total_duration_ms.count(), avg_phase_duration));
+    spdlog::info(std::format("engine_samples_pushed           ={}", engine_samples_pushed.load()));
     reset();
 }
 
@@ -51,5 +60,8 @@ void Profiler::reset() {
     jack_callback_total_audio_frames = 0;
     jack_callback_total_duration = 0;
     jack_callback_fifo_underrun = 0;
+    engine_run_count = 0;
+    engine_phase_count = 0;
+    engine_phase_total_duration = 0;
     engine_samples_pushed = 0;
 }

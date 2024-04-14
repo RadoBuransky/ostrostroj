@@ -18,6 +18,9 @@ class Profiler {
         std::atomic_int jack_callback_total_audio_frames;
         std::atomic_int jack_callback_total_duration;
         std::atomic_int jack_callback_fifo_underrun;
+        std::atomic_int engine_run_count;
+        std::atomic_int engine_phase_count;
+        std::atomic_int engine_phase_total_duration;
         std::atomic_int engine_samples_pushed;
 
         std::chrono::time_point<std::chrono::steady_clock> next_log;

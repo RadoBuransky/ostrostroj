@@ -162,8 +162,13 @@ void Engine::run() {
         while (!interrupted) {
             next_flag.test_and_set();
             next_flag.wait(true);
+            Profiler::get().engine_run_count++;
             process_midi();
             run_tasks();
+            long last_done_timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+            if (last_done_timestamp > next_timestamp) {
+                last_duration_ns = last_done_timestamp - next_timestamp;
+            }
         }
         spdlog::debug("Engine interrupted.");
     } catch(std::exception const& e) {
@@ -194,6 +199,10 @@ void Engine::process_midi() {
     if (!midi_processed) {
         std::lock_guard lk(midi_processing_mutex);
         if (!midi_processed) {
+            Profiler& profiler = Profiler::get();
+            profiler.engine_phase_count++;
+            profiler.engine_phase_total_duration += last_duration_ns;
+            profiler.periodic_log();
             libremidi::message midi_message;
             MidiFifo& midi_fifo = soundCard.get_midi_fifo();
             while (midi_fifo.pop(midi_message)) {
@@ -218,7 +227,6 @@ void Engine::process_midi() {
             create_tasks();
             midi_processed = true;
         }
-        Profiler::get().periodic_log();
     }
 }
 
@@ -263,6 +271,7 @@ void Engine::set_program(int _program_number) {
 }
 
 void Engine::next() {
+    next_timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
     midi_processed = false;
     next_flag.clear();
     next_flag.notify_all();

@@ -57,6 +57,9 @@ class Engine {
         volatile bool midi_processed;
         volatile int program_number;
 
+        std::atomic_long next_timestamp;
+        std::atomic_long last_duration_ns;
+
         void create_threads();
 
         void run();
