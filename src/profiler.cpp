@@ -39,9 +39,14 @@ void Profiler::log() {
     if (engine_phase_count > 0) {
         avg_phase_duration = engine_phase_total_duration_ms.count() / static_cast<double>(engine_phase_count);
     }
+    double engine_phase_perc = 0.0;
+    if (total_frames_duration.count() > 0) {
+        engine_phase_perc = 100.0 * engine_phase_total_duration_ms.count() / total_frames_duration.count();
+    }
     spdlog::info(std::format("engine_run_count                ={}", engine_run_count.load()));
     spdlog::info(std::format("engine_phase_count              ={}", engine_phase_count.load()));
-    spdlog::info(std::format("engine_phase_total_duration     ={:g}ms (avg={:g}ms)", engine_phase_total_duration_ms.count(), avg_phase_duration));
+    spdlog::info(std::format("engine_phase_total_duration     ={:g}ms (avg={:g}ms) {:g}%", engine_phase_total_duration_ms.count(),
+        avg_phase_duration, engine_phase_perc));
     spdlog::info(std::format("engine_samples_pushed           ={}", engine_samples_pushed.load()));
     reset();
 }

@@ -108,7 +108,7 @@ void Track::fill_output() {
     }
     while (!overflow && track_node.pop(sample)) {
         channel = (channel + 1) % channels_size;
-        overflow = channels[channel].get().push(std::move(sample));
+        overflow = !channels[channel].get().push(std::move(sample));
         Profiler::get().engine_samples_pushed++;
     }
     if (overflow) {
