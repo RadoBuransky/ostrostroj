@@ -48,6 +48,9 @@ void Profiler::log() {
     spdlog::info(std::format("engine_phase_total_duration     ={:g}ms (avg={:g}ms) {:g}%", engine_phase_total_duration_ms.count(),
         avg_phase_duration, engine_phase_perc));
     spdlog::info(std::format("engine_samples_pushed           ={}", engine_samples_pushed.load()));
+    spdlog::info(std::format("engine_tasks_count              ={}", engine_tasks_count.load()));
+    spdlog::info(std::format("engine_tasks_in_progress        ={}", engine_tasks_in_progress.load()));
+    spdlog::info(std::format("engine_tasks_late               ={}", engine_tasks_late.load()));
     reset();
 }
 
@@ -69,4 +72,5 @@ void Profiler::reset() {
     engine_phase_count = 0;
     engine_phase_total_duration = 0;
     engine_samples_pushed = 0;
+    engine_tasks_late = 0;
 }

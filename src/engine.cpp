@@ -10,10 +10,11 @@ bool Track::push_next_frame() {
         return true;
     }
     for (unsigned int channel = 0; channel < channels.size(); channel++) {
-        AudioFifo& channel_fifo = channels[channel];
-        if (!channel_fifo.push(std::move(next_frame.at(channel)))) {
-            spdlog::warn("Next frame overflow!");
-            next_frame.clear();
+        if (!channels[channel].get().push(std::move(next_frame.at(channel)))) {
+            spdlog::warn(std::format("Next frame overflow! [track={}, {} ch]", track_number, channel));
+            if (channel != 0) {
+                next_frame.clear();
+            }
             return false;
         }
     }
@@ -61,15 +62,16 @@ void Track::preload_clips() {
     }
 }
 
-Track::Track(AudioFifo& channel):
-    Track(std::vector<std::reference_wrapper<AudioFifo>>({std::ref(channel)})) {
+Track::Track(int _track_number, AudioFifo& channel):
+    Track(_track_number, std::vector<std::reference_wrapper<AudioFifo>>({std::ref(channel)})) {
 }
 
-Track::Track(AudioFifo& left_channel, AudioFifo& right_channel):
-    Track(std::vector<std::reference_wrapper<AudioFifo>>({std::ref(left_channel), std::ref(right_channel)})) {
+Track::Track(int _track_number, AudioFifo& left_channel, AudioFifo& right_channel):
+    Track(_track_number, std::vector<std::reference_wrapper<AudioFifo>>({std::ref(left_channel), std::ref(right_channel)})) {
 }
 
-Track::Track(std::vector<std::reference_wrapper<AudioFifo>> _channels):
+Track::Track(int _track_number, std::vector<std::reference_wrapper<AudioFifo>> _channels):
+    track_number(_track_number),
     channels(_channels),
     dynamic_node(DynamicNode()),
     track_node(TrackNode(dynamic_node)) {
@@ -99,21 +101,22 @@ void Track::reset_node() {
 }
 
 void Track::fill_output() {
-    float sample;
-    bool overflow = false;
-    const int channels_size = channels.size();
-    int channel = channels_size - 1;
     if (!push_next_frame()) {
         return;
     }
+    const int channels_size = channels.size();
+    int channel = channels_size - 1;
+    bool overflow = false;
+    float sample;
+    Profiler& profiler = Profiler::get();
     while (!overflow && track_node.pop(sample)) {
         channel = (channel + 1) % channels_size;
         overflow = !channels[channel].get().push(std::move(sample));
-        Profiler::get().engine_samples_pushed++;
+        profiler.engine_samples_pushed++;
     }
     if (overflow) {
         if (channel != 0) {
-            spdlog::warn("FIFO not channel-aligned!");
+            spdlog::warn(std::format("FIFO not channel-aligned! [track={}, {} ch]", track_number, channel));
             return;
         }
         pop_next_frame(sample);
@@ -127,14 +130,14 @@ Engine::Engine(Project& _project, SoundCard& _soundCard):
     project(_project),
     soundCard(_soundCard),
     loop_tracks {
-        std::make_unique<Track>(_soundCard.get_audio_output_fifo(0)),
-        std::make_unique<Track>(_soundCard.get_audio_output_fifo(1)),
-        std::make_unique<Track>(_soundCard.get_audio_output_fifo(2)),
-        std::make_unique<Track>(_soundCard.get_audio_output_fifo(3)),
-        std::make_unique<Track>(_soundCard.get_audio_output_fifo(4), _soundCard.get_audio_output_fifo(5)),
-        std::make_unique<Track>(_soundCard.get_audio_output_fifo(6), _soundCard.get_audio_output_fifo(7)),
+        std::make_unique<Track>(1, _soundCard.get_audio_output_fifo(0)),
+        std::make_unique<Track>(2, _soundCard.get_audio_output_fifo(1)),
+        std::make_unique<Track>(3, _soundCard.get_audio_output_fifo(2)),
+        std::make_unique<Track>(4, _soundCard.get_audio_output_fifo(3)),
+        std::make_unique<Track>(5, _soundCard.get_audio_output_fifo(4), _soundCard.get_audio_output_fifo(5)),
+        std::make_unique<Track>(6, _soundCard.get_audio_output_fifo(6), _soundCard.get_audio_output_fifo(7)),
     },
-    one_shots_track(Track(_soundCard.get_audio_output_fifo(8), _soundCard.get_audio_output_fifo(9))),
+    one_shots_track(Track(7, _soundCard.get_audio_output_fifo(8), _soundCard.get_audio_output_fifo(9))),
     tasks(TrackTaskFifo(16)),
     interrupted(false),
     next_flag(ATOMIC_FLAG_INIT),
@@ -185,13 +188,21 @@ void Engine::create_tasks() {
 }
 
 void Engine::create_track_task(Track& track) {
-    tasks.push(std::bind(&Track::fill_output, &track));
+    if (tasks.push(std::bind(&Track::fill_output, &track))) {
+        Profiler::get().engine_tasks_count++;
+    } else {
+        spdlog::warn("Tasks overflow!");
+    }
 }
 
 void Engine::run_tasks() {     
     std::function<void(void)> task;
+    Profiler& profiler = Profiler::get();
     while (tasks.pop(task)) {
+        profiler.engine_tasks_count--;
+        profiler.engine_tasks_in_progress++;
         task();
+        profiler.engine_tasks_in_progress--;
     }
 }
 
@@ -226,6 +237,7 @@ void Engine::process_midi() {
             }
             create_tasks();
             midi_processed = true;
+            next_flag.notify_all();
         }
     }
 }
@@ -272,9 +284,10 @@ void Engine::set_program(int _program_number) {
 
 void Engine::next() {
     next_timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+    Profiler::get().engine_tasks_late += Profiler::get().engine_tasks_in_progress;
     midi_processed = false;
     next_flag.clear();
-    next_flag.notify_all();
+    next_flag.notify_one();
 }
 
 int Engine::get_loop_track_count() const {

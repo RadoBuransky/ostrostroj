@@ -64,7 +64,7 @@ SoundCard::~SoundCard() {
 }
 
 int SoundCard::process_callback(jack_nframes_t nframes, void *arg) {   
-    auto start = std::chrono::high_resolution_clock::now();
+    auto start = std::chrono::steady_clock::now();
     Profiler& profiler = Profiler::get();
     profiler.jack_callback_count++;
     profiler.jack_callback_total_frames += nframes;
@@ -82,9 +82,10 @@ int SoundCard::process_callback(jack_nframes_t nframes, void *arg) {
     } catch (std::exception const& ex) {
         spdlog::error(ex.what());
     }
+    auto end = std::chrono::steady_clock::now();
+    long d = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+    profiler.jack_callback_total_duration += d;
     self.callback();
-    auto end = std::chrono::high_resolution_clock::now();
-    profiler.jack_callback_total_duration += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
     return 0;
 }
 

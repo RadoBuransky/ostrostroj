@@ -12,6 +12,7 @@
 
 class Track {
     private:
+        const int track_number;
         std::vector<std::reference_wrapper<AudioFifo>> channels;
         DynamicNode dynamic_node;
         TrackNode track_node;
@@ -22,9 +23,9 @@ class Track {
         void get_clip_nodes(Node& node, std::vector<std::reference_wrapper<ClipNode>>& result);
         void preload_clips();
     public:
-        Track(AudioFifo& channel);
-        Track(AudioFifo& left_channel, AudioFifo& right_channel);
-        Track(std::vector<std::reference_wrapper<AudioFifo>> channels);
+        Track(int track_number, AudioFifo& channel);
+        Track(int track_number, AudioFifo& left_channel, AudioFifo& right_channel);
+        Track(int track_number, std::vector<std::reference_wrapper<AudioFifo>> channels);
         void set_node(std::unique_ptr<Node>&& node);
         void reset_node();
         void fill_output();
