@@ -7,11 +7,12 @@
 
 class Clip;
 
-typedef std::array<float, 8192> clip_buffer;
+typedef std::array<float, 8*8192> clip_buffer;
 
 class ClipBlock {
     private:
-        std::reference_wrapper<Clip>& clip;
+        SNDFILE* snd_file;
+        int channels;
         const sf_count_t start_pos;
         clip_buffer buffer;
         sf_count_t buffer_capacity_frames;
@@ -19,7 +20,7 @@ class ClipBlock {
         std::unique_ptr<ClipBlock> next;
         void read_buffer();
     public:
-        ClipBlock(std::reference_wrapper<Clip>& clip, sf_count_t _start_pos);
+        ClipBlock(SNDFILE* _snd_file, int _channels, sf_count_t _start_pos);
         const clip_buffer& get_buffer() const;
         sf_count_t get_buffer_frames() const;
         sf_count_t get_start_pos() const;
@@ -31,13 +32,12 @@ class ClipBlock {
 
 class Clip {
     protected:
-        static constexpr std::chrono::seconds PRELOAD_TIME = std::chrono::seconds(2);
+        static constexpr std::chrono::seconds PRELOAD_TIME = std::chrono::seconds(1);
         friend ClipBlock;
         std::filesystem::path path;
         SNDFILE* snd_file;
         SF_INFO info;
         std::unique_ptr<ClipBlock> head;
-        std::unique_ptr<std::reference_wrapper<Clip>> self;
         ClipBlock& get_last_loaded();
         void preload();
     public:

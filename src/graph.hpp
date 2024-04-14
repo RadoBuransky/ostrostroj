@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <thread>
+#include <atomic>
 #include "clip.hpp"
 
 class Node {
@@ -50,16 +51,17 @@ class DynamicNode : public Node {
 class ClipNode : public Node {
     private:
         Clip& clip;
-        std::reference_wrapper<ClipBlock> block;
-        bool loop;
-        const float* current_frame;
-        const float* end_frame;
+        std::atomic<std::reference_wrapper<ClipBlock>> block;
+        const bool loop;
+        std::atomic<const float*> current_frame;
+        std::atomic<const float*> end_frame;
+        std::atomic_long position;
         void update_pointers(ClipBlock& _block);
     public:
         ClipNode(Clip& clip, bool loop);
         virtual ~ClipNode();
         virtual bool pop(float& sample);
-        bool load_next();
+        Clip& get_clip() const;
 };
 
 class MixingNode : public Node {

@@ -3,7 +3,7 @@
 #include "common.hpp"
 #include "profiler.hpp"
 
-#define MAX_TASK_COUNT 16
+#define MAX_TASK_COUNT 64
 
 bool Track::push_next_frame() {
     if (next_frame.empty()) {
@@ -54,7 +54,8 @@ void Track::get_clip_nodes(Node& node, std::vector<std::reference_wrapper<ClipNo
 void Track::preload_clips() {
     std::vector<std::reference_wrapper<ClipNode>>::iterator it = clips_to_load.begin();
     while (it != clips_to_load.end()) {
-        if (!(*it).get().load_next()) {
+        if (!(*it).get().get_clip().load_next()) {
+            spdlog::info(std::format("Clip preloaded. [{}]", it->get().get_clip().get_path().c_str()));
             it = clips_to_load.erase(it);
         } else {
             it++;
@@ -182,7 +183,8 @@ void Engine::run() {
 }
 
 void Engine::create_tasks() {
-    for (auto& track : loop_tracks) {
+    // TODO: Can we use atomic_int for this?
+    for (std::unique_ptr<Track>& track : loop_tracks) {
         create_track_task(*track);
     }
     create_track_task(one_shots_track);
@@ -214,7 +216,10 @@ void Engine::process_midi() {
             Profiler& profiler = Profiler::get();
             profiler.engine_phase_count++;
             profiler.engine_phase_total_duration += last_duration_ns;
-            profiler.periodic_log();
+            if (last_duration_ns > profiler.engine_phase_max_duration) {
+                profiler.engine_phase_max_duration = last_duration_ns.load();
+            }
+            // profiler.periodic_log();
             libremidi::message midi_message;
             MidiFifo& midi_fifo = soundCard.get_midi_fifo();
             while (midi_fifo.pop(midi_message)) {

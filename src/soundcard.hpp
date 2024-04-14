@@ -14,7 +14,7 @@ typedef farbot::fifo<jack_default_audio_sample_t,
 
 typedef farbot::fifo<libremidi::message,
             farbot::fifo_options::concurrency::single,
-            farbot::fifo_options::concurrency::multiple,
+            farbot::fifo_options::concurrency::single,
             farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
             farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty> MidiFifo;
 

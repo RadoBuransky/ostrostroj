@@ -86,6 +86,9 @@ int SoundCard::process_callback(jack_nframes_t nframes, void *arg) {
     auto end = std::chrono::steady_clock::now();
     long d = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
     profiler.jack_callback_total_duration += d;
+    if (d > profiler.jack_callback_max_duration) {
+        profiler.jack_callback_max_duration = d;
+    }
     self.callback();
     return 0;
 }

@@ -36,10 +36,9 @@ class Track {
 
 typedef farbot::fifo<std::function<void(void)>,
             farbot::fifo_options::concurrency::multiple,
-            farbot::fifo_options::concurrency::multiple,
+            farbot::fifo_options::concurrency::single,
             farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
-            farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
-            8> TrackTaskFifo;
+            farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty> TrackTaskFifo;
 
 class Engine {
     private:
