@@ -9,9 +9,11 @@ bool Track::push_next_frame() {
     if (next_frame.empty()) {
         return true;
     }
-    for (unsigned int channel = 0; channel < next_frame.size(); channel++) {
-        AudioFifo& channel_fifo = channels.at(channel);
+    for (unsigned int channel = 0; channel < channels.size(); channel++) {
+        AudioFifo& channel_fifo = channels[channel];
         if (!channel_fifo.push(std::move(next_frame.at(channel)))) {
+            spdlog::warn("Next frame overflow!");
+            next_frame.clear();
             return false;
         }
     }
@@ -20,12 +22,13 @@ bool Track::push_next_frame() {
 }
 
 void Track::pop_next_frame(float sample) {    
-    for (unsigned int channel = 0; channel < channels.size(); channel++) {
-        next_frame.push_back(sample);
+    next_frame.push_back(sample);
+    for (unsigned int channel = 1; channel < channels.size(); channel++) {
         if (!track_node.pop(sample)) {
             next_frame.clear();
             return;
         }
+        next_frame.push_back(sample);
     }
 }
 
@@ -98,14 +101,15 @@ void Track::reset_node() {
 void Track::fill_output() {
     float sample;
     bool overflow = false;
-    int channel = channels.size() - 1;
+    const int channels_size = channels.size();
+    int channel = channels_size - 1;
     if (!push_next_frame()) {
         return;
     }
     while (!overflow && track_node.pop(sample)) {
-        channel = (channel + 1) % channels.size();
-        AudioFifo& channel_fifo = channels.at(channel);
-        overflow = channel_fifo.push(std::move(sample));
+        channel = (channel + 1) % channels_size;
+        overflow = channels[channel].get().push(std::move(sample));
+        Profiler::get().engine_samples_pushed++;
     }
     if (overflow) {
         if (channel != 0) {
@@ -113,6 +117,8 @@ void Track::fill_output() {
             return;
         }
         pop_next_frame(sample);
+    } else {
+        spdlog::warn("Track underrun!");
     }
     preload_clips();
 }
@@ -151,19 +157,19 @@ void Engine::create_threads() {
 }
 
 void Engine::run() {
-    spdlog::info("Engine started.");
+    spdlog::debug("Engine started.");
     try {
         while (!interrupted) {
             next_flag.test_and_set();
             next_flag.wait(true);
-                process_midi();
-                run_tasks();
+            process_midi();
+            run_tasks();
         }
-        spdlog::info("Engine interrupted.");
+        spdlog::debug("Engine interrupted.");
     } catch(std::exception const& e) {
         spdlog::error(e.what());
     }
-    spdlog::info("Engine done.");
+    spdlog::debug("Engine done.");
 }
 
 void Engine::create_tasks() {
@@ -212,6 +218,7 @@ void Engine::process_midi() {
             create_tasks();
             midi_processed = true;
         }
+        Profiler::get().periodic_log();
     }
 }
 
@@ -228,15 +235,7 @@ void Engine::midi_stop() {
         track->stop();
     }
     one_shots_track.stop();
-
-    Profiler& profiler = Profiler::get();
-    spdlog::info(std::format("jack_callback_count={}", profiler.jack_callback_count.load()));
-    float avg_duration = 0.0;
-    if (profiler.jack_callback_count > 0) {
-        avg_duration = profiler.jack_callback_total_duration / profiler.jack_callback_count;
-    }
-    spdlog::info(std::format("jack_callback_total_duration={}ms (avg={:g}ms)", profiler.jack_callback_total_duration.load(), avg_duration));
-    spdlog::info(std::format("jack_callback_fifo_underrun={}", profiler.jack_callback_fifo_underrun.load()));
+    Profiler::get().log();
 }
 
 void Engine::midi_continue() {

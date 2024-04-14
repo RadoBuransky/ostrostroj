@@ -65,7 +65,9 @@ SoundCard::~SoundCard() {
 
 int SoundCard::process_callback(jack_nframes_t nframes, void *arg) {   
     auto start = std::chrono::high_resolution_clock::now();
-    Profiler::get().jack_callback_count++;
+    Profiler& profiler = Profiler::get();
+    profiler.jack_callback_count++;
+    profiler.jack_callback_total_frames += nframes;
     SoundCard& self = *(SoundCard*)arg; 
     try {
         // Process the midi inputs
@@ -73,6 +75,7 @@ int SoundCard::process_callback(jack_nframes_t nframes, void *arg) {
             midiin_callback.callback(nframes);
         }
         for (const AudioPortFifo& audio_output : self.audio_outputs) {
+            profiler.jack_callback_total_audio_frames += nframes;
             audio_output.copy_to_buffer(nframes);
         }
 
@@ -81,7 +84,7 @@ int SoundCard::process_callback(jack_nframes_t nframes, void *arg) {
     }
     self.callback();
     auto end = std::chrono::high_resolution_clock::now();
-    Profiler::get().jack_callback_total_duration += std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    profiler.jack_callback_total_duration += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
     return 0;
 }
 
@@ -211,6 +214,7 @@ void SoundCard::start(std::function<void(void)> _callback) {
     registerCallbacks();
     activate();
     connect(jack_client);
+    Profiler::get().jack_sample_rate = jack_get_sample_rate(jack_client);
     jack_latency_range_t latency_range;
     jack_port_get_latency_range(audio_outputs.at(0).get_port(), JackLatencyCallbackMode::JackPlaybackLatency, &latency_range);
     spdlog::info(std::format("Jack client activated. [{} Hz, {} frames, latency {} - {}]", jack_get_sample_rate(jack_client),
