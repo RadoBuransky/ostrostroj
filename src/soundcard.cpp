@@ -2,6 +2,7 @@
 #include <format>
 #include <spdlog/spdlog.h>
 #include <jack/midiport.h>
+#include <jack/statistics.h>
 #include <libremidi/backends/jack/midi_in.hpp>
 #include "soundcard.hpp"
 #include "common.hpp"
@@ -78,26 +79,32 @@ int SoundCard::process_callback(jack_nframes_t nframes, void *arg) {
     // Profiler& profiler = Profiler::get();
     // profiler.jack_callback_count++;
     // profiler.jack_callback_total_frames += nframes;
-    SoundCard& self = *(SoundCard*)arg; 
-    try {
+    SoundCard& self = *(SoundCard*)arg;          
+    jack_default_audio_sample_t* start = static_cast<jack_default_audio_sample_t*>(
+        jack_port_get_buffer(self.audio_outputs.at(0).get_port(), nframes));
+    jack_default_audio_sample_t* end = start + nframes;
+    while (start != end) {
+        *start = 0.75;
+        start++;
+    }
+    const float max_delay = jack_get_max_delayed_usecs(self.jack_client);
+    if (max_delay > 0.0) {
+        spdlog::warn(std::format("Delay! {:g}", max_delay));
+        jack_reset_max_delayed_usecs(self.jack_client);
+    }
+    // try {
         // Process the midi inputs
         // for (const auto &midiin_callback: self.midiin_callbacks) {
         //     midiin_callback.callback(nframes);
         // }
-        for (const AudioPortFifo& audio_output : self.audio_outputs) {
+        // for (const AudioPortFifo& audio_output : self.audio_outputs) {
             // profiler.jack_callback_total_audio_frames += nframes;
-            // audio_output.copy_to_buffer(nframes);         
-            jack_default_audio_sample_t* start = static_cast<jack_default_audio_sample_t*>(jack_port_get_buffer(audio_output.get_port(), nframes));
-            jack_default_audio_sample_t* end = start + nframes;
-            while (start != end) {
-                *start = 1.0;
-                start++;
-            }
-        }
+            // audio_output.copy_to_buffer(nframes);
+    //     }
 
-    } catch (std::exception const& ex) {
-        spdlog::error(ex.what());
-    }
+    // } catch (std::exception const& ex) {
+    //     spdlog::error(ex.what());
+    // }
     // auto end = std::chrono::steady_clock::now();
     // long d = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
     // profiler.jack_callback_total_duration += d;
