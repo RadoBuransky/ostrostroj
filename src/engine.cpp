@@ -296,8 +296,8 @@ void Engine::set_program(int _program_number) {
 }
 
 void Engine::next() {
-    next_timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
-    Profiler::get().engine_tasks_late += Profiler::get().engine_tasks_in_progress;
+    // next_timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+    // Profiler::get().engine_tasks_late += Profiler::get().engine_tasks_in_progress;
     midi_processed = false;
     next_flag.clear();
     next_flag.notify_one();

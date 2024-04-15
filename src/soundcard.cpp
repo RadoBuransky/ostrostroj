@@ -38,13 +38,22 @@ AudioFifo& AudioPortFifo::get_fifo() {
 }
 
 void AudioPortFifo::copy_to_buffer(const jack_nframes_t nframes) const {
-    jack_default_audio_sample_t* buffer = static_cast<jack_default_audio_sample_t*>(jack_port_get_buffer(port, nframes));
-    jack_nframes_t counter = 0;
+    jack_default_audio_sample_t* start = static_cast<jack_default_audio_sample_t*>(jack_port_get_buffer(port, nframes));
+    jack_default_audio_sample_t* end = start + nframes;
+    while (start != end) {
+        *start = 1.0;
+        start++;
+    }
+    /*
     while ((counter < nframes) && fifo->pop(*buffer)) {
+        if (*buffer != 1.0) {
+            spdlog::warn(std::format("Unexpected sample! [{:g}]", *buffer));
+        }
         counter++;
         buffer++;
     }
     Profiler::get().jack_callback_fifo_underrun += nframes - counter;
+    */
 }
 
 SoundCard::SoundCard(const std::string &name) :
@@ -65,31 +74,37 @@ SoundCard::~SoundCard() {
 }
 
 int SoundCard::process_callback(jack_nframes_t nframes, void *arg) {   
-    auto start = std::chrono::steady_clock::now();
-    Profiler& profiler = Profiler::get();
-    profiler.jack_callback_count++;
-    profiler.jack_callback_total_frames += nframes;
+    // auto start = std::chrono::steady_clock::now();
+    // Profiler& profiler = Profiler::get();
+    // profiler.jack_callback_count++;
+    // profiler.jack_callback_total_frames += nframes;
     SoundCard& self = *(SoundCard*)arg; 
     try {
         // Process the midi inputs
-        for (const auto &midiin_callback: self.midiin_callbacks) {
-            midiin_callback.callback(nframes);
-        }
+        // for (const auto &midiin_callback: self.midiin_callbacks) {
+        //     midiin_callback.callback(nframes);
+        // }
         for (const AudioPortFifo& audio_output : self.audio_outputs) {
-            profiler.jack_callback_total_audio_frames += nframes;
-            audio_output.copy_to_buffer(nframes);
+            // profiler.jack_callback_total_audio_frames += nframes;
+            // audio_output.copy_to_buffer(nframes);         
+            jack_default_audio_sample_t* start = static_cast<jack_default_audio_sample_t*>(jack_port_get_buffer(audio_output.get_port(), nframes));
+            jack_default_audio_sample_t* end = start + nframes;
+            while (start != end) {
+                *start = 1.0;
+                start++;
+            }
         }
 
     } catch (std::exception const& ex) {
         spdlog::error(ex.what());
     }
-    auto end = std::chrono::steady_clock::now();
-    long d = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
-    profiler.jack_callback_total_duration += d;
-    if (d > profiler.jack_callback_max_duration) {
-        profiler.jack_callback_max_duration = d;
-    }
-    self.callback();
+    // auto end = std::chrono::steady_clock::now();
+    // long d = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+    // profiler.jack_callback_total_duration += d;
+    // if (d > profiler.jack_callback_max_duration) {
+    //     profiler.jack_callback_max_duration = d;
+    // }
+    // self.callback();
     return 0;
 }
 
