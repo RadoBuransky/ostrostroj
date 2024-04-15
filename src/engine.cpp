@@ -102,6 +102,13 @@ void Track::reset_node() {
 }
 
 void Track::fill_output() {
+    for (std::reference_wrapper<AudioFifo>& channel : channels) {
+        AudioFifo& fifo = channel.get();
+        while (fifo.push(1.0)) {            
+        }
+    }
+
+    /*
     if (!push_next_frame()) {
         return;
     }
@@ -124,7 +131,7 @@ void Track::fill_output() {
     } else {
         spdlog::warn("Track underrun!");
     }
-    preload_clips();
+    preload_clips();*/
 }
 
 Engine::Engine(Project& _project, SoundCard& _soundCard):
@@ -219,7 +226,7 @@ void Engine::process_midi() {
             if (last_duration_ns > profiler.engine_phase_max_duration) {
                 profiler.engine_phase_max_duration = last_duration_ns.load();
             }
-            // profiler.periodic_log();
+            profiler.periodic_log();
             libremidi::message midi_message;
             MidiFifo& midi_fifo = soundCard.get_midi_fifo();
             while (midi_fifo.pop(midi_message)) {
