@@ -1,3 +1,4 @@
+#include <format>
 #include <algorithm>
 #include <spdlog/spdlog.h>
 #include "common.hpp"

@@ -9,7 +9,7 @@ set(PKG_CONFIG_EXECUTABLE "c:\\msys64\\usr\\bin\\pkgconf.exe")
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-set(CMAKE_CXX_FLAGS_RELEASE_INIT "-O2 -Wall -Wextra -Wshadow -Wnon-virtual-dtor -pedantic -std=c++20 -fexceptions -fno-threadsafe-statics -fdata-sections -ffunction-sections -march=armv8-a -mtune=cortex-a53")
-set(CMAKE_CXX_FLAGS_DEBUG_INIT "-g3 -ggdb -O0 -Wall -Wextra -Wshadow -Wnon-virtual-dtor -pedantic -std=c++20 -fexceptions -fno-threadsafe-statics -fdata-sections -ffunction-sections -march=armv8-a -mtune=cortex-a53")
+set(CMAKE_CXX_FLAGS_RELEASE_INIT "-O2  -std=c++20 -Wall -Wextra -Wshadow -Wnon-virtual-dtor -pedantic -fexceptions -fno-threadsafe-statics -fdata-sections -ffunction-sections -march=armv8-a -mtune=cortex-a53")
+set(CMAKE_CXX_FLAGS_DEBUG_INIT "-g3 -ggdb -O0 -std=c++20 -Wall -Wextra -Wshadow -Wnon-virtual-dtor -pedantic -fexceptions -fno-threadsafe-statics -fdata-sections -ffunction-sections -march=armv8-a -mtune=cortex-a53")
 
 set(REMOTE_HOSTNAME "ostrostroj")

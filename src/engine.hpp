@@ -48,6 +48,7 @@ class Engine {
         std::array<std::unique_ptr<Track>, 6> loop_tracks;
         Track one_shots_track;
 
+        // TODO: If you make sure that only one thread owns a Track then you can get rid or "atomic" stuff. There's no concurrency.
         std::vector<std::thread> threads;
         TrackTaskFifo tasks;
 

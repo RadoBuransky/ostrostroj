@@ -24,33 +24,25 @@ class ClipBlock {
         const clip_buffer& get_buffer() const;
         sf_count_t get_buffer_frames() const;
         sf_count_t get_start_pos() const;
-        bool is_next_loaded() const;
         bool has_next() const;
         ClipBlock& get_next();
-        void unload_next();
 };
 
 class Clip {
     protected:
-        static constexpr std::chrono::seconds PRELOAD_TIME = std::chrono::seconds(1);
         friend ClipBlock;
         std::filesystem::path path;
         SNDFILE* snd_file;
         SF_INFO info;
         std::unique_ptr<ClipBlock> head;
-        ClipBlock& get_last_loaded();
-        void preload();
+        void load();
     public:
         Clip(const std::filesystem::path _path);
-        Clip(Clip&&);
-        Clip& operator =(Clip&&);
         virtual ~Clip();
         const std::filesystem::path& get_path() const;
         SF_INFO& get_info();
         void assert_sample_rate(const int expected_sample_rate) const;
         ClipBlock& get_head();
-        bool load_next();
-        void unload();
 };
 
 class LoopClip: public Clip {

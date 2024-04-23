@@ -8,8 +8,8 @@ class Program {
     private:
         static constexpr int MONO_LOOP_TRACKS = 4;
         int start_number;
-        std::vector<LoopClip> loops;
-        std::map<uint8_t, OneShotClip> one_shots;
+        std::vector<std::unique_ptr<LoopClip>> loops;
+        std::map<uint8_t, std::unique_ptr<OneShotClip>> one_shots;
 
         int program_start_number(const std::filesystem::path dir);
         std::vector<LoopClip> load_loops(const std::filesystem::path dir);
@@ -21,14 +21,14 @@ class Program {
     public:
         Program(const std::filesystem::path dir);
         int get_start_number() const;
-        std::vector<LoopClip>& get_loops();
-        std::map<uint8_t, OneShotClip>& get_one_shots();
+        std::vector<std::reference_wrapper<LoopClip>> get_loops();
+        std::map<uint8_t, std::reference_wrapper<OneShotClip>> get_one_shots();
 };
 
 class Project {
     private:
-        std::vector<Program> programs;
-        std::vector<Program> load_programs(const std::filesystem::path dir);
+        std::vector<std::unique_ptr<Program>> programs;
+        void load_programs(const std::filesystem::path dir);
     public:
         Project(const std::filesystem::path dir);
         void verify(const int expected_sample_rate, const int loop_track_count);

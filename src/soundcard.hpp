@@ -44,7 +44,7 @@ class SoundCard {
         std::vector<libremidi::jack_callback> midiin_callbacks;
         libremidi::midi_in midiin;
         MidiFifo midi_fifo;
-        std::vector<AudioPortFifo> audio_outputs;
+        std::vector<std::unique_ptr<AudioPortFifo>> audio_outputs;
         const jack_nframes_t buffer_size;
         std::function<void(void)> callback = {};
         
