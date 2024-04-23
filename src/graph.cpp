@@ -1,17 +1,5 @@
-#include <spdlog/spdlog.h>
+#include "common.hpp"
 #include "graph.hpp"
-
-Node::Node() {
-}
-
-Node::~Node() {
-}
-
-NoopNode::NoopNode() {
-}
-
-NoopNode::~NoopNode() {
-}
 
 bool NoopNode::pop(float& sample) {
     sample = 0.0;
@@ -22,18 +10,12 @@ ChildNode::ChildNode(Node& _parent):
     parent(_parent) {
 }
 
-ChildNode::~ChildNode() {
-}
-
 Node& ChildNode::get_parent() const {
     return parent;
 }
 
 DynamicNode::DynamicNode():
     parent(std::make_unique<NoopNode>()) {
-}
-
-DynamicNode::~DynamicNode() {
 }
 
 Node& DynamicNode::get_parent() const {
@@ -50,9 +32,6 @@ void DynamicNode::reset_parent() {
 
 bool DynamicNode::pop(float& sample) {
     return parent->pop(sample);
-}
-
-MixingNode::~MixingNode() {
 }
 
 bool MixingNode::pop(float& sample) {
@@ -82,9 +61,6 @@ TrackNode::TrackNode(Node& _parent):
     ChildNode(_parent),
     started(false),
     muted(false) {
-}
-
-TrackNode::~TrackNode() {
 }
 
 bool TrackNode::pop(float& sample) {

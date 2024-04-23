@@ -1,11 +1,8 @@
-#include <string>
-#include <format>
-#include <spdlog/spdlog.h>
+#include "common.hpp"
 #include <jack/midiport.h>
 #include <jack/statistics.h>
 #include <libremidi/backends/jack/midi_in.hpp>
 #include "soundcard.hpp"
-#include "common.hpp"
 #include "profiler.hpp"
 
 AudioPortFifo::AudioPortFifo(jack_client_t* _jack_client, int num) :
@@ -48,7 +45,7 @@ void AudioPortFifo::copy_to_buffer(const jack_nframes_t nframes) const {
     /*
     while ((counter < nframes) && fifo->pop(*buffer)) {
         if (*buffer != 1.0) {
-            spdlog::warn(std::format("Unexpected sample! [{:g}]", *buffer));
+            SPDLOG_WARN(std::format("Unexpected sample! [{:g}]", *buffer));
         }
         counter++;
         buffer++;
@@ -71,7 +68,7 @@ SoundCard::~SoundCard() {
     midiin.close_port();
     audio_outputs.clear();
     jack_client_close(jack_client);
-    spdlog::info("Jack client closed.");
+    SPDLOG_INFO("Jack client closed.");
 }
 
 int SoundCard::process_callback(jack_nframes_t nframes, void *arg) {   
@@ -89,7 +86,7 @@ int SoundCard::process_callback(jack_nframes_t nframes, void *arg) {
     }
     const float max_delay = jack_get_max_delayed_usecs(self.jack_client);
     if (max_delay > 0.0) {
-        spdlog::warn(std::format("Delay! {:g}", max_delay));
+        SPDLOG_WARN(std::format("Delay! {:g}", max_delay));
         jack_reset_max_delayed_usecs(self.jack_client);
     }
     // try {
@@ -103,7 +100,7 @@ int SoundCard::process_callback(jack_nframes_t nframes, void *arg) {
     //     }
 
     // } catch (std::exception const& ex) {
-    //     spdlog::error(ex.what());
+    //     SPDLOG_ERROR(ex.what());
     // }
     // auto end = std::chrono::steady_clock::now();
     // long d = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
@@ -124,7 +121,7 @@ void SoundCard::libremidi_message_callback(const libremidi::message& message) {
         case libremidi::message_type::CONTINUE:
         case libremidi::message_type::STOP:
             if (!midi_fifo.push(libremidi::message(message))) {
-                spdlog::warn("MIDI FIFO overflow!");
+                SPDLOG_WARN("MIDI FIFO overflow!");
             }
             break;
         default:
@@ -159,7 +156,7 @@ libremidi::midi_in SoundCard::create_midiin() {
             }},
             api_input_config);
     result.open_virtual_port(LOCAL_MIDI_PORT);
-    spdlog::debug(std::format("{} open.", LOCAL_MIDI_PORT.c_str()));
+    SPDLOG_DEBUG(std::format("{} open.", LOCAL_MIDI_PORT.c_str()));
     return result;
 }
 
@@ -168,9 +165,9 @@ void SoundCard::port_connect_callback(jack_port_id_t a, jack_port_id_t b, int co
     auto a_name = jack_port_name(jack_port_by_id(soundCard->jack_client, a));
     auto b_name = jack_port_name(jack_port_by_id(soundCard->jack_client, b));
     if (connect == 0) {
-        spdlog::debug(std::format("Port {} disconnected from {}.", a_name, b_name));
+        SPDLOG_DEBUG(std::format("Port {} disconnected from {}.", a_name, b_name));
     } else {
-        spdlog::debug(std::format("Port {} connected to {}.", a_name, b_name));
+        SPDLOG_DEBUG(std::format("Port {} connected to {}.", a_name, b_name));
     }
 }
 
@@ -178,9 +175,9 @@ void SoundCard::port_registration_callback(jack_port_id_t port, int registered, 
     const SoundCard *soundCard = static_cast<SoundCard*>(arg);
     auto port_name = jack_port_name(jack_port_by_id(soundCard->jack_client, port));
     if (registered == 0) {
-        spdlog::debug(std::format("Port {} unregistered.", port_name));
+        SPDLOG_DEBUG(std::format("Port {} unregistered.", port_name));
     } else {
-        spdlog::debug(std::format("Port {} registered.", port_name));
+        SPDLOG_DEBUG(std::format("Port {} registered.", port_name));
     }
 }
 
@@ -190,7 +187,7 @@ jack_client_t * SoundCard::create_client(const std::string &name) {
     if (nullptr == jack_client) {        
         throw OstrostrojException(std::format("Jack client open failed! [status=0x{:x}]", static_cast<int>(status)));
     }
-    spdlog::info(std::format("Jack client open. [status=0x{:x}]", static_cast<int>(status)));
+    SPDLOG_INFO(std::format("Jack client open. [status=0x{:x}]", static_cast<int>(status)));
     return jack_client;
 }
 
@@ -222,7 +219,7 @@ void SoundCard::connect(jack_client_t * _jack_client) {
     if (connect_result_1 != 0) {
         throw OstrostrojException(std::format("Jack connect failed! [status=0x{:x}]", connect_result_1));
     }
-    spdlog::debug("MIDI ports connected.");
+    SPDLOG_DEBUG("MIDI ports connected.");
 
     for (unsigned int i = 0; i < audio_outputs.size(); i++) {
         const auto src_port = jack_port_name(audio_outputs.at(i).get_port());
@@ -232,7 +229,7 @@ void SoundCard::connect(jack_client_t * _jack_client) {
             throw OstrostrojException(std::format("Jack connect failed! [status=0x{:x}]", connect_result_2));
         }        
     }
-    spdlog::debug("Audio output ports connected.");
+    SPDLOG_DEBUG("Audio output ports connected.");
 }
 
 void SoundCard::start(std::function<void(void)> _callback) {
@@ -243,7 +240,7 @@ void SoundCard::start(std::function<void(void)> _callback) {
     Profiler::get().jack_sample_rate = jack_get_sample_rate(jack_client);
     jack_latency_range_t latency_range;
     jack_port_get_latency_range(audio_outputs.at(0).get_port(), JackLatencyCallbackMode::JackPlaybackLatency, &latency_range);
-    spdlog::info(std::format("Jack client activated. [{} Hz, {} frames, latency {} - {}]", jack_get_sample_rate(jack_client),
+    SPDLOG_INFO(std::format("Jack client activated. [{} Hz, {} frames, latency {} - {}]", jack_get_sample_rate(jack_client),
         buffer_size, latency_range.min, latency_range.max));
 }
 

@@ -1,6 +1,5 @@
-#include <spdlog/spdlog.h>
-#include "engine.hpp"
 #include "common.hpp"
+#include "engine.hpp"
 #include "profiler.hpp"
 
 #define MAX_TASK_COUNT 64
@@ -11,7 +10,7 @@ bool Track::push_next_frame() {
     }
     for (unsigned int channel = 0; channel < channels.size(); channel++) {
         if (!channels[channel].get().push(std::move(next_frame.at(channel)))) {
-            spdlog::warn(std::format("Next frame overflow! [track={}, {} ch]", track_number, channel));
+            SPDLOG_WARN(std::format("Next frame overflow! [track={}, {} ch]", track_number, channel));
             if (channel != 0) {
                 next_frame.clear();
             }
@@ -30,36 +29,6 @@ void Track::pop_next_frame(float sample) {
             return;
         }
         next_frame.push_back(sample);
-    }
-}
-
-void Track::get_clip_nodes(Node& node, std::vector<std::reference_wrapper<ClipNode>>& result) {
-    ClipNode* clip_node = dynamic_cast<ClipNode*>(&node);
-    if (clip_node) {
-        result.push_back(std::ref(*clip_node));
-        return;
-    }
-    ChildNode* child_node = dynamic_cast<ChildNode*>(&node);
-    if (child_node) {
-        get_clip_nodes(child_node->get_parent(), result);
-    }
-    MixingNode* mixing_node = dynamic_cast<MixingNode*>(&node);
-    if (mixing_node) {
-        for (std::reference_wrapper<Node> parent : mixing_node->get_parents()) {
-            get_clip_nodes(parent, result);
-        }
-    }
-}
-
-void Track::preload_clips() {
-    std::vector<std::reference_wrapper<ClipNode>>::iterator it = clips_to_load.begin();
-    while (it != clips_to_load.end()) {
-        if (!(*it).get().get_clip().load_next()) {
-            spdlog::info(std::format("Clip preloaded. [{}]", it->get().get_clip().get_path().c_str()));
-            it = clips_to_load.erase(it);
-        } else {
-            it++;
-        }
     }
 }
 
@@ -91,13 +60,10 @@ void Track::stop() {
 }
 
 void Track::set_node(std::unique_ptr<Node>&& node) {
-    clips_to_load.clear();
-    get_clip_nodes(*node, clips_to_load);
     dynamic_node.set_parent(std::move(node));
 }
 
 void Track::reset_node() {
-    clips_to_load.clear();
     dynamic_node.reset_parent();
 }
 
@@ -124,12 +90,12 @@ void Track::fill_output() {
     }
     if (overflow) {
         if (channel != 0) {
-            spdlog::warn(std::format("FIFO not channel-aligned! [track={}, {} ch]", track_number, channel));
+            SPDLOG_WARN(std::format("FIFO not channel-aligned! [track={}, {} ch]", track_number, channel));
             return;
         }
         pop_next_frame(sample);
     } else {
-        spdlog::warn("Track underrun!");
+        SPDLOG_WARN("Track underrun!");
     }
     preload_clips();*/
 }
@@ -165,11 +131,11 @@ void Engine::create_threads() {
     for (unsigned int i = 0; i < std::thread::hardware_concurrency(); i++) {
         threads.emplace_back(std::bind(&Engine::run, this));
     }
-    spdlog::info(std::format("{} worker threads created.", threads.size()));
+    SPDLOG_INFO(std::format("{} worker threads created.", threads.size()));
 }
 
 void Engine::run() {
-    spdlog::debug("Engine started.");
+    SPDLOG_DEBUG("Engine started.");
     try {
         while (!interrupted) {
             next_flag.test_and_set();
@@ -182,11 +148,11 @@ void Engine::run() {
                 last_duration_ns = last_done_timestamp - next_timestamp;
             }
         }
-        spdlog::debug("Engine interrupted.");
+        SPDLOG_DEBUG("Engine interrupted.");
     } catch(std::exception const& e) {
-        spdlog::error(e.what());
+        SPDLOG_ERROR(e.what());
     }
-    spdlog::debug("Engine done.");
+    SPDLOG_DEBUG("Engine done.");
 }
 
 void Engine::create_tasks() {
@@ -201,7 +167,7 @@ void Engine::create_track_task(Track& track) {
     if (tasks.push(std::bind(&Track::fill_output, &track))) {
         Profiler::get().engine_tasks_count++;
     } else {
-        spdlog::warn("Tasks overflow!");
+        SPDLOG_WARN("Tasks overflow!");
     }
 }
 
@@ -230,7 +196,7 @@ void Engine::process_midi() {
             libremidi::message midi_message;
             MidiFifo& midi_fifo = soundCard.get_midi_fifo();
             while (midi_fifo.pop(midi_message)) {
-                // spdlog::trace(std::format("Processing MIDI message. [0x{:x}]", static_cast<int>(midi_message.get_message_type())));
+                // SPDLOG_TRACE(std::format("Processing MIDI message. [0x{:x}]", static_cast<int>(midi_message.get_message_type())));
                 switch (midi_message.get_message_type()) {
                     case libremidi::message_type::START:
                         midi_start();
@@ -280,7 +246,7 @@ void Engine::midi_continue() {
 
 void Engine::play_one_shot(uint8_t _note) {
     // TODO: Unload sample from memory once done
-    spdlog::debug(std::format("play_one_shot({})", _note));
+    SPDLOG_DEBUG(std::format("play_one_shot({})", _note));
 }
 
 void Engine::set_program(int _program_number) {
@@ -292,7 +258,7 @@ void Engine::set_program(int _program_number) {
     for (LoopClip& loop_clip : active_program.get_loops()) {
         loop_tracks.at(loop_clip.get_track())->set_node(std::make_unique<ClipNode>(loop_clip, true));
     }
-    spdlog::info(std::format("Program set. [{}]", program_number.load()));
+    SPDLOG_INFO(std::format("Program set. [{}]", program_number.load()));
 }
 
 void Engine::next() {

@@ -17,11 +17,8 @@ class Track {
         DynamicNode dynamic_node;
         TrackNode track_node;
         std::vector<float> next_frame;
-        std::vector<std::reference_wrapper<ClipNode>> clips_to_load;
         bool push_next_frame();
         void pop_next_frame(float sample);
-        void get_clip_nodes(Node& node, std::vector<std::reference_wrapper<ClipNode>>& result);
-        void preload_clips();
     public:
         Track(int track_number, AudioFifo& channel);
         Track(int track_number, AudioFifo& left_channel, AudioFifo& right_channel);
@@ -68,7 +65,6 @@ class Engine {
         void create_track_task(Track& track);
         void run_tasks();
         
-        void preload_clips();
         void process_midi();
         void midi_start();
         void midi_stop();

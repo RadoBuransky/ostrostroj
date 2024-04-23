@@ -1,13 +1,11 @@
+#include "common.hpp"
 #include <unistd.h>
 #include <iostream>
 #include <sys/reboot.h>
-#include <string.h>
 #include <signal.h>
 #include <cstdlib>
 #include <functional>
-#include "spdlog/spdlog.h"
 #include "soundcard.hpp"
-#include "common.hpp"
 #include "project.hpp"
 #include "engine.hpp"
 #include "profiler.hpp"
@@ -19,7 +17,7 @@ class OstrostrojApp {
         Engine engine;
 
         static void sigaction_handler(int s) {
-            spdlog::info(std::format("Signal received [{}].", s));
+            SPDLOG_INFO(std::format("Signal received [{}].", s));
         }
 
         void waitForSignal() const {
@@ -28,7 +26,7 @@ class OstrostrojApp {
             sigemptyset(&sigIntHandler.sa_mask);
             sigIntHandler.sa_flags = 0;
             sigaction(SIGINT, &sigIntHandler, NULL);
-            spdlog::info("Waiting...");
+            SPDLOG_INFO("Waiting...");
             pause();
         }
 
@@ -41,13 +39,13 @@ class OstrostrojApp {
                 soundCard.start(std::bind(&Engine::next, &engine));
                 project.verify(soundCard.get_sample_rate(), engine.get_loop_track_count());
             } catch (std::exception const &ex) {
-                spdlog::error(ex.what());
+                SPDLOG_ERROR(ex.what());
                 throw;
             }
         }
 
         virtual ~OstrostrojApp() { 
-            spdlog::info("Ostrostroj finished.");
+            SPDLOG_INFO("Ostrostroj finished.");
             spdlog::shutdown();           
         }
 
@@ -59,17 +57,17 @@ class OstrostrojApp {
 int main(int argc, char* argv[]) {
     spdlog::set_pattern("%L [%H:%M:%S] [%t] %v");
     spdlog::set_level(spdlog::level::info);
-    spdlog::info(std::format("Ostrostroj started. [{}]", static_cast<int>(spdlog::get_level())));
+    SPDLOG_INFO(std::format("Ostrostroj started. [{}]", static_cast<int>(spdlog::get_level())));
     if ((argc > 1) && (strcmp(argv[1], "shutdown") == 0)) {
         sync();
         reboot(RB_POWER_OFF); 
-        spdlog::info("Shutdown!");
+        SPDLOG_INFO("Shutdown!");
     } else {
         auto ostrostrojApp = OstrostrojApp();
         try {
             ostrostrojApp.main();
         } catch (std::exception const &ex) {
-            spdlog::error(ex.what());
+            SPDLOG_ERROR(ex.what());
         }
     }
 }

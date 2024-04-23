@@ -1,14 +1,12 @@
-#include <array>
-#include <spdlog/spdlog.h>
-#include "clip.hpp"
 #include "common.hpp"
+#include "clip.hpp"
 #include "profiler.hpp"
 
 void ClipBlock::read_buffer() {
     buffer_frames = sf_readf_float(snd_file, buffer.data(), buffer_capacity_frames);  
     Profiler::get().clip_total_frames_read += buffer_frames;
     if (buffer_frames != buffer_capacity_frames) {
-        spdlog::warn(std::format("{} frames read. [capacity={}]", buffer_frames, buffer_capacity_frames));
+        SPDLOG_WARN(std::format("{} frames read. [capacity={}]", buffer_frames, buffer_capacity_frames));
     }
     if (sf_error(snd_file) != SF_ERR_NO_ERROR) {
         throw OstrostrojException(std::format("File error! [{}]", sf_error(snd_file)));   
@@ -36,10 +34,6 @@ sf_count_t ClipBlock::get_start_pos() const {
     return start_pos;
 }
 
-bool ClipBlock::is_next_loaded() const {
-    return has_next() && (next.get() != nullptr);
-}
-
 bool ClipBlock::has_next() const {
     return buffer_frames == buffer_capacity_frames;
 }
@@ -52,8 +46,4 @@ ClipBlock& ClipBlock::get_next() {
         next = std::make_unique<ClipBlock>(snd_file, channels, start_pos + buffer_frames);
     }
     return *next;
-}
-
-void ClipBlock::unload_next() {
-    next.reset();
 }

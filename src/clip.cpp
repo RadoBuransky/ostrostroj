@@ -1,21 +1,10 @@
-#include <format>
-#include <algorithm>
-#include <spdlog/spdlog.h>
 #include "common.hpp"
+#include <algorithm>
 #include "clip.hpp"
 
-ClipBlock& Clip::get_last_loaded() {
-    ClipBlock* result = head.get();
-    while (result->is_next_loaded()) {
-        result = &result->get_next();
-    }
-    return *result;
-}
-
-void Clip::preload() {
+void Clip::load() {
     ClipBlock* last = head.get();
-    const sf_count_t preload_frames = info.samplerate * PRELOAD_TIME.count();
-    while ((last->get_start_pos() < preload_frames) && last->has_next()) {
+    while (last->has_next()) {
         last = &last->get_next();
     }
 }
@@ -30,36 +19,15 @@ Clip::Clip(const std::filesystem::path _path) :
         throw OstrostrojException(std::format("File error! [{}]", sf_error(snd_file)));   
     }
     head = std::make_unique<ClipBlock>(snd_file, info.channels, 0);
-    preload();
-    spdlog::trace(std::format("File preloaded. [{}, {} Hz, {} ch, {:x}]", _path.c_str(), info.samplerate, info.channels, info.format));
+    load();
+    SPDLOG_TRACE(std::format("File preloaded. [{}, {} Hz, {} ch, {:x}]", _path.c_str(), info.samplerate, info.channels, info.format));
 };
-
-Clip::Clip(Clip&& other):
-    path(other.path),
-    snd_file(other.snd_file),
-    info(other.info),
-    head(std::move(other.head)) {
-    other.path.clear();
-    other.snd_file = nullptr;
-    other.info = {};
-}
-
-Clip& Clip::operator =(Clip&& other) {    
-    path = other.path;
-    other.path.clear();
-    snd_file = other.snd_file;
-    other.snd_file = nullptr;
-    info = other.info;
-    other.info = {};
-    head = std::move(other.head);
-    return *this;
-}
 
 Clip::~Clip() {
     if (snd_file != nullptr) {
         sf_close(snd_file);
         snd_file = nullptr;
-        spdlog::debug(std::format("Clip closed. [{}]", path.c_str()));
+        SPDLOG_DEBUG(std::format("Clip closed. [{}]", path.c_str()));
     }
 }
 
@@ -81,34 +49,10 @@ ClipBlock& Clip::get_head() {
     return *head;
 }
 
-bool Clip::load_next() {
-    ClipBlock* last = &get_last_loaded();
-    if (last->has_next()) {
-        last->get_next();
-        return true;
-    }
-    spdlog::info(std::format("Clip loaded completely. [{}]", path.c_str()));
-    return false;
-}
-
-void Clip::unload() {
-    ClipBlock* block = head.get();
-    ClipBlock* prev = block;
-    const sf_count_t preload_end_pos = info.samplerate * PRELOAD_TIME.count();
-    while ((block->get_start_pos() < preload_end_pos) && block->is_next_loaded()) {
-        prev = block;
-        block = &block->get_next();
-    }
-    if (prev != block && block->get_start_pos() >= preload_end_pos) {
-        prev->unload_next();
-        // TODO: We need to reset file position.
-    }
-}
-
 LoopClip::LoopClip(const std::filesystem::path _path):
     Clip(_path),
     track(get_track(_path)) {
-  spdlog::info(std::format("Loop sample loaded. [{}, {}, {} Hz, {} ch, {:x}]", track, _path.string(), info.samplerate, info.channels, info.format));
+  SPDLOG_INFO(std::format("Loop sample loaded. [{}, {}, {} Hz, {} ch, {:x}]", track, _path.string(), info.samplerate, info.channels, info.format));
 }
 
 int LoopClip::get_track(std::filesystem::path _path) const {
@@ -123,7 +67,7 @@ int LoopClip::get_track() const {
 OneShotClip::OneShotClip(const std::filesystem::path _path):
     Clip(_path),
     note(get_note(_path)) {
-  spdlog::info(std::format("One-shot sample loaded. [{}, {}, {} Hz, {} ch, {:x}]", note, _path.string(), info.samplerate, info.channels, info.format));    
+  SPDLOG_INFO(std::format("One-shot sample loaded. [{}, {}, {} Hz, {} ch, {:x}]", note, _path.string(), info.samplerate, info.channels, info.format));    
 }
 
 uint8_t OneShotClip::get_note(std::filesystem::path _path) const {

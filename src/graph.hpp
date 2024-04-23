@@ -1,14 +1,13 @@
 #pragma once
 
-#include <vector>
 #include <thread>
 #include <atomic>
 #include "clip.hpp"
 
 class Node {
     public:
-        Node();
-        virtual ~Node();
+        Node() = default;
+        virtual ~Node() = default;
         /**
          * Stateful operation. For stereo, first call returns left, second call right channel.
          * @returns `false` if this node is done and will never produce a sample.
@@ -18,8 +17,8 @@ class Node {
 
 class NoopNode : public Node {
     public:
-        NoopNode();
-        virtual ~NoopNode();
+        NoopNode() = default;
+        virtual ~NoopNode() = default;
         virtual bool pop(float& sample);
 };
 
@@ -28,7 +27,7 @@ class ChildNode : public Node {
         Node& parent;
     public:
         ChildNode(Node& parent);
-        virtual ~ChildNode();
+        virtual ~ChildNode() = default;
         Node& get_parent() const;
 };
 
@@ -37,7 +36,7 @@ class DynamicNode : public Node {
         std::unique_ptr<Node> parent;
     public:
         DynamicNode();
-        virtual ~DynamicNode();
+        virtual ~DynamicNode() = default;
         DynamicNode(DynamicNode&) = delete;
         DynamicNode& operator=(DynamicNode&) = delete;
         DynamicNode(DynamicNode&&) = delete;
@@ -59,7 +58,7 @@ class ClipNode : public Node {
         void update_pointers(ClipBlock& _block);
     public:
         ClipNode(Clip& clip, bool loop);
-        virtual ~ClipNode();
+        virtual ~ClipNode() = default;
         virtual bool pop(float& sample);
         Clip& get_clip() const;
 };
@@ -68,7 +67,7 @@ class MixingNode : public Node {
     private:
         std::vector<std::unique_ptr<Node>> nodes;
     public:
-        virtual ~MixingNode();
+        virtual ~MixingNode() = default;
         void add_node(Node& node);
         virtual bool pop(float& sample);
         std::vector<std::reference_wrapper<Node>> get_parents() const;
@@ -80,7 +79,7 @@ class TrackNode : public ChildNode {
         std::atomic_bool muted;
     public:
         TrackNode(Node& parent);
-        virtual ~TrackNode();
+        virtual ~TrackNode() = default;
         virtual bool pop(float& sample);
         void start();
         void stop();

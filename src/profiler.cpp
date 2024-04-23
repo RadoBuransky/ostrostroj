@@ -1,3 +1,4 @@
+#include "common.hpp"
 #include "profiler.hpp"
 
 Profiler::Profiler():
@@ -28,14 +29,14 @@ void Profiler::log() {
         avg_callback_frames_duration = total_frames_duration.count() / static_cast<double>(jack_callback_count);
     }
 
-    spdlog::info("-----------------------------------------------------------------------------");
-    spdlog::info(std::format("jack_callback_count             ={}", jack_callback_count.load()));
-    spdlog::info(std::format("jack_callback_total_frames      ={}", jack_callback_total_frames.load()));
-    spdlog::info(std::format("                                 {:g}ms (avg={:g}ms)", total_frames_duration.count(), avg_callback_frames_duration));
-    spdlog::info(std::format("jack_callback_total_duration    ={:g}ms (avg={:g}ms,max={:g}ms)", jack_callback_total_duration_ms.count(), avg_duration,
+    SPDLOG_INFO("-----------------------------------------------------------------------------");
+    SPDLOG_INFO(std::format("jack_callback_count             ={}", jack_callback_count.load()));
+    SPDLOG_INFO(std::format("jack_callback_total_frames      ={}", jack_callback_total_frames.load()));
+    SPDLOG_INFO(std::format("                                 {:g}ms (avg={:g}ms)", total_frames_duration.count(), avg_callback_frames_duration));
+    SPDLOG_INFO(std::format("jack_callback_total_duration    ={:g}ms (avg={:g}ms,max={:g}ms)", jack_callback_total_duration_ms.count(), avg_duration,
         jack_callback_max_duration_ms.count()));
-    spdlog::info(std::format("jack_callback_total_audio_frames={}", jack_callback_total_audio_frames.load()));
-    spdlog::info(std::format("jack_callback_fifo_underrun     ={}", jack_callback_fifo_underrun.load()));
+    SPDLOG_INFO(std::format("jack_callback_total_audio_frames={}", jack_callback_total_audio_frames.load()));
+    SPDLOG_INFO(std::format("jack_callback_fifo_underrun     ={}", jack_callback_fifo_underrun.load()));
     
     const std::chrono::duration<double, std::milli> engine_phase_total_duration_ms = std::chrono::nanoseconds(engine_phase_total_duration);
     const std::chrono::duration<double, std::milli> engine_phase_max_duration_ms = std::chrono::nanoseconds(engine_phase_max_duration);
@@ -47,15 +48,15 @@ void Profiler::log() {
     if (total_frames_duration.count() > 0) {
         engine_phase_perc = 100.0 * engine_phase_total_duration_ms.count() / total_frames_duration.count();
     }
-    spdlog::info(std::format("engine_run_count                ={}", engine_run_count.load()));
-    spdlog::info(std::format("engine_phase_count              ={}", engine_phase_count.load()));
-    spdlog::info(std::format("engine_phase_total_duration     ={:g}ms (avg={:g}ms,max={:g}ms) {:g}%", engine_phase_total_duration_ms.count(),
+    SPDLOG_INFO(std::format("engine_run_count                ={}", engine_run_count.load()));
+    SPDLOG_INFO(std::format("engine_phase_count              ={}", engine_phase_count.load()));
+    SPDLOG_INFO(std::format("engine_phase_total_duration     ={:g}ms (avg={:g}ms,max={:g}ms) {:g}%", engine_phase_total_duration_ms.count(),
         avg_phase_duration, engine_phase_max_duration_ms.count(), engine_phase_perc));
-    spdlog::info(std::format("engine_samples_pushed           ={}", engine_samples_pushed.load()));
-    spdlog::info(std::format("engine_tasks_count              ={}", engine_tasks_count.load()));
-    spdlog::info(std::format("engine_tasks_in_progress        ={}", engine_tasks_in_progress.load()));
-    spdlog::info(std::format("engine_tasks_late               ={}", engine_tasks_late.load()));
-    spdlog::info(std::format("clip_total_frames_read          ={}", clip_total_frames_read.load()));
+    SPDLOG_INFO(std::format("engine_samples_pushed           ={}", engine_samples_pushed.load()));
+    SPDLOG_INFO(std::format("engine_tasks_count              ={}", engine_tasks_count.load()));
+    SPDLOG_INFO(std::format("engine_tasks_in_progress        ={}", engine_tasks_in_progress.load()));
+    SPDLOG_INFO(std::format("engine_tasks_late               ={}", engine_tasks_late.load()));
+    SPDLOG_INFO(std::format("clip_total_frames_read          ={}", clip_total_frames_read.load()));
     reset();
 }
 
