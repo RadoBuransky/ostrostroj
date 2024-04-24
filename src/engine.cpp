@@ -10,7 +10,7 @@ bool Track::push_next_frame() {
     }
     for (unsigned int channel = 0; channel < channels.size(); channel++) {
         if (!channels[channel].get().push(std::move(next_frame.at(channel)))) {
-            SPDLOG_WARN(std::format("Next frame overflow! [track={}, {} ch]", track_number, channel));
+            SPDLOG_WARN("Next frame overflow! [track={}, {} ch]", track_number, channel);
             if (channel != 0) {
                 next_frame.clear();
             }
@@ -131,7 +131,7 @@ void Engine::create_threads() {
     for (unsigned int i = 0; i < std::thread::hardware_concurrency(); i++) {
         threads.emplace_back(std::bind(&Engine::run, this));
     }
-    SPDLOG_INFO(std::format("{} worker threads created.", threads.size()));
+    SPDLOG_INFO("{} worker threads created.", threads.size());
 }
 
 void Engine::run() {
@@ -246,7 +246,7 @@ void Engine::midi_continue() {
 
 void Engine::play_one_shot(uint8_t _note) {
     // TODO: Unload sample from memory once done
-    SPDLOG_DEBUG(std::format("play_one_shot({})", _note));
+    SPDLOG_DEBUG("play_one_shot({})", _note);
 }
 
 void Engine::set_program(int _program_number) {
@@ -258,7 +258,7 @@ void Engine::set_program(int _program_number) {
     for (LoopClip& loop_clip : active_program.get_loops()) {
         loop_tracks.at(loop_clip.get_track())->set_node(std::make_unique<ClipNode>(loop_clip, true));
     }
-    SPDLOG_INFO(std::format("Program set. [{}]", program_number.load()));
+    SPDLOG_INFO("Program set. [{}]", program_number.load());
 }
 
 void Engine::next() {

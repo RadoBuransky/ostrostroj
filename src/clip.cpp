@@ -13,10 +13,10 @@ Clip::Clip(const std::filesystem::path _path) :
     path(_path),
     snd_file(sf_open(_path.c_str(), SFM_READ, &info)) {
     if (snd_file == nullptr) {
-        throw OstrostrojException(std::format("Can't open file! [{}]", _path.c_str()));   
+        throw OstrostrojException(fmt::format("Can't open file! [{}]", _path.c_str()));   
     }
     if (sf_error(snd_file) != SF_ERR_NO_ERROR) {
-        throw OstrostrojException(std::format("File error! [{}]", sf_error(snd_file)));   
+        throw OstrostrojException(fmt::format("File error! [{}]", sf_error(snd_file)));   
     }
     head = std::make_unique<ClipBlock>(snd_file, info.channels, 0);
     load();
@@ -27,7 +27,7 @@ Clip::~Clip() {
     if (snd_file != nullptr) {
         sf_close(snd_file);
         snd_file = nullptr;
-        SPDLOG_DEBUG(std::format("Clip closed. [{}]", path.c_str()));
+        SPDLOG_DEBUG("Clip closed. [{}]", path.c_str());
     }
 }
 
@@ -41,7 +41,7 @@ SF_INFO& Clip::get_info() {
 
 void Clip::assert_sample_rate(const int expected_sample_rate) const {
     if (expected_sample_rate != info.samplerate) {
-        throw OstrostrojException(std::format("{}Hz sample rate expected! [{}Hz, {}]", expected_sample_rate, info.samplerate, path.string()));
+        throw OstrostrojException(fmt::format("{}Hz sample rate expected! [{}Hz, {}]", expected_sample_rate, info.samplerate, path.string()));
     }
 }
 
@@ -52,7 +52,7 @@ ClipBlock& Clip::get_head() {
 LoopClip::LoopClip(const std::filesystem::path _path):
     Clip(_path),
     track(get_track(_path)) {
-  SPDLOG_INFO(std::format("Loop sample loaded. [{}, {}, {} Hz, {} ch, {:x}]", track, _path.string(), info.samplerate, info.channels, info.format));
+  SPDLOG_INFO("Loop sample loaded. [{}, {}, {} Hz, {} ch, {:x}]", track, _path.string(), info.samplerate, info.channels, info.format);
 }
 
 int LoopClip::get_track(std::filesystem::path _path) const {
@@ -67,7 +67,7 @@ int LoopClip::get_track() const {
 OneShotClip::OneShotClip(const std::filesystem::path _path):
     Clip(_path),
     note(get_note(_path)) {
-  SPDLOG_INFO(std::format("One-shot sample loaded. [{}, {}, {} Hz, {} ch, {:x}]", note, _path.string(), info.samplerate, info.channels, info.format));    
+  SPDLOG_INFO("One-shot sample loaded. [{}, {}, {} Hz, {} ch, {:x}]", note, _path.string(), info.samplerate, info.channels, info.format);
 }
 
 uint8_t OneShotClip::get_note(std::filesystem::path _path) const {
@@ -76,7 +76,7 @@ uint8_t OneShotClip::get_note(std::filesystem::path _path) const {
     const auto note_name = path_filename.substr(2, 2);
     const unsigned int note_name_index = std::distance(NOTE_NAMES.cbegin(), std::find(NOTE_NAMES.cbegin(), NOTE_NAMES.cend(), note_name));
     if (note_name_index >= NOTE_NAMES.size()) {
-        throw OstrostrojException(std::format("Invalid note name! [{}]", note_name));
+        throw OstrostrojException(fmt::format("Invalid note name! [{}]", note_name));
     }
     return octave * 12 + note_name_index;
 }

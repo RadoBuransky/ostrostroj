@@ -7,7 +7,7 @@ Program::Program(const std::filesystem::path dir):
     start_number(program_start_number(dir)),
     loops(load_loops(dir)),
     one_shots(load_one_shots(dir)) {
-    SPDLOG_INFO(std::format("Program loaded {} [{} loops, {} one shots]", dir.string(), loops.size(), one_shots.size()));
+    SPDLOG_INFO("Program loaded {} [{} loops, {} one shots]", dir.string(), loops.size(), one_shots.size());
 }
 
 int Program::program_start_number(const std::filesystem::path dir) {
@@ -15,7 +15,7 @@ int Program::program_start_number(const std::filesystem::path dir) {
 }
 
 std::vector<LoopClip> Program::load_loops(const std::filesystem::path dir) {
-    SPDLOG_DEBUG(std::format("Loading loops {} ", dir.string()));
+    SPDLOG_DEBUG("Loading loops {} ", dir.string());
     auto result = std::vector<LoopClip>();
     result.reserve(32);
     for (auto const& wav_file : wav_files(dir)) {
@@ -30,7 +30,7 @@ std::vector<LoopClip> Program::load_loops(const std::filesystem::path dir) {
 }
 
 std::map<uint8_t, OneShotClip> Program::load_one_shots(const std::filesystem::path dir) {
-    SPDLOG_DEBUG(std::format("Loading one shots {} ", dir.string()));
+    SPDLOG_DEBUG("Loading one shots {} ", dir.string());
     std::map<uint8_t, OneShotClip> result = std::map<uint8_t, OneShotClip>();
     for (auto const& wav_file : wav_files(dir)) {
         if (wav_file.filename().string().starts_with("S")) {
@@ -56,13 +56,13 @@ std::vector<std::filesystem::path> Program::wav_files(const std::filesystem::pat
 
 void Program::check_sample_format(const std::filesystem::path wav_file, const SF_INFO &format, const int expected_channels) const {
     if ((format.format & SF_FORMAT_WAV) == 0) {
-        throw OstrostrojException(std::format("WAV file expected! [0x{:x}, {}]", format.format, wav_file.string()));
+        throw OstrostrojException("WAV file expected! [0x{:x}, {}]", format.format, wav_file.string());
     }
     if ((format.format & SF_FORMAT_FLOAT) == 0) {
-        throw OstrostrojException(std::format("32-bit float expected! [0x{:x}, {}]", format.format, wav_file.string()));
+        throw OstrostrojException("32-bit float expected! [0x{:x}, {}]", format.format, wav_file.string());
     }
     if (format.channels != expected_channels) {
-        throw OstrostrojException(std::format("{} channels expected! [{}, {}]", expected_channels, format.channels, wav_file.string()));
+        throw OstrostrojException("{} channels expected! [{}, {}]", expected_channels, format.channels, wav_file.string());
     }
 }
 
@@ -83,7 +83,7 @@ Project::Project(const std::filesystem::path dir):
 }
 
 std::vector<Program> Project::load_programs(const std::filesystem::path dir) {
-    SPDLOG_INFO(std::format("Loading project from {}", dir.string()));
+    SPDLOG_INFO("Loading project from {}", dir.string());
     auto result = std::vector<Program>();
     for (auto const& program_dir : std::filesystem::directory_iterator(dir)) {
         if (program_dir.is_directory() && program_dir.path().filename().string().starts_with("P")) {
@@ -100,9 +100,9 @@ void Project::verify(const int expected_sample_rate, const int loop_track_count)
     for (Program& program : programs) {
         for (const LoopClip& loop : program.get_loops()) {
             loop.assert_sample_rate(expected_sample_rate);
-            SPDLOG_DEBUG(std::format("Loop asserted. [{}]", loop.get_path().c_str()));
+            SPDLOG_DEBUG("Loop asserted. [{}]", loop.get_path().c_str());
             if (loop.get_track() < 0 || loop.get_track() >= loop_track_count) {
-                throw OstrostrojException(std::format("Invalid loop track! [{}, {}]", loop.get_track(), loop.get_path().c_str()));
+                throw OstrostrojException(fmt::format("Invalid loop track! [{}, {}]", loop.get_track(), loop.get_path().c_str()));
             }
         }
         for (const auto& [note, one_shot] : program.get_one_shots()) {

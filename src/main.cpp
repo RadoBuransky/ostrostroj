@@ -17,7 +17,7 @@ class OstrostrojApp {
         Engine engine;
 
         static void sigaction_handler(int s) {
-            SPDLOG_INFO(std::format("Signal received [{}].", s));
+            SPDLOG_INFO("Signal received [{}].", s);
         }
 
         void waitForSignal() const {
@@ -57,7 +57,7 @@ class OstrostrojApp {
 int main(int argc, char* argv[]) {
     spdlog::set_pattern("%L [%H:%M:%S] [%t] %v");
     spdlog::set_level(spdlog::level::info);
-    SPDLOG_INFO(std::format("Ostrostroj started. [{}]", static_cast<int>(spdlog::get_level())));
+    SPDLOG_INFO("Ostrostroj started. [{}]", static_cast<int>(spdlog::get_level()));
     if ((argc > 1) && (strcmp(argv[1], "shutdown") == 0)) {
         sync();
         reboot(RB_POWER_OFF); 
