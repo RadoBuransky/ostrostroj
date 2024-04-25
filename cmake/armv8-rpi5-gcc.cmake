@@ -11,6 +11,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 set(CMAKE_CXX_FLAGS_INIT "-march=armv8.2-a -mtune=cortex-a76 -std=c++20 -Wall -Wextra -Wshadow -Wnon-virtual-dtor -pedantic -fexceptions -fno-threadsafe-statics -fdata-sections -ffunction-sections")
 set(CMAKE_CXX_FLAGS_RELEASE_INIT "-O2")
-set(CMAKE_CXX_FLAGS_DEBUG_INIT "-g3 -ggdb -O0 -std=c++20")
+set(CMAKE_CXX_FLAGS_DEBUG_INIT "-ggdb3 -g -Og")
 
 set(REMOTE_HOSTNAME "ostrostroj.local")

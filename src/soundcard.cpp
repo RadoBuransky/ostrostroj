@@ -38,20 +38,9 @@ AudioFifo& AudioPortFifo::get_fifo() {
 void AudioPortFifo::copy_to_buffer(const jack_nframes_t nframes) const {
     jack_default_audio_sample_t* start = static_cast<jack_default_audio_sample_t*>(jack_port_get_buffer(port, nframes));
     jack_default_audio_sample_t* end = start + nframes;
-    while (start != end) {
-        *start = 1.0;
+    while ((start != end) && fifo->pop(*start)) {
         start++;
     }
-    /*
-    while ((counter < nframes) && fifo->pop(*buffer)) {
-        if (*buffer != 1.0) {
-            SPDLOG_WARN("Unexpected sample! [{:g}]", *buffer);
-        }
-        counter++;
-        buffer++;
-    }
-    Profiler::get().jack_callback_fifo_underrun += nframes - counter;
-    */
 }
 
 SoundCard::SoundCard(const std::string &name) :
@@ -72,43 +61,36 @@ SoundCard::~SoundCard() {
 }
 
 int SoundCard::process_callback(jack_nframes_t nframes, void *arg) {   
-    // auto start = std::chrono::steady_clock::now();
-    // Profiler& profiler = Profiler::get();
-    // profiler.jack_callback_count++;
-    // profiler.jack_callback_total_frames += nframes;
-    SoundCard& self = *(SoundCard*)arg;          
-    jack_default_audio_sample_t* start = static_cast<jack_default_audio_sample_t*>(
-        jack_port_get_buffer(self.audio_outputs.at(0)->get_port(), nframes));
-    jack_default_audio_sample_t* end = start + nframes;
-    while (start != end) {
-        *start = 0.75;
-        start++;
-    }
+    auto start = std::chrono::steady_clock::now();
+    Profiler& profiler = Profiler::get();
+    profiler.jack_callback_count++;
+    profiler.jack_callback_total_frames += nframes;
+    SoundCard& self = *(SoundCard*)arg;
     const float max_delay = jack_get_max_delayed_usecs(self.jack_client);
     if (max_delay > 0.0) {
         SPDLOG_WARN("Delay! {:g}", max_delay);
         jack_reset_max_delayed_usecs(self.jack_client);
     }
-    // try {
-        // Process the midi inputs
-        // for (const auto &midiin_callback: self.midiin_callbacks) {
-        //     midiin_callback.callback(nframes);
-        // }
-        // for (const AudioPortFifo& audio_output : self.audio_outputs) {
-            // profiler.jack_callback_total_audio_frames += nframes;
-            // audio_output.copy_to_buffer(nframes);
-    //     }
+    try {
+        // Process midi inputs
+        for (const auto &midiin_callback: self.midiin_callbacks) {
+            midiin_callback.callback(nframes);
+        }
+        for (const std::unique_ptr<AudioPortFifo>& audio_output : self.audio_outputs) {
+            profiler.jack_callback_total_audio_frames += nframes;
+            audio_output->copy_to_buffer(nframes);
+        }
 
-    // } catch (std::exception const& ex) {
-    //     SPDLOG_ERROR(ex.what());
-    // }
-    // auto end = std::chrono::steady_clock::now();
-    // long d = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
-    // profiler.jack_callback_total_duration += d;
-    // if (d > profiler.jack_callback_max_duration) {
-    //     profiler.jack_callback_max_duration = d;
-    // }
-    // self.callback();
+    } catch (std::exception const& ex) {
+        SPDLOG_ERROR(ex.what());
+    }
+    auto end = std::chrono::steady_clock::now();
+    long d = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+    profiler.jack_callback_total_duration += d;
+    if (d > profiler.jack_callback_max_duration) {
+        profiler.jack_callback_max_duration = d;
+    }
+    self.callback();
     return 0;
 }
 
@@ -183,7 +165,7 @@ void SoundCard::port_registration_callback(jack_port_id_t port, int registered, 
 
 jack_client_t * SoundCard::create_client(const std::string &name) {
     jack_status_t status;
-    auto jack_client = jack_client_open(name.c_str(), JackNoStartServer, &status);
+    auto jack_client = jack_client_open(name.c_str(), JackNullOption, &status);
     if (nullptr == jack_client) {        
         throw OstrostrojException(fmt::format("Jack client open failed! [status=0x{:x}]", static_cast<int>(status)));
     }

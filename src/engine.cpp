@@ -68,13 +68,6 @@ void Track::reset_node() {
 }
 
 void Track::fill_output() {
-    for (std::reference_wrapper<AudioFifo>& channel : channels) {
-        AudioFifo& fifo = channel.get();
-        while (fifo.push(1.0)) {            
-        }
-    }
-
-    /*
     if (!push_next_frame()) {
         return;
     }
@@ -90,14 +83,13 @@ void Track::fill_output() {
     }
     if (overflow) {
         if (channel != 0) {
-            SPDLOG_WARN(std::format("FIFO not channel-aligned! [track={}, {} ch]", track_number, channel));
+            SPDLOG_WARN("FIFO not channel-aligned! [track={}, {} ch]", track_number, channel);
             return;
         }
         pop_next_frame(sample);
     } else {
         SPDLOG_WARN("Track underrun!");
     }
-    preload_clips();*/
 }
 
 Engine::Engine(Project& _project, SoundCard& _soundCard):
@@ -196,7 +188,7 @@ void Engine::process_midi() {
             libremidi::message midi_message;
             MidiFifo& midi_fifo = soundCard.get_midi_fifo();
             while (midi_fifo.pop(midi_message)) {
-                // SPDLOG_TRACE(std::format("Processing MIDI message. [0x{:x}]", static_cast<int>(midi_message.get_message_type())));
+                SPDLOG_TRACE(std::format("Processing MIDI message. [0x{:x}]", static_cast<int>(midi_message.get_message_type())));
                 switch (midi_message.get_message_type()) {
                     case libremidi::message_type::START:
                         midi_start();
@@ -245,7 +237,6 @@ void Engine::midi_continue() {
 }
 
 void Engine::play_one_shot(uint8_t _note) {
-    // TODO: Unload sample from memory once done
     SPDLOG_DEBUG("play_one_shot({})", _note);
 }
 

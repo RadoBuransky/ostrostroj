@@ -33,7 +33,7 @@ class OstrostrojApp {
     public:
         OstrostrojApp():
             soundCard(SoundCard("ostrostroj")),
-            project(Project("/home/ostrostroj/project/")),
+            project(Project("/home/rado/project/")),
             engine(Engine(project, soundCard)) {
             try {
                 soundCard.start(std::bind(&Engine::next, &engine));
