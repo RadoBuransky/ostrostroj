@@ -21,6 +21,7 @@ class ClipBlock {
         void read_buffer();
     public:
         ClipBlock(SNDFILE* _snd_file, int _channels, sf_count_t _start_pos);
+        virtual ~ClipBlock() = default;
         const clip_buffer& get_buffer() const;
         sf_count_t get_buffer_frames() const;
         sf_count_t get_start_pos() const;
@@ -51,6 +52,7 @@ class LoopClip: public Clip {
         int get_track(std::filesystem::path _path) const;
     public:
         LoopClip(std::filesystem::path _path);
+        virtual ~LoopClip() = default;
         int get_track() const;
 };
 
@@ -62,5 +64,6 @@ class OneShotClip: public Clip {
 
     public:
         OneShotClip(const std::filesystem::path _path);
+        virtual ~OneShotClip() = default;
         uint8_t get_note() const;
 };

@@ -7,7 +7,7 @@
 
 AudioPortFifo::AudioPortFifo(jack_client_t* _jack_client, int num) :
     jack_client(_jack_client),
-    port(jack_port_register(_jack_client, std::format("{}{}", LOCAL_AUDIO_OUTPUT_PORT_PREFIX, num).c_str(),
+    port(jack_port_register(_jack_client, fmt::format("{}{}", LOCAL_AUDIO_OUTPUT_PORT_PREFIX, num).c_str(),
             JACK_DEFAULT_AUDIO_TYPE, JackPortFlags::JackPortIsOutput, 0)),
     fifo(std::make_unique<AudioFifo>(jack_get_buffer_size(_jack_client))) {
 }
@@ -45,7 +45,7 @@ void AudioPortFifo::copy_to_buffer(const jack_nframes_t nframes) const {
     /*
     while ((counter < nframes) && fifo->pop(*buffer)) {
         if (*buffer != 1.0) {
-            SPDLOG_WARN(std::format("Unexpected sample! [{:g}]", *buffer));
+            SPDLOG_WARN("Unexpected sample! [{:g}]", *buffer);
         }
         counter++;
         buffer++;
@@ -78,7 +78,7 @@ int SoundCard::process_callback(jack_nframes_t nframes, void *arg) {
     // profiler.jack_callback_total_frames += nframes;
     SoundCard& self = *(SoundCard*)arg;          
     jack_default_audio_sample_t* start = static_cast<jack_default_audio_sample_t*>(
-        jack_port_get_buffer(self.audio_outputs.at(0).get_port(), nframes));
+        jack_port_get_buffer(self.audio_outputs.at(0)->get_port(), nframes));
     jack_default_audio_sample_t* end = start + nframes;
     while (start != end) {
         *start = 0.75;
@@ -86,7 +86,7 @@ int SoundCard::process_callback(jack_nframes_t nframes, void *arg) {
     }
     const float max_delay = jack_get_max_delayed_usecs(self.jack_client);
     if (max_delay > 0.0) {
-        SPDLOG_WARN(std::format("Delay! {:g}", max_delay));
+        SPDLOG_WARN("Delay! {:g}", max_delay);
         jack_reset_max_delayed_usecs(self.jack_client);
     }
     // try {
@@ -132,7 +132,7 @@ void SoundCard::libremidi_message_callback(const libremidi::message& message) {
 void SoundCard::create_audio_outputs(jack_client_t * _jack_client) {
     audio_outputs.reserve(AUDIO_OUTPUT_PORT_COUNT);
     for (auto i = 1; i <= AUDIO_OUTPUT_PORT_COUNT; i++) {
-        audio_outputs.emplace_back(_jack_client, i);
+        audio_outputs.emplace_back(std::make_unique<AudioPortFifo>(_jack_client, i));
     }
 }
 
@@ -156,7 +156,7 @@ libremidi::midi_in SoundCard::create_midiin() {
             }},
             api_input_config);
     result.open_virtual_port(LOCAL_MIDI_PORT);
-    SPDLOG_DEBUG(std::format("{} open.", LOCAL_MIDI_PORT.c_str()));
+    SPDLOG_DEBUG("{} open.", LOCAL_MIDI_PORT.c_str());
     return result;
 }
 
@@ -165,9 +165,9 @@ void SoundCard::port_connect_callback(jack_port_id_t a, jack_port_id_t b, int co
     auto a_name = jack_port_name(jack_port_by_id(soundCard->jack_client, a));
     auto b_name = jack_port_name(jack_port_by_id(soundCard->jack_client, b));
     if (connect == 0) {
-        SPDLOG_DEBUG(std::format("Port {} disconnected from {}.", a_name, b_name));
+        SPDLOG_DEBUG("Port {} disconnected from {}.", a_name, b_name);
     } else {
-        SPDLOG_DEBUG(std::format("Port {} connected to {}.", a_name, b_name));
+        SPDLOG_DEBUG("Port {} connected to {}.", a_name, b_name);
     }
 }
 
@@ -175,9 +175,9 @@ void SoundCard::port_registration_callback(jack_port_id_t port, int registered, 
     const SoundCard *soundCard = static_cast<SoundCard*>(arg);
     auto port_name = jack_port_name(jack_port_by_id(soundCard->jack_client, port));
     if (registered == 0) {
-        SPDLOG_DEBUG(std::format("Port {} unregistered.", port_name));
+        SPDLOG_DEBUG("Port {} unregistered.", port_name);
     } else {
-        SPDLOG_DEBUG(std::format("Port {} registered.", port_name));
+        SPDLOG_DEBUG("Port {} registered.", port_name);
     }
 }
 
@@ -185,48 +185,48 @@ jack_client_t * SoundCard::create_client(const std::string &name) {
     jack_status_t status;
     auto jack_client = jack_client_open(name.c_str(), JackNoStartServer, &status);
     if (nullptr == jack_client) {        
-        throw OstrostrojException(std::format("Jack client open failed! [status=0x{:x}]", static_cast<int>(status)));
+        throw OstrostrojException(fmt::format("Jack client open failed! [status=0x{:x}]", static_cast<int>(status)));
     }
-    SPDLOG_INFO(std::format("Jack client open. [status=0x{:x}]", static_cast<int>(status)));
+    SPDLOG_INFO("Jack client open. [status=0x{:x}]", static_cast<int>(status));
     return jack_client;
 }
 
 void SoundCard::registerCallbacks() {
     const auto set_callback_result = jack_set_process_callback(jack_client, process_callback, this);
     if (set_callback_result != 0) {
-        throw OstrostrojException(std::format("Jack set process callback failed! [status=0x{:x}]", set_callback_result));        
+        throw OstrostrojException(fmt::format("Jack set process callback failed! [status=0x{:x}]", set_callback_result));        
     }
     const auto set_port_connect_callback_result = jack_set_port_connect_callback(jack_client, port_connect_callback, this);
     if (set_port_connect_callback_result != 0) {
-        throw OstrostrojException(std::format("Jack set port connect callback failed! [status=0x{:x}]", set_port_connect_callback_result));        
+        throw OstrostrojException(fmt::format("Jack set port connect callback failed! [status=0x{:x}]", set_port_connect_callback_result));        
     }
     const auto jack_set_port_registration_callback_result = jack_set_port_registration_callback(jack_client, port_registration_callback, this);
     if (jack_set_port_registration_callback_result != 0) {
-        throw OstrostrojException(std::format("Jack set port registration callback failed! [status=0x{:x}]", jack_set_port_registration_callback_result));        
+        throw OstrostrojException(fmt::format("Jack set port registration callback failed! [status=0x{:x}]", jack_set_port_registration_callback_result));        
     }
 }
 
 void SoundCard::activate() {
     const auto activate_result = jack_activate(jack_client);
     if (activate_result != 0) {
-        throw OstrostrojException(std::format("Jack activate failed! [status=0x{:x}]", activate_result));        
+        throw OstrostrojException(fmt::format("Jack activate failed! [status=0x{:x}]", activate_result));        
     }
 }
 
 void SoundCard::connect(jack_client_t * _jack_client) {
-    std::string destination_port = std::format("{}:{}", jack_get_client_name(_jack_client), LOCAL_MIDI_PORT);
+    std::string destination_port = fmt::format("{}:{}", jack_get_client_name(_jack_client), LOCAL_MIDI_PORT);
     const auto connect_result_1 = jack_connect(_jack_client, INPUT_MIDI_PORT.c_str(), destination_port.c_str());
     if (connect_result_1 != 0) {
-        throw OstrostrojException(std::format("Jack connect failed! [status=0x{:x}]", connect_result_1));
+        throw OstrostrojException(fmt::format("Jack connect failed! [status=0x{:x}]", connect_result_1));
     }
     SPDLOG_DEBUG("MIDI ports connected.");
 
     for (unsigned int i = 0; i < audio_outputs.size(); i++) {
-        const auto src_port = jack_port_name(audio_outputs.at(i).get_port());
-        const auto dst_port = std::format("{}{}", AUDIO_OUTPUT_PORT_PREFIX, i + 1);
+        const auto src_port = jack_port_name(audio_outputs.at(i)->get_port());
+        const auto dst_port = fmt::format("{}{}", AUDIO_OUTPUT_PORT_PREFIX, i + 1);
         const auto connect_result_2 = jack_connect(_jack_client, src_port, dst_port.c_str());
         if (connect_result_2 != 0) {
-            throw OstrostrojException(std::format("Jack connect failed! [status=0x{:x}]", connect_result_2));
+            throw OstrostrojException(fmt::format("Jack connect failed! [status=0x{:x}]", connect_result_2));
         }        
     }
     SPDLOG_DEBUG("Audio output ports connected.");
@@ -239,9 +239,9 @@ void SoundCard::start(std::function<void(void)> _callback) {
     connect(jack_client);
     Profiler::get().jack_sample_rate = jack_get_sample_rate(jack_client);
     jack_latency_range_t latency_range;
-    jack_port_get_latency_range(audio_outputs.at(0).get_port(), JackLatencyCallbackMode::JackPlaybackLatency, &latency_range);
-    SPDLOG_INFO(std::format("Jack client activated. [{} Hz, {} frames, latency {} - {}]", jack_get_sample_rate(jack_client),
-        buffer_size, latency_range.min, latency_range.max));
+    jack_port_get_latency_range(audio_outputs.at(0)->get_port(), JackLatencyCallbackMode::JackPlaybackLatency, &latency_range);
+    SPDLOG_INFO("Jack client activated. [{} Hz, {} frames, latency {} - {}]",
+        jack_get_sample_rate(jack_client), buffer_size, latency_range.min, latency_range.max);
 }
 
 int SoundCard::get_sample_rate() const {
@@ -261,5 +261,5 @@ MidiFifo& SoundCard::get_midi_fifo() {
 }
 
 AudioFifo& SoundCard::get_audio_output_fifo(int port) {  
-    return audio_outputs.at(port).get_fifo();
+    return audio_outputs.at(port)->get_fifo();
 }

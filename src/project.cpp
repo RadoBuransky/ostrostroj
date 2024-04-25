@@ -3,7 +3,7 @@
 #include <ranges>
 #include "project.hpp"
 
-Program::Program(const std::filesystem::path dir):
+Program::Program(std::filesystem::path dir):
     start_number(program_start_number(dir)),
     loops(load_loops(dir)),
     one_shots(load_one_shots(dir)) {
@@ -14,29 +14,29 @@ int Program::program_start_number(const std::filesystem::path dir) {
     return std::stoi(dir.filename().string().substr(1, 2));
 }
 
-std::vector<LoopClip> Program::load_loops(const std::filesystem::path dir) {
+std::vector<std::unique_ptr<LoopClip>> Program::load_loops(const std::filesystem::path dir) {
     SPDLOG_DEBUG("Loading loops {} ", dir.string());
-    auto result = std::vector<LoopClip>();
+    auto result = std::vector<std::unique_ptr<LoopClip>>();
     result.reserve(32);
     for (auto const& wav_file : wav_files(dir)) {
         if (wav_file.filename().string().starts_with("L")) {
-            auto& loop_clip = result.emplace_back<LoopClip>(wav_file);
-            const int expected_channels = (loop_clip.get_track() < MONO_LOOP_TRACKS) ? 1 : 2;
-            check_sample_format(wav_file, loop_clip.get_info(), expected_channels);
+            auto& loop_clip = result.emplace_back(std::make_unique<LoopClip>(wav_file));
+            const int expected_channels = (loop_clip->get_track() < MONO_LOOP_TRACKS) ? 1 : 2;
+            check_sample_format(wav_file, loop_clip->get_info(), expected_channels);
         }
     }
     result.shrink_to_fit();
     return result;
 }
 
-std::map<uint8_t, OneShotClip> Program::load_one_shots(const std::filesystem::path dir) {
+std::map<uint8_t, std::unique_ptr<OneShotClip>> Program::load_one_shots(const std::filesystem::path dir) {
     SPDLOG_DEBUG("Loading one shots {} ", dir.string());
-    std::map<uint8_t, OneShotClip> result = std::map<uint8_t, OneShotClip>();
+    std::map<uint8_t, std::unique_ptr<OneShotClip>> result = std::map<uint8_t, std::unique_ptr<OneShotClip>>();
     for (auto const& wav_file : wav_files(dir)) {
         if (wav_file.filename().string().starts_with("S")) {
-            auto one_shot_sample = OneShotClip(wav_file);
-            check_sample_format(wav_file, one_shot_sample.get_info(), 2);
-            const uint8_t note = one_shot_sample.get_note();
+            auto one_shot_sample = std::make_unique<OneShotClip>(wav_file);
+            check_sample_format(wav_file, one_shot_sample->get_info(), 2);
+            const uint8_t note = one_shot_sample->get_note();
             result.emplace(note, std::move(one_shot_sample));
         }
     }
@@ -56,13 +56,13 @@ std::vector<std::filesystem::path> Program::wav_files(const std::filesystem::pat
 
 void Program::check_sample_format(const std::filesystem::path wav_file, const SF_INFO &format, const int expected_channels) const {
     if ((format.format & SF_FORMAT_WAV) == 0) {
-        throw OstrostrojException("WAV file expected! [0x{:x}, {}]", format.format, wav_file.string());
+        throw OstrostrojException(fmt::format("WAV file expected! [0x{:x}, {}]", format.format, wav_file.string()));
     }
     if ((format.format & SF_FORMAT_FLOAT) == 0) {
-        throw OstrostrojException("32-bit float expected! [0x{:x}, {}]", format.format, wav_file.string());
+        throw OstrostrojException(fmt::format("32-bit float expected! [0x{:x}, {}]", format.format, wav_file.string()));
     }
     if (format.channels != expected_channels) {
-        throw OstrostrojException("{} channels expected! [{}, {}]", expected_channels, format.channels, wav_file.string());
+        throw OstrostrojException(fmt::format("{} channels expected! [{}, {}]", expected_channels, format.channels, wav_file.string()));
     }
 }
 
@@ -70,53 +70,62 @@ int Program::get_start_number() const {
     return start_number;
 }
 
-std::vector<LoopClip>& Program::get_loops() {
-    return loops;
+std::vector<std::reference_wrapper<LoopClip>> Program::get_loops() {
+    auto result = std::vector<std::reference_wrapper<LoopClip>>();
+    result.reserve(loops.size());
+    for (std::unique_ptr<LoopClip>& loop : loops) {
+        result.push_back(std::ref(*loop));
+    }
+    return result;
 }
 
-std::map<uint8_t, OneShotClip>& Program::get_one_shots() {
-    return one_shots;
+std::map<uint8_t, std::reference_wrapper<OneShotClip>> Program::get_one_shots() {
+    auto result = std::map<uint8_t, std::reference_wrapper<OneShotClip>>();
+    for (auto& [note, one_shot] : one_shots) {
+        result.emplace(note, std::ref(*one_shot));
+    }
+    return result;
 }
 
 Project::Project(const std::filesystem::path dir):
     programs(load_programs(dir)) {
 }
 
-std::vector<Program> Project::load_programs(const std::filesystem::path dir) {
+std::vector<std::unique_ptr<Program>> Project::load_programs(const std::filesystem::path dir) {
     SPDLOG_INFO("Loading project from {}", dir.string());
-    auto result = std::vector<Program>();
+    auto result = std::vector<std::unique_ptr<Program>>();
     for (auto const& program_dir : std::filesystem::directory_iterator(dir)) {
         if (program_dir.is_directory() && program_dir.path().filename().string().starts_with("P")) {
-            result.push_back(Program(program_dir));
+            result.emplace_back(std::make_unique<Program>(program_dir.path()));
         }
     }
-    std::sort(result.begin(), result.end(), [](const Program& a, const Program& b) {
-        return a.get_start_number() < b.get_start_number();
+    std::sort(result.begin(), result.end(), [](const auto& a, const auto& b) {
+        return a->get_start_number() < b->get_start_number();
     });
     return result;
 }
 
 void Project::verify(const int expected_sample_rate, const int loop_track_count) {
-    for (Program& program : programs) {
-        for (const LoopClip& loop : program.get_loops()) {
-            loop.assert_sample_rate(expected_sample_rate);
-            SPDLOG_DEBUG("Loop asserted. [{}]", loop.get_path().c_str());
-            if (loop.get_track() < 0 || loop.get_track() >= loop_track_count) {
-                throw OstrostrojException(fmt::format("Invalid loop track! [{}, {}]", loop.get_track(), loop.get_path().c_str()));
+    for (std::unique_ptr<Program>& program : programs) {
+        for (const auto& loop : program->loops) {
+            loop->assert_sample_rate(expected_sample_rate);
+            SPDLOG_DEBUG("Loop asserted. [{}]", loop->get_path().c_str());
+            if (loop->get_track() < 0 || loop->get_track() >= loop_track_count) {
+                throw OstrostrojException(fmt::format("Invalid loop track! [{}, {}]", loop->get_track(), loop->get_path().c_str()));
             }
         }
-        for (const auto& [note, one_shot] : program.get_one_shots()) {
-            one_shot.assert_sample_rate(expected_sample_rate);
+        for (const auto& [note, one_shot] : program->one_shots) {
+            one_shot->assert_sample_rate(expected_sample_rate);
         }
     }
     SPDLOG_INFO("Project verified.");
 }
 
 Program& Project::get_program(int program_number) {
-    for (Program& program : programs | std::views::reverse) {
-        if (program.get_start_number() <= program_number) {
-            return program;
+    for (std::unique_ptr<Program>& program : programs | std::views::reverse) {
+        if (program->get_start_number() <= program_number) {
+            return *program;
         }
     }
-    return programs.at(0);
+    return *programs.at(0);
 }
