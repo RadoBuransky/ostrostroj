@@ -1,0 +1,3 @@
+#include "testclip.hpp"
+
+RampDownClip::

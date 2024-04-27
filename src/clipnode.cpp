@@ -11,6 +11,12 @@ ClipNode::ClipNode(Clip& _clip, bool _loop):
     block(_clip.get_head()),
     loop(_loop) {
     update_pointers(block.get());
+
+    total_frames = 0;
+    std::reference_wrapper<ClipBlock> b = block;
+    do {
+        total_frames += b.get().get_buffer_frames();
+    } while (b.get().has_next());
 }
 
 bool ClipNode::pop(float& sample) {

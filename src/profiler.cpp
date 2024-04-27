@@ -32,8 +32,8 @@ void Profiler::log() {
     SPDLOG_INFO("-----------------------------------------------------------------------------");
     SPDLOG_INFO("jack_callback_count             ={}", jack_callback_count.load());
     SPDLOG_INFO("jack_callback_total_frames      ={}", jack_callback_total_frames.load());
-    SPDLOG_INFO("                                 {:g}ms (avg={:g}ms", total_frames_duration.count(), avg_callback_frames_duration);
-    SPDLOG_INFO("jack_callback_total_duration    ={:g}ms (avg={:g}ms,max={:g}ms", jack_callback_total_duration_ms.count(), avg_duration,
+    SPDLOG_INFO("                                 {:.2f}ms (avg={:.2f}ms)", total_frames_duration.count(), avg_callback_frames_duration);
+    SPDLOG_INFO("jack_callback_total_duration    ={:.2f}ms (avg={:.2f}ms,max={:.2f}ms)", jack_callback_total_duration_ms.count(), avg_duration,
         jack_callback_max_duration_ms.count());
     SPDLOG_INFO("jack_callback_total_audio_frames={}", jack_callback_total_audio_frames.load());
     SPDLOG_INFO("jack_callback_fifo_underrun     ={}", jack_callback_fifo_underrun.load());
@@ -44,19 +44,22 @@ void Profiler::log() {
     if (engine_phase_count > 0) {
         avg_phase_duration = engine_phase_total_duration_ms.count() / static_cast<double>(engine_phase_count);
     }
-    double engine_phase_perc = 0.0;
-    if (total_frames_duration.count() > 0) {
-        engine_phase_perc = 100.0 * engine_phase_total_duration_ms.count() / total_frames_duration.count();
-    }
     SPDLOG_INFO("engine_run_count                ={}", engine_run_count.load());
     SPDLOG_INFO("engine_phase_count              ={}", engine_phase_count.load());
-    SPDLOG_INFO("engine_phase_total_duration     ={:g}ms (avg={:g}ms,max={:g}ms {:g}%", engine_phase_total_duration_ms.count(),
-        avg_phase_duration, engine_phase_max_duration_ms.count(), engine_phase_perc);
+    SPDLOG_INFO("engine_phase_total_duration     ={:.2f}ms (avg={:.2f}ms,max={:.2f}ms)", engine_phase_total_duration_ms.count(),
+        avg_phase_duration, engine_phase_max_duration_ms.count());
     SPDLOG_INFO("engine_samples_pushed           ={}", engine_samples_pushed.load());
     SPDLOG_INFO("engine_tasks_count              ={}", engine_tasks_count.load());
     SPDLOG_INFO("engine_tasks_in_progress        ={}", engine_tasks_in_progress.load());
     SPDLOG_INFO("engine_tasks_late               ={}", engine_tasks_late.load());
-    SPDLOG_INFO("clip_total_frames_read          ={}", clip_total_frames_read.load());
+    double total_size_mb = clip_total_frames_read.load() * sizeof(float) / (1024 * 1024);
+    SPDLOG_INFO("Total size                      = {:.2f}MB", total_size_mb);
+    SPDLOG_INFO("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
+    double engine_load = 0.0;
+    if (total_frames_duration.count() > 0) {
+        engine_load = 100.0 * engine_phase_total_duration_ms.count() / total_frames_duration.count();
+    }
+    SPDLOG_INFO("Engine load = {:.2f}%", engine_load);
     reset();
 }
 

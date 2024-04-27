@@ -6,7 +6,7 @@ void ClipBlock::read_buffer() {
     buffer_frames = sf_readf_float(snd_file, buffer.data(), buffer_capacity_frames);  
     Profiler::get().clip_total_frames_read += buffer_frames;
     if (buffer_frames != buffer_capacity_frames) {
-        SPDLOG_WARN("{} frames read. [capacity={}]", buffer_frames, buffer_capacity_frames);
+        SPDLOG_TRACE("{} frames read. [capacity={}]", buffer_frames, buffer_capacity_frames);
     }
     if (sf_error(snd_file) != SF_ERR_NO_ERROR) {
         throw OstrostrojException(fmt::format("File error! [{}]", sf_error(snd_file)));

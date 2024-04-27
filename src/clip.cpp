@@ -20,7 +20,7 @@ Clip::Clip(const std::filesystem::path _path) :
     }
     head = std::make_unique<ClipBlock>(snd_file, info.channels, 0);
     load();
-    SPDLOG_TRACE(std::format("File preloaded. [{}, {} Hz, {} ch, {:x}]", _path.c_str(), info.samplerate, info.channels, info.format));
+    SPDLOG_TRACE(std::format("File loaded. [{}, {} Hz, {} ch, {:x}]", _path.c_str(), info.samplerate, info.channels, info.format));
 };
 
 Clip::~Clip() {

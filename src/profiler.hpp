@@ -1,9 +1,11 @@
 #include <atomic>
 #include <spdlog/spdlog.h>
 
+#define PROFILING
+
 class Profiler {
     private:
-        static constexpr std::chrono::seconds period = std::chrono::seconds(3);
+        static constexpr std::chrono::seconds period = std::chrono::seconds(5);
         std::atomic_long next_timestamp;
         std::atomic_long last_duration_ns;
         Profiler();

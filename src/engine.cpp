@@ -75,11 +75,15 @@ void Track::fill_output() {
     int channel = channels_size - 1;
     bool overflow = false;
     float sample;
+#ifdef PROFILING
     Profiler& profiler = Profiler::get();
+#endif
     while (!overflow && track_node.pop(sample)) {
         channel = (channel + 1) % channels_size;
         overflow = !channels[channel].get().push(std::move(sample));
+#ifdef PROFILING
         profiler.engine_samples_pushed++;
+#endif
     }
     if (overflow) {
         if (channel != 0) {
@@ -132,7 +136,9 @@ void Engine::run() {
         while (!interrupted) {
             next_flag.test_and_set();
             next_flag.wait(true);
+#ifdef PROFILING            
             Profiler::get().engine_run_count++;
+#endif
             process_midi();
             run_tasks();
         }
@@ -152,7 +158,9 @@ void Engine::create_tasks() {
 
 void Engine::create_track_task(Track& track) {
     if (tasks.push(std::bind(&Track::fill_output, &track))) {
+#ifdef PROFILING
         Profiler::get().engine_tasks_count++;
+#endif
     } else {
         SPDLOG_WARN("Tasks overflow!");
     }
@@ -160,21 +168,31 @@ void Engine::create_track_task(Track& track) {
 
 void Engine::run_tasks() {     
     std::function<void(void)> task;
+#ifdef PROFILING
     Profiler& profiler = Profiler::get();
+#endif
     while (tasks.pop(task)) {
+#ifdef PROFILING
         profiler.engine_tasks_count--;
         profiler.engine_tasks_in_progress++;
+#endif
         task();
+#ifdef PROFILING
         profiler.engine_tasks_in_progress--;
+#endif
     }
+#ifdef PROFILING
     profiler.tasks_done();
+#endif
 }
 
 void Engine::process_midi() {
     if (!midi_processed) {
         std::lock_guard lk(midi_processing_mutex);
         if (!midi_processed) {
+#ifdef PROFILING
             Profiler::get().next_engine_phase();
+#endif
             libremidi::message midi_message;
             MidiFifo& midi_fifo = soundCard.get_midi_fifo();
             while (midi_fifo.pop(midi_message)) {
@@ -216,7 +234,6 @@ void Engine::midi_stop() {
         track->stop();
     }
     one_shots_track.stop();
-    Profiler::get().log();
 }
 
 void Engine::midi_continue() {

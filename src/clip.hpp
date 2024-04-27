@@ -30,6 +30,13 @@ class ClipBlock {
 };
 
 class Clip {
+    public:
+        Clip() = default;
+        virtual ~Clip() = default;
+        virtual ClipBlock& get_head() = 0;
+};
+
+class FileClip: public Clip {
     protected:
         friend ClipBlock;
         std::filesystem::path path;
@@ -38,15 +45,15 @@ class Clip {
         std::unique_ptr<ClipBlock> head;
         void load();
     public:
-        Clip(const std::filesystem::path _path);
-        virtual ~Clip();
+        FileClip(const std::filesystem::path _path);
+        virtual ~FileClip();
         const std::filesystem::path& get_path() const;
         SF_INFO& get_info();
         void assert_sample_rate(const int expected_sample_rate) const;
         ClipBlock& get_head();
 };
 
-class LoopClip: public Clip {
+class LoopClip: public FileClip {
     private:
         const int track;
         int get_track(std::filesystem::path _path) const;
@@ -56,7 +63,7 @@ class LoopClip: public Clip {
         int get_track() const;
 };
 
-class OneShotClip: public Clip {
+class OneShotClip: public FileClip {
     private:
         const static inline std::vector<std::string> NOTE_NAMES = {"C_", "C#", "D_", "D#", "E_", "F_", "F#", "G_", "G#", "A_", "A#", "B_"};
         const uint8_t note;
