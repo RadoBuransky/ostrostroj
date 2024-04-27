@@ -1,9 +1,8 @@
-#include <spdlog/spdlog.h>
 #include "graph.hpp"
 
 void ClipNode::update_pointers(ClipBlock& _block) {
     current_frame = _block.get_buffer().data();
-    end_frame = current_frame + _block.get_buffer_frames(); // TODO: Channels?
+    end_frame = current_frame + (_block.get_buffer_frames() * _block.get_channels());
 }
 
 ClipNode::ClipNode(Clip& _clip, bool _loop):
@@ -11,12 +10,6 @@ ClipNode::ClipNode(Clip& _clip, bool _loop):
     block(_clip.get_head()),
     loop(_loop) {
     update_pointers(block.get());
-
-    total_frames = 0;
-    std::reference_wrapper<ClipBlock> b = block;
-    do {
-        total_frames += b.get().get_buffer_frames();
-    } while (b.get().has_next());
 }
 
 bool ClipNode::pop(float& sample) {
@@ -28,9 +21,6 @@ bool ClipNode::pop(float& sample) {
     }
     if (block.get().has_next()) {
         block = std::ref(block.get().get_next());
-        if (block.get().get_start_pos() != position) {
-            SPDLOG_WARN("Unexpected block position! [block={},expected={}]", block.get().get_start_pos(), position);
-        }
     } else {
         if (!loop) {
             return false;

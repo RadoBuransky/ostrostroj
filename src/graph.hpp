@@ -55,7 +55,6 @@ class ClipNode : public Node {
         const float* current_frame;
         const float* end_frame;
         long position;
-        long total_frames;
         void update_pointers(ClipBlock& _block);
     public:
         ClipNode(Clip& clip, bool loop);

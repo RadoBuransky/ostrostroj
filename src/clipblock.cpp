@@ -1,8 +1,8 @@
 #include "common.hpp"
-#include "clip.hpp"
+#include "clipblock.hpp"
 #include "profiler.hpp"
 
-void ClipBlock::read_buffer() {
+void FileClipBlock::read_buffer() {
     buffer_frames = sf_readf_float(snd_file, buffer.data(), buffer_capacity_frames);  
     Profiler::get().clip_total_frames_read += buffer_frames;
     if (buffer_frames != buffer_capacity_frames) {
@@ -13,7 +13,7 @@ void ClipBlock::read_buffer() {
     }
 }
 
-ClipBlock::ClipBlock(SNDFILE* _snd_file, int _channels, sf_count_t _start_pos):
+FileClipBlock::FileClipBlock(SNDFILE* _snd_file, int _channels, sf_count_t _start_pos):
     snd_file(_snd_file),
     channels(_channels),
     start_pos(_start_pos),
@@ -22,28 +22,57 @@ ClipBlock::ClipBlock(SNDFILE* _snd_file, int _channels, sf_count_t _start_pos):
     read_buffer();
 }
 
-const clip_buffer& ClipBlock::get_buffer() const {
+clip_buffer& FileClipBlock::get_buffer() {
     return buffer;
 }
 
-sf_count_t ClipBlock::get_buffer_frames() const {
+sf_count_t FileClipBlock::get_buffer_frames() const {
     return buffer_frames;
 }
 
-sf_count_t ClipBlock::get_start_pos() const {
-    return start_pos;
-}
-
-bool ClipBlock::has_next() const {
+bool FileClipBlock::has_next() const {
     return buffer_frames == buffer_capacity_frames;
 }
 
-ClipBlock& ClipBlock::get_next() {
+ClipBlock& FileClipBlock::get_next() {
     if (!has_next()) {
         throw OstrostrojException("No more samples!");
     }
     if (next.get() == nullptr) {
-        next = std::make_unique<ClipBlock>(snd_file, channels, start_pos + buffer_frames);
+        next = std::make_unique<FileClipBlock>(snd_file, channels, start_pos + buffer_frames);
     }
     return *next;
+}
+
+int FileClipBlock::get_channels() const {
+    return channels;
+}
+
+BufferClipBlock::BufferClipBlock(int block_count) {
+    if (block_count > 1) {
+        next = std::make_unique<BufferClipBlock>(block_count - 1);
+    }
+}
+
+clip_buffer& BufferClipBlock::get_buffer() {
+    return buffer;
+}
+
+sf_count_t BufferClipBlock::get_buffer_frames() const {    
+    return buffer.size();
+}
+
+bool BufferClipBlock::has_next() const {
+    return next.get() != nullptr;    
+}
+
+ClipBlock& BufferClipBlock::get_next() {  
+    if (!has_next()) {
+        throw OstrostrojException("No more samples!");
+    }
+    return *next;
+}
+
+int BufferClipBlock::get_channels() const {
+    return 1;    
 }

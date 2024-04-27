@@ -2,14 +2,14 @@
 #include <algorithm>
 #include "clip.hpp"
 
-void Clip::load() {
+void FileClip::load() {
     ClipBlock* last = head.get();
     while (last->has_next()) {
         last = &last->get_next();
     }
 }
 
-Clip::Clip(const std::filesystem::path _path) :
+FileClip::FileClip(const std::filesystem::path _path) :
     path(_path),
     snd_file(sf_open(_path.c_str(), SFM_READ, &info)) {
     if (snd_file == nullptr) {
@@ -18,12 +18,12 @@ Clip::Clip(const std::filesystem::path _path) :
     if (sf_error(snd_file) != SF_ERR_NO_ERROR) {
         throw OstrostrojException(fmt::format("File error! [{}]", sf_error(snd_file)));   
     }
-    head = std::make_unique<ClipBlock>(snd_file, info.channels, 0);
+    head = std::make_unique<FileClipBlock>(snd_file, info.channels, 0);
     load();
     SPDLOG_TRACE(std::format("File loaded. [{}, {} Hz, {} ch, {:x}]", _path.c_str(), info.samplerate, info.channels, info.format));
 };
 
-Clip::~Clip() {
+FileClip::~FileClip() {
     if (snd_file != nullptr) {
         sf_close(snd_file);
         snd_file = nullptr;
@@ -31,26 +31,26 @@ Clip::~Clip() {
     }
 }
 
-const std::filesystem::path& Clip::get_path() const {
+const std::filesystem::path& FileClip::get_path() const {
     return path;
 }
 
-SF_INFO& Clip::get_info() {
+SF_INFO& FileClip::get_info() {
     return info;
 }
 
-void Clip::assert_sample_rate(const int expected_sample_rate) const {
+void FileClip::assert_sample_rate(const int expected_sample_rate) const {
     if (expected_sample_rate != info.samplerate) {
         throw OstrostrojException(fmt::format("{}Hz sample rate expected! [{}Hz, {}]", expected_sample_rate, info.samplerate, path.string()));
     }
 }
 
-ClipBlock& Clip::get_head() {
+ClipBlock& FileClip::get_head() {
     return *head;
 }
 
 LoopClip::LoopClip(const std::filesystem::path _path):
-    Clip(_path),
+    FileClip(_path),
     track(get_track(_path)) {
   SPDLOG_INFO("Loop sample loaded. [{}, {}, {} Hz, {} ch, {:x}]", track, _path.string(), info.samplerate, info.channels, info.format);
 }
@@ -65,7 +65,7 @@ int LoopClip::get_track() const {
 }
 
 OneShotClip::OneShotClip(const std::filesystem::path _path):
-    Clip(_path),
+    FileClip(_path),
     note(get_note(_path)) {
   SPDLOG_INFO("One-shot sample loaded. [{}, {}, {} Hz, {} ch, {:x}]", note, _path.string(), info.samplerate, info.channels, info.format);
 }

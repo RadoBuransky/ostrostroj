@@ -1,6 +1,7 @@
 #include "common.hpp"
 #include "engine.hpp"
 #include "profiler.hpp"
+#include "testclip.hpp"
 
 #define MAX_TASK_COUNT 64
 
@@ -248,14 +249,17 @@ void Engine::play_one_shot(uint8_t _note) {
 }
 
 void Engine::set_program(int _program_number) {
+
     program_number = _program_number;
     for (std::unique_ptr<Track>& track : loop_tracks) {
         track->reset_node();
     }
+    /*
     Program& active_program = project.get_program(program_number);
     for (LoopClip& loop_clip : active_program.get_loops()) {
         loop_tracks.at(loop_clip.get_track())->set_node(std::make_unique<ClipNode>(loop_clip, true));
-    }
+    }*/
+    loop_tracks[0]->set_node(std::make_unique<ClipNode>(RampDownClip::get(), true));
     SPDLOG_INFO("Program set. [{}]", program_number.load());
 }
 
