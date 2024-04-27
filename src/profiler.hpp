@@ -4,6 +4,8 @@
 class Profiler {
     private:
         static constexpr std::chrono::seconds period = std::chrono::seconds(3);
+        std::atomic_long next_timestamp;
+        std::atomic_long last_duration_ns;
         Profiler();
 
     public:
@@ -36,4 +38,6 @@ class Profiler {
         void log();
         void periodic_log();
         void reset();
+        void next_engine_phase();
+        void tasks_done();
 };

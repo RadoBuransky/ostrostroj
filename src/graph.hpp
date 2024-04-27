@@ -50,11 +50,11 @@ class DynamicNode : public Node {
 class ClipNode : public Node {
     private:
         Clip& clip;
-        std::atomic<std::reference_wrapper<ClipBlock>> block;
+        std::reference_wrapper<ClipBlock> block;
         const bool loop;
-        std::atomic<const float*> current_frame;
-        std::atomic<const float*> end_frame;
-        std::atomic_long position;
+        const float* current_frame;
+        const float* end_frame;
+        long position;
         void update_pointers(ClipBlock& _block);
     public:
         ClipNode(Clip& clip, bool loop);
@@ -75,8 +75,8 @@ class MixingNode : public Node {
 
 class TrackNode : public ChildNode {
     private:
-        std::atomic_bool started;
-        std::atomic_bool muted;
+        bool started;
+        bool muted;
     public:
         TrackNode(Node& parent);
         virtual ~TrackNode() = default;

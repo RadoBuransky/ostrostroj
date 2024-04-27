@@ -10,7 +10,7 @@ ClipNode::ClipNode(Clip& _clip, bool _loop):
     clip(_clip),
     block(_clip.get_head()),
     loop(_loop) {
-    update_pointers(block.load().get());
+    update_pointers(block.get());
 }
 
 bool ClipNode::pop(float& sample) {
@@ -20,10 +20,10 @@ bool ClipNode::pop(float& sample) {
         position++;
         return true;        
     }
-    if (block.load().get().has_next()) {
-        block = std::ref(block.load().get().get_next());
-        if (block.load().get().get_start_pos() != position) {
-            SPDLOG_WARN("Unexpected block position! [block={},expected={}]", block.load().get().get_start_pos(), position.load());
+    if (block.get().has_next()) {
+        block = std::ref(block.get().get_next());
+        if (block.get().get_start_pos() != position) {
+            SPDLOG_WARN("Unexpected block position! [block={},expected={}]", block.get().get_start_pos(), position);
         }
     } else {
         if (!loop) {
@@ -32,11 +32,11 @@ bool ClipNode::pop(float& sample) {
         SPDLOG_DEBUG("Lopp restart. [path={}, this=0x{:x}, clip=0x{:x}, current_frame=0x{:x}, end_frame=0x{:x}, block=0x{:x}]",
             clip.get_path().c_str(), reinterpret_cast<intptr_t>(this), reinterpret_cast<intptr_t>(&clip),
             reinterpret_cast<intptr_t>(current_frame.load()), reinterpret_cast<intptr_t>(end_frame.load()),
-            reinterpret_cast<intptr_t>(&block.load().get()));
+            reinterpret_cast<intptr_t>(&block.get()));
         block = std::ref(clip.get_head());
         position = 0;
     }
-    update_pointers(block.load().get());
+    update_pointers(block.get());
     return pop(sample);
 }
 

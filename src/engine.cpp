@@ -135,10 +135,6 @@ void Engine::run() {
             Profiler::get().engine_run_count++;
             process_midi();
             run_tasks();
-            long last_done_timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
-            if (last_done_timestamp > next_timestamp) {
-                last_duration_ns = last_done_timestamp - next_timestamp;
-            }
         }
         SPDLOG_DEBUG("Engine interrupted.");
     } catch(std::exception const& e) {
@@ -148,7 +144,6 @@ void Engine::run() {
 }
 
 void Engine::create_tasks() {
-    // TODO: Can we use atomic_int for this?
     for (std::unique_ptr<Track>& track : loop_tracks) {
         create_track_task(*track);
     }
@@ -172,19 +167,14 @@ void Engine::run_tasks() {
         task();
         profiler.engine_tasks_in_progress--;
     }
+    profiler.tasks_done();
 }
 
 void Engine::process_midi() {
     if (!midi_processed) {
         std::lock_guard lk(midi_processing_mutex);
         if (!midi_processed) {
-            Profiler& profiler = Profiler::get();
-            profiler.engine_phase_count++;
-            profiler.engine_phase_total_duration += last_duration_ns;
-            if (last_duration_ns > profiler.engine_phase_max_duration) {
-                profiler.engine_phase_max_duration = last_duration_ns.load();
-            }
-            profiler.periodic_log();
+            Profiler::get().next_engine_phase();
             libremidi::message midi_message;
             MidiFifo& midi_fifo = soundCard.get_midi_fifo();
             while (midi_fifo.pop(midi_message)) {
@@ -253,8 +243,6 @@ void Engine::set_program(int _program_number) {
 }
 
 void Engine::next() {
-    // next_timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
-    // Profiler::get().engine_tasks_late += Profiler::get().engine_tasks_in_progress;
     midi_processed = false;
     next_flag.clear();
     next_flag.notify_one();

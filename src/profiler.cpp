@@ -82,3 +82,21 @@ void Profiler::reset() {
     engine_samples_pushed = 0;
     engine_tasks_late = 0;
 }
+
+void Profiler::next_engine_phase() {
+    next_timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+    engine_tasks_late += engine_tasks_in_progress;
+    engine_phase_count++;
+    engine_phase_total_duration += last_duration_ns;
+    if (last_duration_ns > engine_phase_max_duration) {
+        engine_phase_max_duration = last_duration_ns.load();
+    }
+    periodic_log();
+}
+
+void Profiler::tasks_done() {
+    long last_done_timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+    if (last_done_timestamp > next_timestamp) {
+        last_duration_ns = last_done_timestamp - next_timestamp;
+    }
+}
