@@ -2,6 +2,13 @@
 #include "clipblock.hpp"
 #include "profiler.hpp"
 
+long ClipBlock::get_total_frames() {
+    if (has_next()) {
+        return get_buffer_frames() + get_next().get_total_frames();
+    }
+    return get_buffer_frames();
+}
+
 void FileClipBlock::read_buffer() {
     buffer_frames = sf_readf_float(snd_file, buffer.data(), buffer_capacity_frames);  
     Profiler::get().clip_total_frames_read += buffer_frames;

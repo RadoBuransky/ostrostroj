@@ -16,6 +16,7 @@ class ClipBlock {
         virtual bool has_next() const = 0;
         virtual ClipBlock& get_next() = 0;
         virtual int get_channels() const = 0;
+        long get_total_frames();
 };
 
 class FileClipBlock: public ClipBlock {

@@ -1,6 +1,7 @@
 #include "common.hpp"
 #include <algorithm>
 #include "clip.hpp"
+#include "clipfx.hpp"
 
 void FileClip::load() {
     ClipBlock* last = head.get();
@@ -20,6 +21,7 @@ FileClip::FileClip(const std::filesystem::path _path) :
     }
     head = std::make_unique<FileClipBlock>(snd_file, info.channels, 0);
     load();
+    ClipFx::get().xfade_loop(*head);
     SPDLOG_TRACE(std::format("File loaded. [{}, {} Hz, {} ch, {:x}]", _path.c_str(), info.samplerate, info.channels, info.format));
 };
 
