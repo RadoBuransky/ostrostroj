@@ -21,7 +21,9 @@ FileClip::FileClip(const std::filesystem::path _path) :
     }
     head = std::make_unique<FileClipBlock>(snd_file, info.channels, 0);
     load();
-    ClipFx::get().xfade_loop(*head);
+    if (std::strcmp(_path.c_str(), "/home/rado/project/P01_kratke_dni/L1.wav") == 0) {
+        ClipFx::get().xfade_loop(*head);
+    }
     SPDLOG_TRACE(std::format("File loaded. [{}, {} Hz, {} ch, {:x}]", _path.c_str(), info.samplerate, info.channels, info.format));
 };
 

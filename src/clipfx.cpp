@@ -61,23 +61,43 @@ void ClipFx::xfade_loop(ClipBlock& loop_head) {
     std::array<float, 2*xfade_half_size> buffer = xfade_loop_init_buffer(loop_head);
     std::array<float, 2*xfade_half_size> result;    
     constexpr sf_count_t buffer_size = buffer.size();
+
+    SPDLOG_WARN("====INIT====");
     for (sf_count_t i = 0; i < buffer_size; i++) {
-        if (i < window_half_size || i >= buffer_size - window_half_size) {
-            result[i] = buffer[i];
+        SPDLOG_WARN("{:3} {:.6f}", i, buffer[i]);
+    }
+
+    constexpr float window_half_size = xfade_half_size/20;
+    float start_sum = 0.0;
+    float end_sum = 0.0;
+    sf_count_t start_buffer_pos = xfade_half_size + window_half_size - 1;
+    sf_count_t end_buffer_pos = xfade_half_size - window_half_size;
+    for (sf_count_t i = 0; i < window_half_size; i++) {
+        start_sum += buffer[start_buffer_pos];
+        buffer[start_buffer_pos] = start_sum/(float)(i + 1);
+        start_buffer_pos--;
+        
+        end_sum += buffer[end_buffer_pos];
+        buffer[end_buffer_pos] = end_sum/(float)(i + 1);
+        end_buffer_pos++;
+    }
+
+    SPDLOG_WARN("====RESULT====");
+    for (sf_count_t i = 0; i < buffer_size; i++) {
+        float start_sample;
+        float end_sample;
+        if (i < xfade_half_size) {
+            start_sample = buffer[(buffer_size - i) - 1];
+            end_sample = buffer[i];
         } else {
-            float window_value = 0.0;
-            float window_weight = 0.0;
-            for (sf_count_t j = -window_half_size; j < window_half_size + 1; j++) {
-                float weight = 1.0 - std::abs(static_cast<float>(j) / static_cast<float>(window_half_size + 1));
-                window_value += buffer[i+j] * weight;
-                window_weight += weight;
-            }
-            if (window_weight == 0.0) {
-                result[i] = buffer[i];
-            } else {
-                result[i] = window_value / window_weight;
-            }
+            start_sample = buffer[i];
+            end_sample = buffer[(buffer_size - i) - 1];
         }
+        //float ni = ((float)i / (float)(xfade_half_size)) - 1.0;
+        //result[i] = start_sample*std::sqrt((1.0 + ni)/2.0) + end_sample*std::sqrt((1.0 - ni)/2.0);
+        result[i] = start_sample*((float)i/(float)buffer_size) + end_sample*((float)(buffer_size-i)/(float)buffer_size);
+
+        SPDLOG_WARN("{:3} {:.6f}->{:.6f}", i, buffer[i], result[i]);
     }
     xfade_loop_copy_result(loop_head, result);
 }

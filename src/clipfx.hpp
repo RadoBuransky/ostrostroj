@@ -4,8 +4,7 @@
 
 class ClipFx {
     private:
-        static constexpr sf_count_t window_half_size = 100;
-        static constexpr sf_count_t xfade_half_size = 2*window_half_size;
+        static constexpr sf_count_t xfade_half_size = 480;
         ClipFx() = default;
 
         std::array<float, 2*xfade_half_size> xfade_loop_init_buffer(ClipBlock& loop_head);
