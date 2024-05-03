@@ -100,6 +100,8 @@ void SoundCard::libremidi_message_callback(const libremidi::message& message) {
             break;
         case libremidi::message_type::PROGRAM_CHANGE:
         case libremidi::message_type::START:
+            // TODO: !!!
+            jack_transport_start(jack_client);
         case libremidi::message_type::CONTINUE:
         case libremidi::message_type::STOP:
             if (!midi_fifo.push(libremidi::message(message))) {
