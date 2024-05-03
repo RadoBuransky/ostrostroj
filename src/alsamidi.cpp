@@ -4,6 +4,7 @@
 
 static void* run_thru(void* context) {
     AlsaMidi& self = *(AlsaMidi*)context;
+    SPDLOG_INFO("ALSA rawmidi thru started.");
     while (!self.stop) {
         unsigned char ch;
         snd_rawmidi_read(self.handle_in, &ch, 1);
@@ -11,16 +12,29 @@ static void* run_thru(void* context) {
         snd_rawmidi_write(self.handle_out, &ch, 1);
         snd_rawmidi_drain(self.handle_out);
     }
+    SPDLOG_INFO("ALSA rawmidi thru stopped.");
     return 0;
 }
 
-snd_rawmidi_t* AlsaMidi::open(const std::string& device_name) {
+snd_rawmidi_t* AlsaMidi::open_in(const std::string& device_name) {
     snd_rawmidi_t* result;
     int err;
     err = snd_rawmidi_open(&result, NULL, device_name.c_str(), 0);    
     if (err) {
         SPDLOG_ERROR("snd_rawmidi_open {} failed: {}", device_name, err);
     }
+    SPDLOG_INFO("ALSA rawmidi input open. [{}]", device_name);
+    return result;
+}
+
+snd_rawmidi_t* AlsaMidi::open_out(const std::string& device_name) {
+    snd_rawmidi_t* result;
+    int err;
+    err = snd_rawmidi_open(NULL, &result, device_name.c_str(), 0);    
+    if (err) {
+        SPDLOG_ERROR("snd_rawmidi_open {} failed: {}", device_name, err);
+    }
+    SPDLOG_INFO("ALSA rawmidi output open. [{}]", device_name);
     return result;
 }
 
@@ -47,7 +61,7 @@ pthread_t AlsaMidi::create_rt_thread() {
     }
     struct sched_param rt_param;
     memset(&rt_param, 0, sizeof(rt_param));
-    rt_param.sched_priority = -10;
+    rt_param.sched_priority = 90;
     if ((res = pthread_attr_setschedparam(&attributes, &rt_param))) {
         SPDLOG_ERROR("Cannot set scheduling priority for RT thread res = {}", res);
         return 0;
@@ -62,12 +76,13 @@ pthread_t AlsaMidi::create_rt_thread() {
         return 0;
     }
     pthread_attr_destroy(&attributes);
+    SPDLOG_INFO("ALSA thread created. [0x{:X}]", result);
     return result;
 }
 
 AlsaMidi::AlsaMidi():
-    handle_in(open(device_in)),
-    handle_out(open(device_out)),
+    handle_in(open_in(device)),
+    handle_out(open_out(device)),
     stop(false),
     thru_thread(create_rt_thread()) {
 }
@@ -77,11 +92,11 @@ AlsaMidi::~AlsaMidi() {
     void* status;
     pthread_join(thru_thread, &status);
     if (handle_in) {
-        snd_rawmidi_drain(handle_in); 
-        snd_rawmidi_close(handle_in);   
+        snd_rawmidi_drain(handle_in);
+        snd_rawmidi_close(handle_in);
     }
     if (handle_out) {
-        snd_rawmidi_drain(handle_out); 
-        snd_rawmidi_close(handle_out);  
+        snd_rawmidi_drain(handle_out);
+        snd_rawmidi_close(handle_out);
     }
 }

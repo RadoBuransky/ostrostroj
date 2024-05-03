@@ -13,10 +13,10 @@
 
 class OstrostrojApp {
     private:
-        SoundCard soundCard;
-        Project project;
-        Engine engine;
         AlsaMidi alsa_midi;
+        // SoundCard soundCard;
+        // Project project;
+        // Engine engine;
 
         static void sigaction_handler(int s) {
             SPDLOG_INFO("Signal received [{}].", s);
@@ -34,13 +34,14 @@ class OstrostrojApp {
 
     public:
         OstrostrojApp():
-            soundCard(SoundCard("ostrostroj")),
-            project(Project("/home/rado/project/")),
-            engine(Engine(project, soundCard)),
-            alsa_midi(AlsaMidi()) {
+            alsa_midi(AlsaMidi())
+            // soundCard(SoundCard("ostrostroj")),
+            // project(Project("/home/rado/project/")),
+            // engine(Engine(project, soundCard))
+            {
             try {
-                soundCard.start(std::bind(&Engine::next, &engine));
-                project.verify(soundCard.get_sample_rate(), engine.get_loop_track_count());
+                //soundCard.start(std::bind(&Engine::next, &engine));
+                //project.verify(soundCard.get_sample_rate(), engine.get_loop_track_count());
             } catch (std::exception const &ex) {
                 SPDLOG_ERROR(ex.what());
                 throw;
