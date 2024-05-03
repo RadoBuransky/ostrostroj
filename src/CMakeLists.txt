@@ -3,11 +3,14 @@ add_executable(ostrostroj ${ostrostroj_SRC})
 set_target_properties(ostrostroj PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE)
 
 find_package(JACK REQUIRED)
+find_package(ALSA REQUIRED)
 target_include_directories(ostrostroj PRIVATE ${JACK_INCLUDE_DIR}
+                                      PRIVATE ${ALSA_INCLUDE_DIR}
                                       PRIVATE "${PROJECT_SOURCE_DIR}/lib/libsnd/include"
                                       PRIVATE "${PROJECT_SOURCE_DIR}/lib/farbot/include")
 target_link_libraries(ostrostroj PRIVATE spdlog::spdlog_header_only
                                  PRIVATE ${JACK_LIBRARIES}
+                                 PRIVATE ${ALSA_LIBRARIES}
                                  PRIVATE libremidi
                                  PRIVATE sndfile)
 

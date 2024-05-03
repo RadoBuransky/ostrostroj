@@ -9,12 +9,14 @@
 #include "project.hpp"
 #include "engine.hpp"
 #include "profiler.hpp"
+#include "alsamidi.hpp"
 
 class OstrostrojApp {
     private:
         SoundCard soundCard;
         Project project;
         Engine engine;
+        AlsaMidi alsa_midi;
 
         static void sigaction_handler(int s) {
             SPDLOG_INFO("Signal received [{}].", s);
@@ -34,7 +36,8 @@ class OstrostrojApp {
         OstrostrojApp():
             soundCard(SoundCard("ostrostroj")),
             project(Project("/home/rado/project/")),
-            engine(Engine(project, soundCard)) {
+            engine(Engine(project, soundCard)),
+            alsa_midi(AlsaMidi()) {
             try {
                 soundCard.start(std::bind(&Engine::next, &engine));
                 project.verify(soundCard.get_sample_rate(), engine.get_loop_track_count());

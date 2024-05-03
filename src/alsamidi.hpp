@@ -1,5 +1,7 @@
 #include <alsa/rawmidi.h>
 
+static void* run_thru(void* context);
+
 class AlsaMidi {
     private:
         // $ amidi -l
@@ -9,7 +11,7 @@ class AlsaMidi {
         snd_rawmidi_t *handle_out;
         std::atomic_bool stop;
         pthread_t thru_thread;
-        void run_thru();
+        friend void* run_thru(void* context);
         snd_rawmidi_t* open(const std::string& device_name);
         pthread_t create_rt_thread();
     public:

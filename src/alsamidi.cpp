@@ -2,14 +2,16 @@
 #include <alsa/asoundlib.h>
 #include "alsamidi.hpp"
 
-void AlsaMidi::run_thru() {
-    while (!stop) {
+static void* run_thru(void* context) {
+    AlsaMidi& self = *(AlsaMidi*)context;
+    while (!self.stop) {
         unsigned char ch;
-        snd_rawmidi_read(handle_in, &ch, 1);
+        snd_rawmidi_read(self.handle_in, &ch, 1);
         SPDLOG_TRACE("thru: 0x{:x}", ch);        
-        snd_rawmidi_write(handle_out, &ch, 1);
-        snd_rawmidi_drain(handle_out);
+        snd_rawmidi_write(self.handle_out, &ch, 1);
+        snd_rawmidi_drain(self.handle_out);
     }
+    return 0;
 }
 
 snd_rawmidi_t* AlsaMidi::open(const std::string& device_name) {
@@ -29,35 +31,35 @@ pthread_t AlsaMidi::create_rt_thread() {
     int res;
     if ((res = pthread_attr_setdetachstate(&attributes, PTHREAD_CREATE_JOINABLE))) {
         SPDLOG_ERROR("Cannot request joinable thread creation for thread res = {}", res);
-        return;
+        return 0;
     }
     if ((res = pthread_attr_setscope(&attributes, PTHREAD_SCOPE_SYSTEM))) {
         SPDLOG_ERROR("Cannot set scheduling scope for thread res = {}", res);
-        return;
+        return 0;
     }
     if ((res = pthread_attr_setinheritsched(&attributes, PTHREAD_EXPLICIT_SCHED))) {
         SPDLOG_ERROR("Cannot request explicit scheduling for RT thread res = {}", res);
-        return;
+        return 0;
     }
     if ((res = pthread_attr_setschedpolicy(&attributes, SCHED_FIFO))) {
         SPDLOG_ERROR("Cannot set RR scheduling class for RT thread res = {}", res);
-        return;
+        return 0;
     }
     struct sched_param rt_param;
     memset(&rt_param, 0, sizeof(rt_param));
     rt_param.sched_priority = -10;
     if ((res = pthread_attr_setschedparam(&attributes, &rt_param))) {
         SPDLOG_ERROR("Cannot set scheduling priority for RT thread res = {}", res);
-        return;
+        return 0;
     }
     if ((res = pthread_attr_setstacksize(&attributes, 524288))) {
         SPDLOG_ERROR("Cannot set thread stack size res = {}", res);
-        return;
+        return 0;
     }
     pthread_t result;
-    if ((res = pthread_create(&result, &attributes, start_routine, arg))) {
+    if ((res = pthread_create(&result, &attributes, run_thru, this))) {
         SPDLOG_ERROR("Cannot create thread res = {}", res);
-        return;
+        return 0;
     }
     pthread_attr_destroy(&attributes);
     return result;
