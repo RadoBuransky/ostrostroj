@@ -13,6 +13,7 @@ static void* run_thru(void* context) {
         return 0;
     }
     snd_seq_event_t event;
+    std::array<unsigned char, 64> decoded;
     SPDLOG_INFO("ALSA rawmidi thru started.");
     while (!self.stop) {
         unsigned char ch;
@@ -33,14 +34,23 @@ static void* run_thru(void* context) {
                     case SND_SEQ_EVENT_STOP:
                         SPDLOG_INFO("SND_SEQ_EVENT_STOP");
                         break;
+                    case SND_SEQ_EVENT_PGMCHANGE:                        
+                        SPDLOG_INFO("SND_SEQ_EVENT_PGMCHANGE [ch={},param={},value={}]", event.data.control.channel,
+                            event.data.control.param, event.data.control.value);
+                        break;
                     default:
                         SPDLOG_TRACE("thru: 0x{:x}", ch);
                         break;
                 }
+                int decoded_size = snd_midi_event_decode(parser, decoded.data(), decoded.size(), &event);
+                if (decoded_size <= 0) {
+                    SPDLOG_ERROR("snd_midi_event_decode failed = {}", decoded_size);
+                } else {
+                    snd_rawmidi_write(self.handle_out, decoded.data(), decoded_size);
+                    snd_rawmidi_drain(self.handle_out);
+                }
             }
         }
-        snd_rawmidi_write(self.handle_out, &ch, 1);
-        snd_rawmidi_drain(self.handle_out);
     }
     SPDLOG_INFO("ALSA rawmidi thru stopped.");
     snd_midi_event_free(parser);
