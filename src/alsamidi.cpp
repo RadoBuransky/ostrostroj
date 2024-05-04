@@ -8,7 +8,20 @@ static void* run_thru(void* context) {
     while (!self.stop) {
         unsigned char ch;
         snd_rawmidi_read(self.handle_in, &ch, 1);
-        SPDLOG_TRACE("thru: 0x{:x}", ch);        
+        switch (ch) {
+          case MIDI_CMD_COMMON_START:
+            SPDLOG_INFO("MIDI_CMD_COMMON_START");
+            break;
+          case MIDI_CMD_COMMON_CONTINUE:
+            SPDLOG_INFO("MIDI_CMD_COMMON_CONTINUE");
+            break;
+          case MIDI_CMD_COMMON_STOP:
+            SPDLOG_INFO("MIDI_CMD_COMMON_STOP");
+            break;
+          default:
+            SPDLOG_TRACE("thru: 0x{:x}", ch);
+            break;
+        }
         snd_rawmidi_write(self.handle_out, &ch, 1);
         snd_rawmidi_drain(self.handle_out);
     }
@@ -23,6 +36,17 @@ snd_rawmidi_t* AlsaMidi::open_in(const std::string& device_name) {
     if (err) {
         SPDLOG_ERROR("snd_rawmidi_open {} failed: {}", device_name, err);
     }
+    snd_rawmidi_params_t *params;
+    snd_rawmidi_params_malloc(&params);
+    snd_rawmidi_params_current(result, params);
+    size_t old_buffer_size = snd_rawmidi_params_get_buffer_size(params);
+    SPDLOG_INFO("Old buffer size = {}", old_buffer_size);
+    // snd_rawmidi_params_set_buffer_size(result, params, 64*1024);
+    err = snd_rawmidi_params(result, params);  
+    if (err) {
+        SPDLOG_ERROR("snd_rawmidi_params {} failed: {}", device_name, err);
+    }
+    snd_rawmidi_params_free(params);
     SPDLOG_INFO("ALSA rawmidi input open. [{}]", device_name);
     return result;
 }
