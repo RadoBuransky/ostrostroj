@@ -2,30 +2,48 @@
 #include <alsa/asoundlib.h>
 #include "alsamidi.hpp"
 
+// TODO: https://alsamodular.sourceforge.net/seqdemo.c
+
 static void* run_thru(void* context) {
     AlsaMidi& self = *(AlsaMidi*)context;
+    snd_midi_event_t* parser;
+    int res = snd_midi_event_new(64, &parser);
+    if (res < 0) {
+        SPDLOG_ERROR("snd_midi_event_new failed = {}", res);
+        return 0;
+    }
+    snd_seq_event_t event;
     SPDLOG_INFO("ALSA rawmidi thru started.");
     while (!self.stop) {
         unsigned char ch;
         snd_rawmidi_read(self.handle_in, &ch, 1);
-        switch (ch) {
-          case MIDI_CMD_COMMON_START:
-            SPDLOG_INFO("MIDI_CMD_COMMON_START");
-            break;
-          case MIDI_CMD_COMMON_CONTINUE:
-            SPDLOG_INFO("MIDI_CMD_COMMON_CONTINUE");
-            break;
-          case MIDI_CMD_COMMON_STOP:
-            SPDLOG_INFO("MIDI_CMD_COMMON_STOP");
-            break;
-          default:
-            SPDLOG_TRACE("thru: 0x{:x}", ch);
-            break;
+        res = snd_midi_event_encode_byte(parser, ch, &event);
+        if (res < 0) {
+            SPDLOG_ERROR("snd_midi_event_encode_byte failed = {}", res);
+            snd_midi_event_reset_encode(parser);
+        } else {
+            if (res == 1) {
+                switch (event.type) {
+                    case SND_SEQ_EVENT_START:
+                        SPDLOG_INFO("SND_SEQ_EVENT_START");
+                        break;
+                    case SND_SEQ_EVENT_CONTINUE:
+                        SPDLOG_INFO("SND_SEQ_EVENT_CONTINUE");
+                        break;
+                    case SND_SEQ_EVENT_STOP:
+                        SPDLOG_INFO("SND_SEQ_EVENT_STOP");
+                        break;
+                    default:
+                        SPDLOG_TRACE("thru: 0x{:x}", ch);
+                        break;
+                }
+            }
         }
         snd_rawmidi_write(self.handle_out, &ch, 1);
         snd_rawmidi_drain(self.handle_out);
     }
     SPDLOG_INFO("ALSA rawmidi thru stopped.");
+    snd_midi_event_free(parser);
     return 0;
 }
 
