@@ -14,16 +14,19 @@ static void* run_thru(void* context) {
     }
     snd_seq_event_t event;
     std::array<unsigned char, 64> decoded;
+    unsigned char* decoded_current = decoded.data();
     SPDLOG_INFO("ALSA rawmidi thru started.");
     while (!self.stop) {
-        unsigned char ch;
-        snd_rawmidi_read(self.handle_in, &ch, 1);
-        res = snd_midi_event_encode_byte(parser, ch, &event);
+        snd_rawmidi_read(self.handle_in, decoded_current, 1);
+        res = snd_midi_event_encode_byte(parser, *decoded_current, &event);
         if (res < 0) {
             SPDLOG_ERROR("snd_midi_event_encode_byte failed = {}", res);
             snd_midi_event_reset_encode(parser);
+            decoded_current = decoded.data();
         } else {
+            decoded_current++;
             if (res == 1) {
+                bool pass = true;
                 switch (event.type) {
                     case SND_SEQ_EVENT_START:
                         SPDLOG_INFO("SND_SEQ_EVENT_START");
@@ -37,17 +40,21 @@ static void* run_thru(void* context) {
                     case SND_SEQ_EVENT_PGMCHANGE:                        
                         SPDLOG_INFO("SND_SEQ_EVENT_PGMCHANGE [ch={},param={},value={}]", event.data.control.channel,
                             event.data.control.param, event.data.control.value);
+                        pass = ((event.data.control.value % 2) == 0);
                         break;
                     default:
                         SPDLOG_TRACE("thru: 0x{:x}", ch);
                         break;
                 }
-                int decoded_size = snd_midi_event_decode(parser, decoded.data(), decoded.size(), &event);
-                if (decoded_size <= 0) {
-                    SPDLOG_ERROR("snd_midi_event_decode failed = {}", decoded_size);
-                } else {
-                    snd_rawmidi_write(self.handle_out, decoded.data(), decoded_size);
+                if (pass) {
+                    snd_rawmidi_write(self.handle_out, decoded.data(), decoded_current - decoded.data());
                     snd_rawmidi_drain(self.handle_out);
+                }
+                decoded_current = decoded.data();
+            } else {
+                if (decoded_current >= decoded.data() + decoded.size()) {
+                    SPDLOG_ERROR("Decoded buffer overflow!");
+                    decoded_current = decoded.data();
                 }
             }
         }
