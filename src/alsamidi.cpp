@@ -7,7 +7,7 @@
 static void* run_thru(void* context) {
     AlsaMidi& self = *(AlsaMidi*)context;
     snd_midi_event_t* parser;
-    int res = snd_midi_event_new(64, &parser);
+    int res = snd_midi_event_new(256, &parser);
     if (res < 0) {
         SPDLOG_ERROR("snd_midi_event_new failed = {}", res);
         return 0;
@@ -15,6 +15,11 @@ static void* run_thru(void* context) {
     snd_seq_event_t event;
     std::array<unsigned char, 64> decoded;
     unsigned char* decoded_current = decoded.data();
+    timespec prev_event_clock = {0,0};
+    timespec current_event_clock = {0,0};
+    timespec clock_wait = {0,0};
+    int log_count = 0;
+    clock_gettime(CLOCK_MONOTONIC, &prev_event_clock);
     SPDLOG_INFO("ALSA rawmidi thru started.");
     while (!self.stop) {
         snd_rawmidi_read(self.handle_in, decoded_current, 1);
@@ -41,6 +46,25 @@ static void* run_thru(void* context) {
                         SPDLOG_INFO("SND_SEQ_EVENT_PGMCHANGE [ch={},param={},value={}]", event.data.control.channel,
                             event.data.control.param, event.data.control.value);
                         pass = ((event.data.control.value % 2) == 0);
+                        break;
+                    case SND_SEQ_EVENT_CLOCK:
+                        if (clock_gettime(CLOCK_MONOTONIC, &current_event_clock) != 0) {
+                            SPDLOG_ERROR("clock_gettime failed");
+                        }
+                        clock_wait.tv_nsec = (current_event_clock.tv_nsec - prev_event_clock.tv_nsec) +
+                            ((current_event_clock.tv_sec - prev_event_clock.tv_sec) * 1000000000L) - 1000000L;
+                        if (clock_wait.tv_nsec > 0) {
+                            log_count++;
+                            if (log_count % 100 == 0) {
+                                SPDLOG_INFO("wait = {} s + {} ns", clock_wait.tv_sec, clock_wait.tv_nsec);
+                            }
+                            prev_event_clock = current_event_clock;
+                            nanosleep(&clock_wait, nullptr);
+                        } else {
+                            SPDLOG_WARN("Negative wait {} [{}:{} - {}:{}]" , clock_wait.tv_nsec, current_event_clock.tv_sec, current_event_clock.tv_nsec,
+                                prev_event_clock.tv_sec, prev_event_clock.tv_nsec);
+                            prev_event_clock = current_event_clock;
+                        }
                         break;
                     default:
                         SPDLOG_TRACE("thru: 0x{:x}", ch);
