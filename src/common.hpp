@@ -10,3 +10,5 @@ class OstrostrojException : public std::runtime_error {
     public:
         OstrostrojException(const std::string &msg) : std::runtime_error{msg} {}
 };
+
+pthread_t create_rt_thread(int sched_priority, void *(*start_routine) (void *), void* arg);

@@ -10,12 +10,12 @@
 #include "engine.hpp"
 #include "profiler.hpp"
 #include "alsamidi.hpp"
-#include "alsaseqmidi.hpp"
+#include "alsapcm.hpp"
 
 class OstrostrojApp {
     private:
-        // AlsaSeqMidi alsa_seq_midi;
         AlsaMidi alsa_midi;
+        AlsaPcm alsa_pcm;
         // SoundCard soundCard;
         // Project project;
         // Engine engine;
@@ -36,8 +36,8 @@ class OstrostrojApp {
 
     public:
         OstrostrojApp():
-            // alsa_seq_midi(AlsaSeqMidi())
-            alsa_midi(AlsaMidi())
+            alsa_midi(AlsaMidi()),
+            alsa_pcm(AlsaPcm())
             // soundCard(SoundCard("ostrostroj")),
             // project(Project("/home/rado/project/")),
             // engine(Engine(project, soundCard))

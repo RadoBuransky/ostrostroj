@@ -16,6 +16,19 @@ static void* run_thru(void* context) {
     std::array<unsigned char, 64> decoded;
     unsigned char* decoded_current;
     SPDLOG_INFO("ALSA rawmidi thru started.");
+
+    // const snd_pcm_channel_area_t* areas;
+    // snd_pcm_uframes_t offset;
+    // snd_pcm_uframes_t frames;
+    // snd_pcm_sframes_t avail = snd_pcm_avail(self.pcm_out);
+    // if (avail < 0) {
+    //     SPDLOG_ERROR("snd_pcm_avail failed = {}", avail);        
+    // }
+    // res = snd_pcm_mmap_begin(self.pcm_out, &areas, &offset, &frames);
+    // if (res) {
+    //     SPDLOG_ERROR("snd_pcm_mmap_begin failed = {}", res);
+    // }
+
     while (!self.stop) {
         decoded_current = decoded.data();
         ssize_t read_size = snd_rawmidi_read(self.handle_in, decoded.data(), decoded.size());
@@ -67,7 +80,7 @@ static void* run_thru(void* context) {
     return 0;
 }
 
-snd_rawmidi_t* AlsaMidi::open_in(const std::string& device_name) {
+snd_rawmidi_t* AlsaMidi::open_midi_in(const std::string& device_name) {
     snd_rawmidi_t* result;
     int err;
     err = snd_rawmidi_open(&result, NULL, device_name.c_str(), 0);    
@@ -88,7 +101,7 @@ snd_rawmidi_t* AlsaMidi::open_in(const std::string& device_name) {
     return result;
 }
 
-snd_rawmidi_t* AlsaMidi::open_out(const std::string& device_name) {
+snd_rawmidi_t* AlsaMidi::open_midi_out(const std::string& device_name) {
     snd_rawmidi_t* result;
     int err;
     err = snd_rawmidi_open(NULL, &result, device_name.c_str(), 0);    
@@ -99,53 +112,11 @@ snd_rawmidi_t* AlsaMidi::open_out(const std::string& device_name) {
     return result;
 }
 
-pthread_t AlsaMidi::create_rt_thread() {
-    // https://github.com/jackaudio/jack2/blob/c46c1b16e0eabbcf55ef69b0ffb96dfe16521cfa/posix/JackPosixThread.cpp#L117
-    pthread_attr_t attributes;
-    pthread_attr_init(&attributes);
-    int res;
-    if ((res = pthread_attr_setdetachstate(&attributes, PTHREAD_CREATE_JOINABLE))) {
-        SPDLOG_ERROR("Cannot request joinable thread creation for thread res = {}", res);
-        return 0;
-    }
-    if ((res = pthread_attr_setscope(&attributes, PTHREAD_SCOPE_SYSTEM))) {
-        SPDLOG_ERROR("Cannot set scheduling scope for thread res = {}", res);
-        return 0;
-    }
-    if ((res = pthread_attr_setinheritsched(&attributes, PTHREAD_EXPLICIT_SCHED))) {
-        SPDLOG_ERROR("Cannot request explicit scheduling for RT thread res = {}", res);
-        return 0;
-    }
-    if ((res = pthread_attr_setschedpolicy(&attributes, SCHED_FIFO))) {
-        SPDLOG_ERROR("Cannot set RR scheduling class for RT thread res = {}", res);
-        return 0;
-    }
-    struct sched_param rt_param;
-    memset(&rt_param, 0, sizeof(rt_param));
-    rt_param.sched_priority = 90;
-    if ((res = pthread_attr_setschedparam(&attributes, &rt_param))) {
-        SPDLOG_ERROR("Cannot set scheduling priority for RT thread res = {}", res);
-        return 0;
-    }
-    if ((res = pthread_attr_setstacksize(&attributes, 524288))) {
-        SPDLOG_ERROR("Cannot set thread stack size res = {}", res);
-        return 0;
-    }
-    pthread_t result;
-    if ((res = pthread_create(&result, &attributes, run_thru, this))) {
-        SPDLOG_ERROR("Cannot create thread res = {}", res);
-        return 0;
-    }
-    pthread_attr_destroy(&attributes);
-    SPDLOG_INFO("ALSA thread created. [0x{:X}]", result);
-    return result;
-}
-
 AlsaMidi::AlsaMidi():
-    handle_in(open_in(device)),
-    handle_out(open_out(device)),
+    handle_in(open_midi_in(MIDI_DEVICE_NAME)),
+    handle_out(open_midi_out(MIDI_DEVICE_NAME)),
     stop(false),
-    thru_thread(create_rt_thread()) {
+    thru_thread(create_rt_thread(80, run_thru, this)) {
 }
 
 AlsaMidi::~AlsaMidi() {
