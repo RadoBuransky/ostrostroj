@@ -4,7 +4,7 @@
 
 // TODO: https://alsamodular.sourceforge.net/seqdemo.c
 
-static void* run_thru(void* context) {
+void* run_thru(void* context) {
     AlsaMidi& self = *(AlsaMidi*)context;
     snd_midi_event_t* parser;
     int res = snd_midi_event_new(256, &parser);

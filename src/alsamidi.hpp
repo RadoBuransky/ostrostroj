@@ -1,7 +1,5 @@
 #include <alsa/rawmidi.h>
 
-static void* run_thru(void* context);
-
 class AlsaMidi {
     private:
         // $ amidi -l
