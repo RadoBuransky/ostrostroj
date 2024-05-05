@@ -14,8 +14,8 @@
 
 class OstrostrojApp {
     private:
-        AlsaMidi alsa_midi;
         AlsaPcm alsa_pcm;
+        AlsaMidi alsa_midi;
         // SoundCard soundCard;
         // Project project;
         // Engine engine;
@@ -36,8 +36,8 @@ class OstrostrojApp {
 
     public:
         OstrostrojApp():
-            alsa_midi(AlsaMidi()),
-            alsa_pcm(AlsaPcm())
+            alsa_pcm(AlsaPcm()),
+            alsa_midi(AlsaMidi(alsa_pcm))
             // soundCard(SoundCard("ostrostroj")),
             // project(Project("/home/rado/project/")),
             // engine(Engine(project, soundCard))

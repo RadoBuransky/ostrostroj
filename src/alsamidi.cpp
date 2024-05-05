@@ -45,6 +45,7 @@ void* run_thru(void* context) {
                     switch (event.type) {
                         case SND_SEQ_EVENT_START:
                             SPDLOG_INFO("SND_SEQ_EVENT_START");
+                            self.alsa_pcm.click();
                             break;
                         case SND_SEQ_EVENT_CONTINUE:
                             SPDLOG_INFO("SND_SEQ_EVENT_CONTINUE");
@@ -112,7 +113,8 @@ snd_rawmidi_t* AlsaMidi::open_midi_out(const std::string& device_name) {
     return result;
 }
 
-AlsaMidi::AlsaMidi():
+AlsaMidi::AlsaMidi(AlsaPcm& _alsa_pcm):
+    alsa_pcm(_alsa_pcm),
     handle_in(open_midi_in(MIDI_DEVICE_NAME)),
     handle_out(open_midi_out(MIDI_DEVICE_NAME)),
     stop(false),

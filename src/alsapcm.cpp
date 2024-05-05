@@ -6,10 +6,54 @@
 
 void* run_pcm(void* context) {
     AlsaPcm& self = *(AlsaPcm*)context;
-    while (!self.stop) {
-        sleep(1);
+    constexpr int FRAMES = 200;
+    int sample_size = snd_pcm_format_physical_width(self.PCM_OUT_FORMAT) / 8;
+    int frame_size = self.PCM_OUT_CHANNELS * sample_size; 
+    unsigned char* samples = (unsigned char*)malloc(FRAMES * frame_size);
+
+    unsigned char* buffer = samples;
+    for (auto frame = 0; frame < FRAMES; frame++) {
+        for (auto channel = 0; channel < self.PCM_OUT_CHANNELS; channel++) {
+            self.float_to_s24_3le(0.75, buffer);
+            buffer += sample_size;
+        }
     }
+    SPDLOG_INFO("click initialized [{} bytes, values = {}:{}:{}]", sample_size, samples[0], samples[1], samples[2]);
+
+    while (!self.stop) {
+        self.click_flag.test_and_set();
+        SPDLOG_INFO("Waiting to click...");
+        self.click_flag.wait(true);
+
+        buffer = samples;
+        auto counter = FRAMES;
+        while (counter > 0) {
+            int err = snd_pcm_writei(self.pcm_out, buffer, counter);
+            if (err == -EAGAIN) {
+                continue;
+            }
+            if (err < 0) {
+                SPDLOG_ERROR("Write error: {}", snd_strerror(err));
+                // TODO: Handle xrun?
+                break;
+            }
+            buffer += err * frame_size;
+            counter -= err;
+            SPDLOG_INFO("snd_pcm_writei = {}", err);
+        }
+        SPDLOG_INFO("Click done.");
+    }
+
+    free(samples);
     return 0;
+}
+
+// https://github.com/naudio/NAudio/blob/a106da4eed61774e9bd3eda1fa7922581aee04e1/NAudio.Asio/ASIOSampleConvertor.cs#L415
+void AlsaPcm::float_to_s24_3le(float sample, unsigned char* buffer) {
+    signed int sample24 = (signed int)((double)sample * (double)8388607.0);
+    buffer[0] = (unsigned char)(sample24);
+    buffer[1] = (unsigned char)(sample24 >> 8);
+    buffer[2] = (unsigned char)(sample24 >> 16);
 }
  
 int AlsaPcm::set_hwparams(snd_pcm_t* handle, snd_pcm_hw_params_t* params) {
@@ -70,10 +114,10 @@ int AlsaPcm::set_hwparams(snd_pcm_t* handle, snd_pcm_hw_params_t* params) {
         SPDLOG_ERROR("Rate doesn't match (requested {}Hz, get {}Hz)", PCM_OUT_RATE, err);
         return -EINVAL;
     }
-    unsigned int rbuffer_time = PCM_OUT_BUFFER_TIME_US;
+    unsigned int rbuffer_time = std::chrono::duration<long, std::micro>(PCM_OUT_BUFFER_TIME).count();
     err = snd_pcm_hw_params_set_buffer_time_near(handle, params, &rbuffer_time, &dir);
     if (err < 0) {
-        SPDLOG_ERROR("Unable to set buffer time {} for playback: {}", PCM_OUT_BUFFER_TIME_US, snd_strerror(err));
+        SPDLOG_ERROR("Unable to set buffer time {} for playback: {}", std::to_string(PCM_OUT_BUFFER_TIME.count()), snd_strerror(err));
         return err;
     }
     err = snd_pcm_hw_params_get_buffer_size(params, &size);
@@ -82,10 +126,10 @@ int AlsaPcm::set_hwparams(snd_pcm_t* handle, snd_pcm_hw_params_t* params) {
         return err;
     }
     buffer_size = size;
-    unsigned int rperiod_time = PCM_OUT_PERIOD_TIME_US;
+    unsigned int rperiod_time =  std::chrono::duration<long, std::micro>(PCM_OUT_PERIOD_TIME).count();
     err = snd_pcm_hw_params_set_period_time_near(handle, params, &rperiod_time, &dir);
     if (err < 0) {
-        SPDLOG_ERROR("Unable to set period time {} for playback: {}", PCM_OUT_PERIOD_TIME_US, snd_strerror(err));
+        SPDLOG_ERROR("Unable to set period time {} for playback: {}", std::to_string(PCM_OUT_PERIOD_TIME.count()), snd_strerror(err));
         return err;
     }
     err = snd_pcm_hw_params_get_period_size(params, &size, &dir);
@@ -156,7 +200,7 @@ snd_pcm_t* AlsaPcm::open_pcm_out(const std::string& pcm_out_name) {
     if (err < 0) {
         SPDLOG_ERROR("Setting of hwparams failed: {}", snd_strerror(err));
     }
-    SPDLOG_INFO("ALSA pcm out hwparams set.");
+    SPDLOG_INFO("ALSA pcm out hwparams set. [buffer_size={},period_size={}]", buffer_size, period_size);
     snd_pcm_sw_params_t *swparams;
     snd_pcm_sw_params_alloca(&swparams);
     err = set_swparams(result, swparams);
@@ -170,15 +214,22 @@ snd_pcm_t* AlsaPcm::open_pcm_out(const std::string& pcm_out_name) {
 AlsaPcm::AlsaPcm():
     pcm_out(open_pcm_out(PCM_OUT_NAME)),
     stop(false),
+    click_flag(ATOMIC_FLAG_INIT),
     pcm_thread(create_rt_thread(THREAD_PRIORITY, run_pcm, this)) {    
 }
 
 AlsaPcm::~AlsaPcm() {    
     stop = true;
+    click();
     void* status;
     pthread_join(pcm_thread, &status);
     if (pcm_out) {
         snd_pcm_drain(pcm_out);
         snd_pcm_close(pcm_out);
     }
+}
+
+void AlsaPcm::click() {
+    click_flag.clear();
+    click_flag.notify_one();
 }
