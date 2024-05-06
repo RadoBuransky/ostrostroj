@@ -5,7 +5,6 @@
 #include <signal.h>
 #include <cstdlib>
 #include <functional>
-#include "soundcard.hpp"
 #include "project.hpp"
 #include "engine.hpp"
 #include "profiler.hpp"
@@ -16,9 +15,8 @@ class OstrostrojApp {
     private:
         AlsaPcm alsa_pcm;
         AlsaMidi alsa_midi;
-        // SoundCard soundCard;
-        // Project project;
-        // Engine engine;
+        Project project;
+        Engine engine;
 
         static void sigaction_handler(int s) {
             SPDLOG_INFO("Signal received [{}].", s);
@@ -37,14 +35,11 @@ class OstrostrojApp {
     public:
         OstrostrojApp():
             alsa_pcm(AlsaPcm()),
-            alsa_midi(AlsaMidi())
-            // soundCard(SoundCard("ostrostroj")),
-            // project(Project("/home/rado/project/")),
-            // engine(Engine(project, soundCard))
-            {
+            alsa_midi(AlsaMidi()),
+            project(Project("/home/rado/project/")),
+            engine(Engine(project, alsa_midi, alsa_pcm)) {
             try {
-                //soundCard.start(std::bind(&Engine::next, &engine));
-                //project.verify(soundCard.get_sample_rate(), engine.get_loop_track_count());
+                project.verify(alsa_pcm.get_sample_rate(), engine.get_loop_track_count());
             } catch (std::exception const &ex) {
                 SPDLOG_ERROR(ex.what());
                 throw;
