@@ -14,7 +14,7 @@ void* run_pcm(void* context) {
     snd_pcm_uframes_t offset, frames, size;
     float sample;
     unsigned char* buffer;
-    snd_pcm_uframes_t sample_size = snd_pcm_format_physical_width(self.PCM_OUT_FORMAT) / 8;
+    int step;
 
     while (!self.stop) {
         state = snd_pcm_state(self.pcm_out);
@@ -61,18 +61,15 @@ void* run_pcm(void* context) {
             
             for (int channel = 0; channel < self.PCM_OUT_CHANNELS; channel++) {
                 PcmFifo& pcm_fifo = *self.channel_fifos.at(channel);
-                buffer = ((unsigned char*)areas[channel].addr) + (areas[channel].first / 8) + (offset * sample_size);
-                if (areas[channel].step != (sample_size * 8)) {
-                    SPDLOG_ERROR("Invalid step! [{}]", areas[channel].step);
-                    return 0;
-                }
-                for (snd_pcm_uframes_t frame = 0; frame < frames; frame++) {
+                step = areas[channel].step / 8;
+                buffer = ((unsigned char*)areas[channel].addr) + (areas[channel].first / 8) + (offset * step);                
+                while (frames-- > 0) {
                     if (!pcm_fifo.pop(sample)) {
                         SPDLOG_ERROR("Channel {} xrun!", channel);
                         sample = 0.0;
                     }
                     self.float_to_s24_3le(sample, buffer);
-                    buffer += self.PCM_OUT_CHANNELS * sample_size;
+                    buffer += step;
                 }
             }
 

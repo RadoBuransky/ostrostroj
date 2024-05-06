@@ -35,20 +35,15 @@ void* run_thru(void* context) {
                     push = false;
                     switch (event.type) {
                         case SND_SEQ_EVENT_START:
-                            SPDLOG_INFO("SND_SEQ_EVENT_START");
                             push = true;
                             break;
                         case SND_SEQ_EVENT_CONTINUE:
-                            SPDLOG_INFO("SND_SEQ_EVENT_CONTINUE");
                             push = true;
                             break;
                         case SND_SEQ_EVENT_STOP:
-                            SPDLOG_INFO("SND_SEQ_EVENT_STOP");
                             push = true;
                             break;
-                        case SND_SEQ_EVENT_PGMCHANGE:                        
-                            SPDLOG_INFO("SND_SEQ_EVENT_PGMCHANGE [ch={},param={},value={}]", event.data.control.channel,
-                                event.data.control.param, event.data.control.value);
+                        case SND_SEQ_EVENT_PGMCHANGE:
                             pass = ((event.data.control.value % 2) == 0);
                             push = true;
                             break;

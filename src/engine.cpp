@@ -196,7 +196,7 @@ void Engine::process_midi() {
 #endif
             snd_seq_event_t midi_message;
             while (midi_fifo.pop(midi_message)) {
-                SPDLOG_TRACE(std::format("Processing MIDI message. [0x{:x}]", static_cast<int>(midi_message.type)));
+                SPDLOG_INFO("Processing MIDI message. [0x{:x}]", static_cast<int>(midi_message.type));
                 switch (midi_message.type) {
                     case SND_SEQ_EVENT_START:
                         midi_start();
