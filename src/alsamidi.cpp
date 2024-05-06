@@ -15,6 +15,8 @@ void* run_thru(void* context) {
     snd_seq_event_t event;
     std::array<unsigned char, 64> decoded;
     unsigned char* decoded_current;
+    bool pass;
+    bool push;
     SPDLOG_INFO("ALSA rawmidi thru started.");
 
     while (!self.stop) {
@@ -29,21 +31,26 @@ void* run_thru(void* context) {
                 read_size = 0;
             } else {
                 if (event.type != SND_SEQ_EVENT_NONE) {
-                    bool pass = true;
+                    pass = true;
+                    push = false;
                     switch (event.type) {
                         case SND_SEQ_EVENT_START:
                             SPDLOG_INFO("SND_SEQ_EVENT_START");
+                            push = true;
                             break;
                         case SND_SEQ_EVENT_CONTINUE:
                             SPDLOG_INFO("SND_SEQ_EVENT_CONTINUE");
+                            push = true;
                             break;
                         case SND_SEQ_EVENT_STOP:
                             SPDLOG_INFO("SND_SEQ_EVENT_STOP");
+                            push = true;
                             break;
                         case SND_SEQ_EVENT_PGMCHANGE:                        
                             SPDLOG_INFO("SND_SEQ_EVENT_PGMCHANGE [ch={},param={},value={}]", event.data.control.channel,
                                 event.data.control.param, event.data.control.value);
                             pass = ((event.data.control.value % 2) == 0);
+                            push = true;
                             break;
                         default:
                             SPDLOG_TRACE("thru: 0x{:x}", ch);
@@ -52,6 +59,11 @@ void* run_thru(void* context) {
                     if (pass) {
                         snd_rawmidi_write(self.handle_out, decoded_current, event_encode_res);
                         snd_rawmidi_drain(self.handle_out);
+                    }
+                    if (push) {
+                        if (!self.fifo.push(std::move(event))) {
+                            SPDLOG_ERROR("MIDI FIFO overrun!");
+                        }
                     }
                 }
                 decoded_current += event_encode_res;
@@ -104,6 +116,7 @@ AlsaMidi::AlsaMidi():
     handle_in(open_midi_in(MIDI_DEVICE_NAME)),
     handle_out(open_midi_out(MIDI_DEVICE_NAME)),
     stop(false),
+    fifo(AlsaMidiFifo(256)),
     thru_thread(create_rt_thread(80, run_thru, this)) {
 }
 
@@ -119,4 +132,8 @@ AlsaMidi::~AlsaMidi() {
         snd_rawmidi_drain(handle_out);
         snd_rawmidi_close(handle_out);
     }
+}
+
+AlsaMidiFifo& AlsaMidi::get_fifo() {
+    return fifo;
 }
