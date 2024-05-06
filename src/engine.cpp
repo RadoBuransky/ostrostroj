@@ -1,7 +1,6 @@
 #include "common.hpp"
 #include "engine.hpp"
 #include "profiler.hpp"
-#include "testclip.hpp"
 
 #define MAX_TASK_COUNT 64
 
@@ -33,15 +32,15 @@ void Track::pop_next_frame(float sample) {
     }
 }
 
-Track::Track(int _track_number, AudioFifo& channel):
-    Track(_track_number, std::vector<std::reference_wrapper<AudioFifo>>({std::ref(channel)})) {
+Track::Track(int _track_number, PcmFifo& channel):
+    Track(_track_number, std::vector<std::reference_wrapper<PcmFifo>>({std::ref(channel)})) {
 }
 
-Track::Track(int _track_number, AudioFifo& left_channel, AudioFifo& right_channel):
-    Track(_track_number, std::vector<std::reference_wrapper<AudioFifo>>({std::ref(left_channel), std::ref(right_channel)})) {
+Track::Track(int _track_number, PcmFifo& left_channel, PcmFifo& right_channel):
+    Track(_track_number, std::vector<std::reference_wrapper<PcmFifo>>({std::ref(left_channel), std::ref(right_channel)})) {
 }
 
-Track::Track(int _track_number, std::vector<std::reference_wrapper<AudioFifo>> _channels):
+Track::Track(int _track_number, std::vector<std::reference_wrapper<PcmFifo>> _channels):
     track_number(_track_number),
     channels(_channels),
     dynamic_node(DynamicNode()),
@@ -97,21 +96,21 @@ void Track::fill_output() {
     }
 }
 
-Engine::Engine(Project& _project, SoundCard& _soundCard):
+Engine::Engine(Project& _project, AlsaMidi& alsa_midi, AlsaPcm& alsa_pcm):
     project(_project),
-    soundCard(_soundCard),
+    midi_fifo(alsa_midi.get_fifo()),
+    alsa_next_period_flag(alsa_pcm.get_next_period_flag()),
     loop_tracks {
-        std::make_unique<Track>(1, _soundCard.get_audio_output_fifo(0)),
-        std::make_unique<Track>(2, _soundCard.get_audio_output_fifo(1)),
-        std::make_unique<Track>(3, _soundCard.get_audio_output_fifo(2)),
-        std::make_unique<Track>(4, _soundCard.get_audio_output_fifo(3)),
-        std::make_unique<Track>(5, _soundCard.get_audio_output_fifo(4), _soundCard.get_audio_output_fifo(5)),
-        std::make_unique<Track>(6, _soundCard.get_audio_output_fifo(6), _soundCard.get_audio_output_fifo(7)),
+        std::make_unique<Track>(1, alsa_pcm.get_channel_fifo(0)),
+        std::make_unique<Track>(2, alsa_pcm.get_channel_fifo(1)),
+        std::make_unique<Track>(3, alsa_pcm.get_channel_fifo(2)),
+        std::make_unique<Track>(4, alsa_pcm.get_channel_fifo(3)),
+        std::make_unique<Track>(5, alsa_pcm.get_channel_fifo(4), alsa_pcm.get_channel_fifo(5)),
+        std::make_unique<Track>(6, alsa_pcm.get_channel_fifo(6), alsa_pcm.get_channel_fifo(7)),
     },
-    one_shots_track(Track(7, _soundCard.get_audio_output_fifo(8), _soundCard.get_audio_output_fifo(9))),
+    one_shots_track(Track(7, alsa_pcm.get_channel_fifo(8), alsa_pcm.get_channel_fifo(9))),
     tasks(TrackTaskFifo(16)),
     interrupted(false),
-    next_flag(ATOMIC_FLAG_INIT),
     midi_processed(false),
     program_number(0) {
     static_assert(std::atomic_bool::is_always_lock_free);
@@ -120,8 +119,8 @@ Engine::Engine(Project& _project, SoundCard& _soundCard):
 
 Engine::~Engine() {   
     interrupted.store(true);
-    next_flag.clear();
-    next_flag.notify_all();    
+    alsa_next_period_flag.clear();
+    alsa_next_period_flag.notify_all();    
 }
 
 void Engine::create_threads() {
@@ -135,13 +134,14 @@ void Engine::run() {
     SPDLOG_DEBUG("Engine started.");
     try {
         while (!interrupted) {
-            next_flag.test_and_set();
-            next_flag.wait(true);
+            midi_processed = false;
+            alsa_next_period_flag.test_and_set();
+            alsa_next_period_flag.wait(true);
 #ifdef PROFILING            
             Profiler::get().engine_run_count++;
 #endif
             process_midi();
-            run_tasks();
+            run_tasks();            
         }
         SPDLOG_DEBUG("Engine interrupted.");
     } catch(std::exception const& e) {
@@ -194,22 +194,21 @@ void Engine::process_midi() {
 #ifdef PROFILING
             Profiler::get().next_engine_phase();
 #endif
-            libremidi::message midi_message;
-            MidiFifo& midi_fifo = soundCard.get_midi_fifo();
+            snd_seq_event_t midi_message;
             while (midi_fifo.pop(midi_message)) {
-                SPDLOG_TRACE(std::format("Processing MIDI message. [0x{:x}]", static_cast<int>(midi_message.get_message_type())));
-                switch (midi_message.get_message_type()) {
-                    case libremidi::message_type::START:
+                SPDLOG_TRACE(std::format("Processing MIDI message. [0x{:x}]", static_cast<int>(midi_message.type)));
+                switch (midi_message.type) {
+                    case SND_SEQ_EVENT_START:
                         midi_start();
                         break;
-                    case libremidi::message_type::STOP:
+                    case SND_SEQ_EVENT_STOP:
                         midi_stop();
                         break;
-                    case libremidi::message_type::CONTINUE:
+                    case SND_SEQ_EVENT_CONTINUE:
                         midi_continue();
                         break;
-                    case libremidi::message_type::PROGRAM_CHANGE:
-                        set_program(midi_message.bytes[0]); // TODO: Is this ok?
+                    case SND_SEQ_EVENT_PGMCHANGE:
+                        set_program(midi_message.data.control.value);
                         break;
                     default:
                         break;
@@ -217,7 +216,7 @@ void Engine::process_midi() {
             }
             create_tasks();
             midi_processed = true;
-            next_flag.notify_all();
+            alsa_next_period_flag.notify_all();
         }
     }
 }
@@ -257,14 +256,7 @@ void Engine::set_program(int _program_number) {
     for (LoopClip& loop_clip : active_program.get_loops()) {
         loop_tracks.at(loop_clip.get_track())->set_node(std::make_unique<ClipNode>(loop_clip, true));
     }
-    // loop_tracks[0]->set_node(std::make_unique<ClipNode>(RampDownClip::get(), true));
     SPDLOG_INFO("Program set. [{}]", program_number.load());
-}
-
-void Engine::next() {
-    midi_processed = false;
-    next_flag.clear();
-    next_flag.notify_one();
 }
 
 int Engine::get_loop_track_count() const {

@@ -3,26 +3,25 @@
 #include <vector>
 #include <thread>
 #include <array>
-#include <jack/jack.h>
-#include <libremidi/libremidi.hpp>
 #include "farbot/fifo.hpp"
+#include "alsamidi.hpp"
+#include "alsapcm.hpp"
 #include "project.hpp"
-#include "soundcard.hpp"
 #include "graph.hpp"
 
 class Track {
     private:
         const int track_number;
-        std::vector<std::reference_wrapper<AudioFifo>> channels;
+        std::vector<std::reference_wrapper<PcmFifo>> channels;
         DynamicNode dynamic_node;
         TrackNode track_node;
         std::vector<float> next_frame;
         bool push_next_frame();
         void pop_next_frame(float sample);
     public:
-        Track(int track_number, AudioFifo& channel);
-        Track(int track_number, AudioFifo& left_channel, AudioFifo& right_channel);
-        Track(int track_number, std::vector<std::reference_wrapper<AudioFifo>> channels);
+        Track(int track_number, PcmFifo& channel);
+        Track(int track_number, PcmFifo& left_channel, PcmFifo& right_channel);
+        Track(int track_number, std::vector<std::reference_wrapper<PcmFifo>> channels);
         void set_node(std::unique_ptr<Node>&& node);
         void reset_node();
         void fill_output();
@@ -40,7 +39,8 @@ typedef farbot::fifo<std::function<void(void)>,
 class Engine {
     private:
         Project& project;
-        SoundCard& soundCard;
+        AlsaMidiFifo& midi_fifo;
+        std::atomic_flag& alsa_next_period_flag;
 
         std::array<std::unique_ptr<Track>, 6> loop_tracks;
         Track one_shots_track;
@@ -49,7 +49,6 @@ class Engine {
         TrackTaskFifo tasks;
 
         std::atomic_bool interrupted;
-        std::atomic_flag next_flag;
         std::mutex midi_processing_mutex;
         std::atomic_bool midi_processed;
         std::atomic_int program_number;
@@ -69,9 +68,7 @@ class Engine {
         void set_program(int program_number);
 
     public:
-        Engine(Project& project, SoundCard& soundCard);
+        Engine(Project& project, AlsaMidi& alsa_midi, AlsaPcm& alsa_pcm);
         virtual ~Engine();
-
-        void next();
         int get_loop_track_count() const;
 };

@@ -1,5 +1,5 @@
 #pragma once
-#include <alsa/rawmidi.h>
+#include <alsa/asoundlib.h>
 #include "farbot/fifo.hpp"
 
 typedef farbot::fifo<snd_seq_event_t,
