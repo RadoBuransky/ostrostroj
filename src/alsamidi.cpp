@@ -17,18 +17,6 @@ void* run_thru(void* context) {
     unsigned char* decoded_current;
     SPDLOG_INFO("ALSA rawmidi thru started.");
 
-    // const snd_pcm_channel_area_t* areas;
-    // snd_pcm_uframes_t offset;
-    // snd_pcm_uframes_t frames;
-    // snd_pcm_sframes_t avail = snd_pcm_avail(self.pcm_out);
-    // if (avail < 0) {
-    //     SPDLOG_ERROR("snd_pcm_avail failed = {}", avail);        
-    // }
-    // res = snd_pcm_mmap_begin(self.pcm_out, &areas, &offset, &frames);
-    // if (res) {
-    //     SPDLOG_ERROR("snd_pcm_mmap_begin failed = {}", res);
-    // }
-
     while (!self.stop) {
         decoded_current = decoded.data();
         ssize_t read_size = snd_rawmidi_read(self.handle_in, decoded.data(), decoded.size());
@@ -45,7 +33,6 @@ void* run_thru(void* context) {
                     switch (event.type) {
                         case SND_SEQ_EVENT_START:
                             SPDLOG_INFO("SND_SEQ_EVENT_START");
-                            self.alsa_pcm.click();
                             break;
                         case SND_SEQ_EVENT_CONTINUE:
                             SPDLOG_INFO("SND_SEQ_EVENT_CONTINUE");
@@ -113,8 +100,7 @@ snd_rawmidi_t* AlsaMidi::open_midi_out(const std::string& device_name) {
     return result;
 }
 
-AlsaMidi::AlsaMidi(AlsaPcm& _alsa_pcm):
-    alsa_pcm(_alsa_pcm),
+AlsaMidi::AlsaMidi():
     handle_in(open_midi_in(MIDI_DEVICE_NAME)),
     handle_out(open_midi_out(MIDI_DEVICE_NAME)),
     stop(false),

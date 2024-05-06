@@ -6,45 +6,88 @@
 
 void* run_pcm(void* context) {
     AlsaPcm& self = *(AlsaPcm*)context;
-    constexpr int FRAMES = 200;
-    int sample_size = snd_pcm_format_physical_width(self.PCM_OUT_FORMAT) / 8;
-    int frame_size = self.PCM_OUT_CHANNELS * sample_size; 
-    unsigned char* samples = (unsigned char*)malloc(FRAMES * frame_size);
-
-    unsigned char* buffer = samples;
-    for (auto frame = 0; frame < FRAMES; frame++) {
-        for (auto channel = 0; channel < self.PCM_OUT_CHANNELS; channel++) {
-            self.float_to_s24_3le(0.75, buffer);
-            buffer += sample_size;
-        }
-    }
-    SPDLOG_INFO("click initialized [{} bytes, values = {}:{}:{}]", sample_size, samples[0], samples[1], samples[2]);
+    const snd_pcm_channel_area_t* areas;
+    snd_pcm_state_t state;
+    snd_pcm_sframes_t avail, commitres;
+    bool first = true;
+    int err;
+    snd_pcm_uframes_t offset, frames, size;
+    float sample;
+    unsigned char* buffer;
+    snd_pcm_uframes_t sample_size = snd_pcm_format_physical_width(self.PCM_OUT_FORMAT) / 8;
 
     while (!self.stop) {
-        self.click_flag.test_and_set();
-        SPDLOG_INFO("Waiting to click...");
-        self.click_flag.wait(true);
-
-        buffer = samples;
-        auto counter = FRAMES;
-        while (counter > 0) {
-            int err = snd_pcm_writei(self.pcm_out, buffer, counter);
-            if (err == -EAGAIN) {
-                continue;
-            }
-            if (err < 0) {
-                SPDLOG_ERROR("Write error: {}", snd_strerror(err));
-                // TODO: Handle xrun?
-                break;
-            }
-            buffer += err * frame_size;
-            counter -= err;
-            SPDLOG_INFO("snd_pcm_writei = {}", err);
+        state = snd_pcm_state(self.pcm_out);
+        if (state == SND_PCM_STATE_XRUN || state == SND_PCM_STATE_SUSPENDED) {            
+            // TODO: Handle xrun
+            SPDLOG_ERROR("Invalid state! [{}]", (int)state);
+            return 0;
         }
-        SPDLOG_INFO("Click done.");
+        avail = snd_pcm_avail_update(self.pcm_out);
+        if (avail < 0) {
+            // TODO: Handle xrun
+            first = true;
+            continue;
+        }
+        if (avail < (snd_pcm_sframes_t)self.period_size) {
+            if (first) {
+                first = false;
+                err = snd_pcm_start(self.pcm_out);
+                if (err < 0) {
+                    SPDLOG_ERROR("snd_pcm_start failed = {}", snd_strerror(err));
+                    return 0;
+                }
+                SPDLOG_INFO("PCM started.");
+            } else {
+                err = snd_pcm_wait(self.pcm_out, -1);
+                if (err < 0) {
+                    SPDLOG_ERROR("snd_pcm_wait failed = {}", snd_strerror(err));
+                    // TODO: Handle xrun
+                    first = true;
+                    return 0;
+                }
+            }
+            continue;
+        }
+        size = self.period_size;
+        while (size > 0) {
+            frames = size;
+            err = snd_pcm_mmap_begin(self.pcm_out, &areas, &offset, &frames);
+            if (err < 0) {
+                SPDLOG_ERROR("snd_pcm_mmap_begin failed = {}", snd_strerror(err));
+                // TODO: Handle xrun
+                first = true;
+            }
+            
+            for (int channel = 0; channel < self.PCM_OUT_CHANNELS; channel++) {
+                PcmFifo& pcm_fifo = *self.channel_fifos.at(channel);
+                buffer = ((unsigned char*)areas[channel].addr) + (areas[channel].first / 8) + (offset * sample_size);
+                if (areas[channel].step != (sample_size * 8)) {
+                    SPDLOG_ERROR("Invalid step! [{}]", areas[channel].step);
+                    return 0;
+                }
+                for (snd_pcm_uframes_t frame = 0; frame < frames; frame++) {
+                    if (!pcm_fifo.pop(sample)) {
+                        SPDLOG_ERROR("Channel {} xrun!", channel);
+                        sample = 0.0;
+                    }
+                    self.float_to_s24_3le(sample, buffer);
+                    buffer += self.PCM_OUT_CHANNELS * sample_size;
+                }
+            }
+
+            commitres = snd_pcm_mmap_commit(self.pcm_out, offset, frames);            
+            if (commitres < 0 || (snd_pcm_uframes_t)commitres != frames) {
+                // TODO: Handle xrun
+                SPDLOG_ERROR("commit {} xrun!", commitres);
+                first = true;
+            }
+            size -= frames;
+        }
+        self.next_period_flag.clear();
+        self.next_period_flag.notify_all();
     }
 
-    free(samples);
     return 0;
 }
 
@@ -200,7 +243,7 @@ snd_pcm_t* AlsaPcm::open_pcm_out(const std::string& pcm_out_name) {
     if (err < 0) {
         SPDLOG_ERROR("Setting of hwparams failed: {}", snd_strerror(err));
     }
-    SPDLOG_INFO("ALSA pcm out hwparams set. [buffer_size={},period_size={}]", buffer_size, period_size);
+    SPDLOG_INFO("ALSA pcm out hwparams set. [buffer_size={} frames,period_size={} frames]", buffer_size, period_size);
     snd_pcm_sw_params_t *swparams;
     snd_pcm_sw_params_alloca(&swparams);
     err = set_swparams(result, swparams);
@@ -211,16 +254,25 @@ snd_pcm_t* AlsaPcm::open_pcm_out(const std::string& pcm_out_name) {
     return result;
 }
 
+std::vector<std::unique_ptr<PcmFifo>> AlsaPcm::create_channel_fifos() {
+    std::vector<std::unique_ptr<PcmFifo>> result;
+    result.reserve(PCM_OUT_CHANNELS);
+    for (unsigned int i = 0; i < PCM_OUT_CHANNELS; i++) {
+        result.emplace_back(std::make_unique<PcmFifo>(period_size));
+    }
+    return result;
+}
+
 AlsaPcm::AlsaPcm():
     pcm_out(open_pcm_out(PCM_OUT_NAME)),
     stop(false),
-    click_flag(ATOMIC_FLAG_INIT),
+    channel_fifos(create_channel_fifos()),
+    next_period_flag(ATOMIC_FLAG_INIT),
     pcm_thread(create_rt_thread(THREAD_PRIORITY, run_pcm, this)) {    
 }
 
-AlsaPcm::~AlsaPcm() {    
+AlsaPcm::~AlsaPcm() {
     stop = true;
-    click();
     void* status;
     pthread_join(pcm_thread, &status);
     if (pcm_out) {
@@ -229,7 +281,18 @@ AlsaPcm::~AlsaPcm() {
     }
 }
 
-void AlsaPcm::click() {
-    click_flag.clear();
-    click_flag.notify_one();
+snd_pcm_uframes_t AlsaPcm::get_sample_rate() const {
+    return PCM_OUT_RATE;
+}
+
+int AlsaPcm::get_channels() const {
+    return PCM_OUT_CHANNELS;    
+}
+
+PcmFifo& AlsaPcm::get_channel_fifo(int channel) {
+    return *channel_fifos.at(channel);
+}
+
+std::atomic_flag& AlsaPcm::get_next_period_flag() {
+    return next_period_flag;
 }

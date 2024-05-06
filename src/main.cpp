@@ -37,7 +37,7 @@ class OstrostrojApp {
     public:
         OstrostrojApp():
             alsa_pcm(AlsaPcm()),
-            alsa_midi(AlsaMidi(alsa_pcm))
+            alsa_midi(AlsaMidi())
             // soundCard(SoundCard("ostrostroj")),
             // project(Project("/home/rado/project/")),
             // engine(Engine(project, soundCard))
