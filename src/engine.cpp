@@ -211,8 +211,8 @@ void Engine::process_midi() {
                         break;
                 }
             }
-            create_tasks();
             midi_processed = true;
+            create_tasks();
             next_flag.notify_all(); // TODO: Do we always have to wake up other threads? Can't we just wait?
         }
     }
@@ -260,9 +260,10 @@ int Engine::get_loop_track_count() const {
     return loop_tracks.size();
 }
 
-void Engine::pcm_callback() {    
+void Engine::pcm_callback() {
+    create_tasks();
     next_flag.clear();
-    next_flag.notify_one();
+    next_flag.notify_all();
 }
 
 void Engine::midi_callback() {

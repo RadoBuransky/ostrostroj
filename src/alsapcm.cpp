@@ -1,4 +1,4 @@
-#define SPDLOG_ACTIVE_LEVEL 0
+#define SPDLOG_ACTIVE_LEVEL 2
 
 #include "common.hpp"
 #include "alsa/asoundlib.h"
@@ -39,7 +39,7 @@ void* run_pcm(void* context) {
             if (first) {
                 first = false;
                 err = snd_pcm_start(self.pcm_out);
-                SPDLOG_TRACE("snd_pcm_start = {}", err);
+                SPDLOG_INFO("snd_pcm_start = {}", err);
                 if (err < 0) {
                     SPDLOG_ERROR("snd_pcm_start failed = {}", snd_strerror(err));
                     return 0;
