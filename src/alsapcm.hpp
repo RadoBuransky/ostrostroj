@@ -23,8 +23,8 @@ class AlsaPcm {
         snd_pcm_uframes_t period_size;
         std::atomic_bool stop;
         const std::vector<std::unique_ptr<PcmFifo>> channel_fifos;
-        std::atomic_flag next_period_flag;
-        const pthread_t pcm_thread;
+        pthread_t pcm_thread;
+        std::function<void(void)> callback;
         friend void* run_pcm(void* context);
         void float_to_s24_3le(float sample, unsigned char* buffer);
         int set_hwparams(snd_pcm_t* handle, snd_pcm_hw_params_t* params);
@@ -34,9 +34,8 @@ class AlsaPcm {
     public:
         AlsaPcm();
         virtual ~AlsaPcm();
-
+        void start(std::function<void(void)> _callback);
         snd_pcm_uframes_t get_sample_rate() const;
         int get_channels() const;
         PcmFifo& get_channel_fifo(int channel);
-        std::atomic_flag& get_next_period_flag();
 };

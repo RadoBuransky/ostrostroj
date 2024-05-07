@@ -40,6 +40,8 @@ class OstrostrojApp {
             engine(Engine(project, alsa_midi, alsa_pcm)) {
             try {
                 project.verify(alsa_pcm.get_sample_rate(), engine.get_loop_track_count());
+                alsa_pcm.start(std::bind(&Engine::pcm_callback, &engine));
+                alsa_midi.start(std::bind(&Engine::midi_callback, &engine));
             } catch (std::exception const &ex) {
                 SPDLOG_ERROR(ex.what());
                 throw;

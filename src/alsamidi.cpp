@@ -59,6 +59,7 @@ void* run_thru(void* context) {
                         if (!self.fifo.push(std::move(event))) {
                             SPDLOG_ERROR("MIDI FIFO overrun!");
                         }
+                        self.callback();
                     }
                 }
                 decoded_current += event_encode_res;
@@ -111,14 +112,15 @@ AlsaMidi::AlsaMidi():
     handle_in(open_midi_in(MIDI_DEVICE_NAME)),
     handle_out(open_midi_out(MIDI_DEVICE_NAME)),
     stop(false),
-    fifo(AlsaMidiFifo(256)),
-    thru_thread(create_rt_thread(80, run_thru, this)) {
+    fifo(AlsaMidiFifo(256)) {
 }
 
 AlsaMidi::~AlsaMidi() {
-    stop = true;
-    void* status;
-    pthread_join(thru_thread, &status);
+    if (thru_thread) {
+        stop = true;
+        void* status;
+        pthread_join(thru_thread, &status);
+    }
     if (handle_in) {
         snd_rawmidi_drain(handle_in);
         snd_rawmidi_close(handle_in);
@@ -131,4 +133,13 @@ AlsaMidi::~AlsaMidi() {
 
 AlsaMidiFifo& AlsaMidi::get_fifo() {
     return fifo;
+}
+
+void AlsaMidi::start(std::function<void(void)> _callback) {
+    if (thru_thread || callback) {
+        SPDLOG_ERROR("Thread already started! [{}]", thru_thread);
+        return;
+    }
+    callback = _callback;
+    thru_thread = create_rt_thread(80, run_thru, this);
 }

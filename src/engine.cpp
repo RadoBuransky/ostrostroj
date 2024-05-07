@@ -99,7 +99,6 @@ void Track::fill_output() {
 Engine::Engine(Project& _project, AlsaMidi& alsa_midi, AlsaPcm& alsa_pcm):
     project(_project),
     midi_fifo(alsa_midi.get_fifo()),
-    alsa_next_period_flag(alsa_pcm.get_next_period_flag()),
     loop_tracks {
         std::make_unique<Track>(1, alsa_pcm.get_channel_fifo(0)),
         std::make_unique<Track>(2, alsa_pcm.get_channel_fifo(1)),
@@ -119,8 +118,6 @@ Engine::Engine(Project& _project, AlsaMidi& alsa_midi, AlsaPcm& alsa_pcm):
 
 Engine::~Engine() {   
     interrupted.store(true);
-    alsa_next_period_flag.clear();
-    alsa_next_period_flag.notify_all();    
 }
 
 void Engine::create_threads() {
@@ -133,15 +130,15 @@ void Engine::create_threads() {
 void Engine::run() {
     SPDLOG_DEBUG("Engine started.");
     try {
+        midi_processed = false;
         while (!interrupted) {
-            midi_processed = false;
-            alsa_next_period_flag.test_and_set();
-            alsa_next_period_flag.wait(true);
 #ifdef PROFILING            
             Profiler::get().engine_run_count++;
-#endif
+#endif            
             process_midi();
-            run_tasks();            
+            run_tasks();
+            midi_processed = false;
+            // TODO: Wait for flag?
         }
         SPDLOG_DEBUG("Engine interrupted.");
     } catch(std::exception const& e) {
@@ -216,7 +213,7 @@ void Engine::process_midi() {
             }
             create_tasks();
             midi_processed = true;
-            alsa_next_period_flag.notify_all();
+            // TODO: Notify threads?
         }
     }
 }
@@ -261,4 +258,10 @@ void Engine::set_program(int _program_number) {
 
 int Engine::get_loop_track_count() const {
     return loop_tracks.size();
+}
+
+void Engine::pcm_callback() {    
+}
+
+void Engine::midi_callback() {    
 }

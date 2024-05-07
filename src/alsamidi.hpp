@@ -16,6 +16,7 @@ class AlsaMidi {
         std::atomic_bool stop;
         AlsaMidiFifo fifo;
         pthread_t thru_thread;
+        std::function<void(void)> callback;
         friend void* run_thru(void* context);
         snd_rawmidi_t* open_midi_in(const std::string& device_name);
         snd_rawmidi_t* open_midi_out(const std::string& device_name);
@@ -23,4 +24,5 @@ class AlsaMidi {
         AlsaMidi();
         virtual ~AlsaMidi();
         AlsaMidiFifo& get_fifo();
+        void start(std::function<void(void)> _callback);
 };

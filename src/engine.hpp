@@ -40,7 +40,6 @@ class Engine {
     private:
         Project& project;
         AlsaMidiFifo& midi_fifo;
-        std::atomic_flag& alsa_next_period_flag;
 
         std::array<std::unique_ptr<Track>, 6> loop_tracks;
         Track one_shots_track;
@@ -71,4 +70,6 @@ class Engine {
         Engine(Project& project, AlsaMidi& alsa_midi, AlsaPcm& alsa_pcm);
         virtual ~Engine();
         int get_loop_track_count() const;
+        void pcm_callback();
+        void midi_callback();
 };

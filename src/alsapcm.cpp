@@ -81,8 +81,7 @@ void* run_pcm(void* context) {
             }
             size -= frames;
         }
-        self.next_period_flag.clear();
-        self.next_period_flag.notify_all();
+        self.callback();
     }
 
     return 0;
@@ -263,15 +262,15 @@ std::vector<std::unique_ptr<PcmFifo>> AlsaPcm::create_channel_fifos() {
 AlsaPcm::AlsaPcm():
     pcm_out(open_pcm_out(PCM_OUT_NAME)),
     stop(false),
-    channel_fifos(create_channel_fifos()),
-    next_period_flag(ATOMIC_FLAG_INIT),
-    pcm_thread(create_rt_thread(THREAD_PRIORITY, run_pcm, this)) {    
+    channel_fifos(create_channel_fifos()) {    
 }
 
 AlsaPcm::~AlsaPcm() {
-    stop = true;
-    void* status;
-    pthread_join(pcm_thread, &status);
+    if (pcm_thread) {
+        stop = true;
+        void* status;
+        pthread_join(pcm_thread, &status);
+    }
     if (pcm_out) {
         snd_pcm_drain(pcm_out);
         snd_pcm_close(pcm_out);
@@ -290,6 +289,11 @@ PcmFifo& AlsaPcm::get_channel_fifo(int channel) {
     return *channel_fifos.at(channel);
 }
 
-std::atomic_flag& AlsaPcm::get_next_period_flag() {
-    return next_period_flag;
+void AlsaPcm::start(std::function<void(void)> _callback) {
+    if (pcm_thread || callback) {
+        SPDLOG_ERROR("Thread already started! [{}]", pcm_thread);
+        return;
+    }
+    callback = _callback;
+    pcm_thread = create_rt_thread(THREAD_PRIORITY, run_pcm, this);
 }
