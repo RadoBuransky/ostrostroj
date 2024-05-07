@@ -40,6 +40,7 @@ class Engine {
     private:
         Project& project;
         AlsaMidiFifo& midi_fifo;
+        std::atomic_flag next_flag;
 
         std::array<std::unique_ptr<Track>, 6> loop_tracks;
         Track one_shots_track;

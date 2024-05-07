@@ -1,3 +1,5 @@
+#define SPDLOG_ACTIVE_LEVEL 0
+
 #include "common.hpp"
 #include "alsa/asoundlib.h"
 #include "alsapcm.hpp"
@@ -12,18 +14,22 @@ void* run_pcm(void* context) {
     bool first = true;
     int err;
     snd_pcm_uframes_t offset, frames, size;
+    snd_pcm_sframes_t channel_frames;
     float sample;
     unsigned char* buffer;
     int step;
+    SPDLOG_INFO("ALSA pcm started.");
 
     while (!self.stop) {
         state = snd_pcm_state(self.pcm_out);
+        SPDLOG_TRACE("state = {}", (long)state);
         if (state == SND_PCM_STATE_XRUN || state == SND_PCM_STATE_SUSPENDED) {            
             // TODO: Handle xrun
             SPDLOG_ERROR("Invalid state! [{}]", (int)state);
             return 0;
         }
         avail = snd_pcm_avail_update(self.pcm_out);
+        SPDLOG_TRACE("snd_pcm_avail_update = {}", (long)avail);
         if (avail < 0) {
             // TODO: Handle xrun
             first = true;
@@ -33,13 +39,14 @@ void* run_pcm(void* context) {
             if (first) {
                 first = false;
                 err = snd_pcm_start(self.pcm_out);
+                SPDLOG_TRACE("snd_pcm_start = {}", err);
                 if (err < 0) {
                     SPDLOG_ERROR("snd_pcm_start failed = {}", snd_strerror(err));
                     return 0;
                 }
-                SPDLOG_INFO("PCM started.");
             } else {
                 err = snd_pcm_wait(self.pcm_out, -1);
+                SPDLOG_TRACE("snd_pcm_wait = {}", err);
                 if (err < 0) {
                     SPDLOG_ERROR("snd_pcm_wait failed = {}", snd_strerror(err));
                     // TODO: Handle xrun
@@ -53,6 +60,7 @@ void* run_pcm(void* context) {
         while (size > 0) {
             frames = size;
             err = snd_pcm_mmap_begin(self.pcm_out, &areas, &offset, &frames);
+            SPDLOG_TRACE("snd_pcm_mmap_begin = {}, {}, {}", err, offset, frames);
             if (err < 0) {
                 SPDLOG_ERROR("snd_pcm_mmap_begin failed = {}", snd_strerror(err));
                 // TODO: Handle xrun
@@ -62,10 +70,12 @@ void* run_pcm(void* context) {
             for (int channel = 0; channel < self.PCM_OUT_CHANNELS; channel++) {
                 PcmFifo& pcm_fifo = *self.channel_fifos.at(channel);
                 step = areas[channel].step / 8;
-                buffer = ((unsigned char*)areas[channel].addr) + (areas[channel].first / 8) + (offset * step);                
-                while (frames-- > 0) {
+                buffer = ((unsigned char*)areas[channel].addr) + (areas[channel].first / 8) + (offset * step);
+                SPDLOG_TRACE("ch={} area.addr=0x{:x}, area.first={}, area.step={}", channel, (long)areas[channel].addr, areas[channel].first, areas[channel].step);
+                channel_frames = frames;
+                while (channel_frames-- > 0) {
                     if (!pcm_fifo.pop(sample)) {
-                        SPDLOG_ERROR("Channel {} xrun!", channel);
+                        //TODO: SPDLOG_ERROR("Channel {} xrun!", channel);
                         sample = 0.0;
                     }
                     self.float_to_s24_3le(sample, buffer);
@@ -73,7 +83,8 @@ void* run_pcm(void* context) {
                 }
             }
 
-            commitres = snd_pcm_mmap_commit(self.pcm_out, offset, frames);            
+            commitres = snd_pcm_mmap_commit(self.pcm_out, offset, frames);
+            SPDLOG_TRACE("snd_pcm_mmap_commit = {}, {}, {}", commitres, offset, frames);       
             if (commitres < 0 || (snd_pcm_uframes_t)commitres != frames) {
                 // TODO: Handle xrun
                 SPDLOG_ERROR("commit {} xrun!", commitres);
@@ -253,8 +264,9 @@ snd_pcm_t* AlsaPcm::open_pcm_out(const std::string& pcm_out_name) {
 std::vector<std::unique_ptr<PcmFifo>> AlsaPcm::create_channel_fifos() {
     std::vector<std::unique_ptr<PcmFifo>> result;
     result.reserve(PCM_OUT_CHANNELS);
+    int capacity = 2 * (period_size & (period_size - 1));
     for (unsigned int i = 0; i < PCM_OUT_CHANNELS; i++) {
-        result.emplace_back(std::make_unique<PcmFifo>(period_size));
+        result.emplace_back(std::make_unique<PcmFifo>(capacity));
     }
     return result;
 }
@@ -262,7 +274,9 @@ std::vector<std::unique_ptr<PcmFifo>> AlsaPcm::create_channel_fifos() {
 AlsaPcm::AlsaPcm():
     pcm_out(open_pcm_out(PCM_OUT_NAME)),
     stop(false),
-    channel_fifos(create_channel_fifos()) {    
+    channel_fifos(create_channel_fifos()),
+    pcm_thread(0),
+    callback(0) {    
 }
 
 AlsaPcm::~AlsaPcm() {

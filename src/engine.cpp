@@ -99,6 +99,7 @@ void Track::fill_output() {
 Engine::Engine(Project& _project, AlsaMidi& alsa_midi, AlsaPcm& alsa_pcm):
     project(_project),
     midi_fifo(alsa_midi.get_fifo()),
+    next_flag(ATOMIC_FLAG_INIT),
     loop_tracks {
         std::make_unique<Track>(1, alsa_pcm.get_channel_fifo(0)),
         std::make_unique<Track>(2, alsa_pcm.get_channel_fifo(1)),
@@ -130,15 +131,14 @@ void Engine::create_threads() {
 void Engine::run() {
     SPDLOG_DEBUG("Engine started.");
     try {
-        midi_processed = false;
         while (!interrupted) {
 #ifdef PROFILING            
             Profiler::get().engine_run_count++;
 #endif            
             process_midi();
             run_tasks();
-            midi_processed = false;
-            // TODO: Wait for flag?
+            next_flag.test_and_set();
+            next_flag.wait(true);
         }
         SPDLOG_DEBUG("Engine interrupted.");
     } catch(std::exception const& e) {
@@ -213,7 +213,7 @@ void Engine::process_midi() {
             }
             create_tasks();
             midi_processed = true;
-            // TODO: Notify threads?
+            next_flag.notify_all(); // TODO: Do we always have to wake up other threads? Can't we just wait?
         }
     }
 }
@@ -261,7 +261,12 @@ int Engine::get_loop_track_count() const {
 }
 
 void Engine::pcm_callback() {    
+    next_flag.clear();
+    next_flag.notify_one();
 }
 
-void Engine::midi_callback() {    
+void Engine::midi_callback() {
+    midi_processed = false;
+    next_flag.clear();
+    next_flag.notify_one();
 }

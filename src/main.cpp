@@ -60,7 +60,7 @@ class OstrostrojApp {
 
 int main(int argc, char* argv[]) {
     spdlog::set_pattern("%L [%H:%M:%S] [%t] %v");
-    spdlog::set_level(spdlog::level::info);
+    spdlog::set_level(spdlog::level::trace);
     SPDLOG_INFO("Ostrostroj started. [{}]", static_cast<int>(spdlog::get_level()));
     if ((argc > 1) && (strcmp(argv[1], "shutdown") == 0)) {
         sync();

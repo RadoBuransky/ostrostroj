@@ -112,7 +112,9 @@ AlsaMidi::AlsaMidi():
     handle_in(open_midi_in(MIDI_DEVICE_NAME)),
     handle_out(open_midi_out(MIDI_DEVICE_NAME)),
     stop(false),
-    fifo(AlsaMidiFifo(256)) {
+    fifo(AlsaMidiFifo(256)),
+    thru_thread(0),
+    callback(0) {
 }
 
 AlsaMidi::~AlsaMidi() {

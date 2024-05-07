@@ -1,6 +1,8 @@
 #pragma once
 
-#define SPDLOG_ACTIVE_LEVEL 2
+#ifndef SPDLOG_ACTIVE_LEVEL
+    #define SPDLOG_ACTIVE_LEVEL 2
+#endif
 #include <spdlog/spdlog.h>
 #include <stdexcept>
 #include <string>
