@@ -38,4 +38,8 @@ class AlsaPcm {
         snd_pcm_uframes_t get_sample_rate() const;
         int get_channels() const;
         PcmFifo& get_channel_fifo(int channel);
+
+        void play_start();
+        void play_stop();
+        void play_continue();
 };

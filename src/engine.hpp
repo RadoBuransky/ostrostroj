@@ -39,6 +39,7 @@ typedef farbot::fifo<std::function<void(void)>,
 class Engine {
     private:
         Project& project;
+        AlsaPcm& alsa_pcm;
         AlsaMidiFifo& midi_fifo;
         std::atomic_flag next_flag;
 
@@ -68,7 +69,7 @@ class Engine {
         void set_program(int program_number);
 
     public:
-        Engine(Project& project, AlsaMidi& alsa_midi, AlsaPcm& alsa_pcm);
+        Engine(Project& project, AlsaMidi& alsa_midi, AlsaPcm& _alsa_pcm);
         virtual ~Engine();
         int get_loop_track_count() const;
         void pcm_callback();

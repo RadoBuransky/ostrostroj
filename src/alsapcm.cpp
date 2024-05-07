@@ -38,12 +38,12 @@ void* run_pcm(void* context) {
         if (avail < (snd_pcm_sframes_t)self.period_size) {
             if (first) {
                 first = false;
-                err = snd_pcm_start(self.pcm_out);
-                SPDLOG_INFO("snd_pcm_start = {}", err);
-                if (err < 0) {
-                    SPDLOG_ERROR("snd_pcm_start failed = {}", snd_strerror(err));
-                    return 0;
-                }
+                // err = snd_pcm_start(self.pcm_out);
+                // SPDLOG_INFO("snd_pcm_start = {}", err);
+                // if (err < 0) {
+                //     SPDLOG_ERROR("snd_pcm_start failed = {}", snd_strerror(err));
+                //     return 0;
+                // }
             } else {
                 err = snd_pcm_wait(self.pcm_out, -1);
                 SPDLOG_TRACE("snd_pcm_wait = {}", err);
@@ -310,4 +310,25 @@ void AlsaPcm::start(std::function<void(void)> _callback) {
     }
     callback = _callback;
     pcm_thread = create_rt_thread(THREAD_PRIORITY, run_pcm, this);
+}
+
+void AlsaPcm::play_start() {
+    int err = snd_pcm_start(pcm_out);
+    if (err < 0) {
+        SPDLOG_ERROR("snd_pcm_start failed = {}", snd_strerror(err));
+    }
+}
+
+void AlsaPcm::play_stop() {
+    int err = snd_pcm_pause(pcm_out, false);
+    if (err < 0) {
+        SPDLOG_ERROR("snd_pcm_pause failed = {}", snd_strerror(err));
+    }
+}
+
+void AlsaPcm::play_continue() {
+    int err = snd_pcm_pause(pcm_out, true);
+    if (err < 0) {
+        SPDLOG_ERROR("snd_pcm_pause failed = {}", snd_strerror(err));
+    }
 }

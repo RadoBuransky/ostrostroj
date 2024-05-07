@@ -10,8 +10,8 @@ bool Track::push_next_frame() {
     }
     for (unsigned int channel = 0; channel < channels.size(); channel++) {
         if (!channels[channel].get().push(std::move(next_frame.at(channel)))) {
-            SPDLOG_WARN("Next frame overflow! [track={}, {} ch]", track_number, channel);
             if (channel != 0) {
+                SPDLOG_WARN("Next frame overflow! [track={}, {} ch]", track_number, channel);
                 next_frame.clear();
             }
             return false;
@@ -87,7 +87,8 @@ void Track::fill_output() {
     }
     if (overflow) {
         if (channel != 0) {
-            SPDLOG_WARN("FIFO not channel-aligned! [track={}, {} ch]", track_number, channel);
+            // TODO: It is possible that alsapcm popped channel 0 but not popped channel 1 yet. Concurrency.
+            SPDLOG_WARN("FIFO not channel-aligned! [track={}, {}/{} ch]", track_number, channel, channels_size);
             return;
         }
         pop_next_frame(sample);
@@ -96,25 +97,27 @@ void Track::fill_output() {
     }
 }
 
-Engine::Engine(Project& _project, AlsaMidi& alsa_midi, AlsaPcm& alsa_pcm):
+Engine::Engine(Project& _project, AlsaMidi& alsa_midi, AlsaPcm& _alsa_pcm):
     project(_project),
+    alsa_pcm(_alsa_pcm),
     midi_fifo(alsa_midi.get_fifo()),
     next_flag(ATOMIC_FLAG_INIT),
     loop_tracks {
-        std::make_unique<Track>(1, alsa_pcm.get_channel_fifo(0)),
-        std::make_unique<Track>(2, alsa_pcm.get_channel_fifo(1)),
-        std::make_unique<Track>(3, alsa_pcm.get_channel_fifo(2)),
-        std::make_unique<Track>(4, alsa_pcm.get_channel_fifo(3)),
-        std::make_unique<Track>(5, alsa_pcm.get_channel_fifo(4), alsa_pcm.get_channel_fifo(5)),
-        std::make_unique<Track>(6, alsa_pcm.get_channel_fifo(6), alsa_pcm.get_channel_fifo(7)),
+        std::make_unique<Track>(1, _alsa_pcm.get_channel_fifo(0)),
+        std::make_unique<Track>(2, _alsa_pcm.get_channel_fifo(1)),
+        std::make_unique<Track>(3, _alsa_pcm.get_channel_fifo(2)),
+        std::make_unique<Track>(4, _alsa_pcm.get_channel_fifo(3)),
+        std::make_unique<Track>(5, _alsa_pcm.get_channel_fifo(4), _alsa_pcm.get_channel_fifo(5)),
+        std::make_unique<Track>(6, _alsa_pcm.get_channel_fifo(6), _alsa_pcm.get_channel_fifo(7)),
     },
-    one_shots_track(Track(7, alsa_pcm.get_channel_fifo(8), alsa_pcm.get_channel_fifo(9))),
+    one_shots_track(Track(7, _alsa_pcm.get_channel_fifo(8), _alsa_pcm.get_channel_fifo(9))),
     tasks(TrackTaskFifo(16)),
     interrupted(false),
     midi_processed(false),
     program_number(0) {
     static_assert(std::atomic_bool::is_always_lock_free);
     create_threads();
+    set_program(0);
 }
 
 Engine::~Engine() {   
@@ -152,6 +155,7 @@ void Engine::create_tasks() {
         create_track_task(*track);
     }
     create_track_task(one_shots_track);
+    next_flag.notify_all(); 
 }
 
 void Engine::create_track_task(Track& track) {
@@ -213,13 +217,12 @@ void Engine::process_midi() {
             }
             midi_processed = true;
             create_tasks();
-            next_flag.notify_all(); // TODO: Do we always have to wake up other threads? Can't we just wait?
         }
     }
 }
 
 void Engine::midi_start() {
-    set_program(program_number);
+    alsa_pcm.play_start();
     for (std::unique_ptr<Track>& track : loop_tracks) {
         track->start();
     }
@@ -227,6 +230,7 @@ void Engine::midi_start() {
 }
 
 void Engine::midi_stop() {
+    alsa_pcm.play_stop();
     for (std::unique_ptr<Track>& track : loop_tracks) {
         track->stop();
     }
@@ -234,6 +238,7 @@ void Engine::midi_stop() {
 }
 
 void Engine::midi_continue() {
+    alsa_pcm.play_continue();
     for (std::unique_ptr<Track>& track : loop_tracks) {
         track->start();
     }
@@ -261,9 +266,9 @@ int Engine::get_loop_track_count() const {
 }
 
 void Engine::pcm_callback() {
-    create_tasks();
+    tasks.push(std::bind(&Engine::create_tasks, this));
     next_flag.clear();
-    next_flag.notify_all();
+    next_flag.notify_one();
 }
 
 void Engine::midi_callback() {
