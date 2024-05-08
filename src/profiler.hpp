@@ -1,7 +1,7 @@
 #include <atomic>
 #include <spdlog/spdlog.h>
 
-#define PROFILING
+// #define PROFILING
 
 class Profiler {
     private:

@@ -1,3 +1,5 @@
+#define SPDLOG_ACTIVE_LEVEL 2
+
 #include "common.hpp"
 #include "engine.hpp"
 #include "profiler.hpp"
@@ -85,6 +87,7 @@ void Track::fill_output() {
         profiler.engine_samples_pushed++;
 #endif
     }
+    SPDLOG_DEBUG("Track full. [{}]", track_number);
     if (overflow) {
         if (channel != 0) {
             // TODO: It is possible that alsapcm popped channel 0 but not popped channel 1 yet. Concurrency.
@@ -155,6 +158,7 @@ void Engine::create_tasks() {
         create_track_task(*track);
     }
     create_track_task(one_shots_track);
+    next_flag.clear();
     next_flag.notify_all(); 
 }
 
@@ -222,7 +226,7 @@ void Engine::process_midi() {
 }
 
 void Engine::midi_start() {
-    alsa_pcm.play_start();
+    // alsa_pcm.play_start();
     for (std::unique_ptr<Track>& track : loop_tracks) {
         track->start();
     }
@@ -272,6 +276,7 @@ void Engine::pcm_callback() {
 }
 
 void Engine::midi_callback() {
+    alsa_pcm.play_start();
     midi_processed = false;
     next_flag.clear();
     next_flag.notify_one();

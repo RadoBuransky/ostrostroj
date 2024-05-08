@@ -28,7 +28,7 @@ class OstrostrojApp {
             sigemptyset(&sigIntHandler.sa_mask);
             sigIntHandler.sa_flags = 0;
             sigaction(SIGINT, &sigIntHandler, NULL);
-            SPDLOG_INFO("Waiting...");
+            SPDLOG_INFO("App running...");
             pause();
         }
 
