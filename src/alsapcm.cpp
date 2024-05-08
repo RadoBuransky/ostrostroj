@@ -52,6 +52,20 @@ void* run_pcm(void* context) {
     SPDLOG_INFO("ALSA pcm started.");
 
     while (!self.stop) {
+        if (self.drain_flag.exchange(false)) {
+            PcmFrame_s24_3le dropped_frame;
+            SPDLOG_DEBUG("Draining...");
+            snd_pcm_uframes_t dropped_frames = 0;
+            while (pcm_fifo.pop(dropped_frame)) {
+                dropped_frames++;
+            }
+            err = snd_pcm_reset(self.pcm_out);
+            if (err < 0) {
+                SPDLOG_ERROR("snd_pcm_reset failed = {}", snd_strerror(err));                
+            }
+            SPDLOG_DEBUG("Draining done. [dropped_frames={}]", dropped_frames);
+        }
+
         state = snd_pcm_state(self.pcm_out);
         SPDLOG_TRACE("state = {}", (long)state);
         if (state == SND_PCM_STATE_XRUN || state == SND_PCM_STATE_SUSPENDED) {            
@@ -302,8 +316,9 @@ AlsaPcm::AlsaPcm():
     pcm_out(open_pcm_out(PCM_OUT_NAME)),
     stop(false),
     pcm_fifo(create_pcm_fifo()),
-    pcm_thread(0),
-    callback(0) {    
+    callback(0),
+    drain_flag(false),
+    pcm_thread(0){    
 }
 
 AlsaPcm::~AlsaPcm() {
@@ -366,4 +381,8 @@ void AlsaPcm::play_continue() {
     if (err < 0) {
         SPDLOG_ERROR("snd_pcm_pause failed = {}", snd_strerror(err));
     }
+}
+
+void AlsaPcm::drain() {
+    drain_flag = true;
 }

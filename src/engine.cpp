@@ -27,13 +27,17 @@ void Engine::process_midi() {
     while (alsa_midi.get_fifo().pop(midi_event)) {
         switch(midi_event.type) {
             case SND_SEQ_EVENT_START:
+                alsa_pcm.play_start();
                 break;
             case SND_SEQ_EVENT_STOP:
+                alsa_pcm.play_stop();
                 break;
             case SND_SEQ_EVENT_CONTINUE:
+                alsa_pcm.play_continue();
                 break;
             case SND_SEQ_EVENT_PGMCHANGE:
                 set_program(midi_event.data.control.value);
+                alsa_pcm.drain();
                 break;
         }
     }

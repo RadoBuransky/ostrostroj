@@ -32,8 +32,9 @@ class AlsaPcm {
         snd_pcm_uframes_t period_size;
         std::atomic_bool stop;
         std::unique_ptr<PcmFifo> pcm_fifo;
-        pthread_t pcm_thread;
         std::function<void(void)> callback;
+        std::atomic_bool drain_flag;
+        pthread_t pcm_thread;
         friend void* run_pcm(void* context);
         void float_to_s24_3le(float sample, unsigned char* buffer);
         int set_hwparams(snd_pcm_t* handle, snd_pcm_hw_params_t* params);
@@ -53,4 +54,5 @@ class AlsaPcm {
         void play_start();
         void play_stop();
         void play_continue();
+        void drain();
 };

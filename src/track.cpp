@@ -21,7 +21,10 @@ void Track::run() {
                 }
             } while (fifo_ref.push(std::move(out_sample)));
 
-            cv.wait_for(lock, period_time);
+            if (cv.wait_for(lock, period_time) == std::cv_status::no_timeout) {
+                // Don't push if we changed node
+                out_sample_pushed = true;
+            }
 
             if (!out_sample_pushed) {
                 if (!fifo_ref.push(std::move(out_sample))) {
