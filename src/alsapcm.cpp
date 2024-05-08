@@ -11,27 +11,30 @@ static constexpr std::string PCM_OUT_NAME = "hw:UMC1820";
 static constexpr snd_pcm_access_t PCM_OUT_ACCESS = SND_PCM_ACCESS_MMAP_INTERLEAVED;
 static constexpr snd_pcm_uframes_t PCM_OUT_RATE = 96000;
 static constexpr snd_pcm_format_t PCM_OUT_FORMAT = SND_PCM_FORMAT_S24_3LE;
-static constexpr int PCM_OUT_CHANNELS = 12;
 static constexpr std::chrono::duration<long, std::milli> PCM_OUT_PERIOD_TIME = std::chrono::milliseconds(1);
 static constexpr int PCM_OUT_BUFFER_PERIODS = 100;
 static constexpr int THREAD_PRIORITY = 80;
 
+PcmSample_s24_3le::PcmSample_s24_3le(float sample) {
+    // https://github.com/naudio/NAudio/blob/a106da4eed61774e9bd3eda1fa7922581aee04e1/NAudio.Asio/ASIOSampleConvertor.cs#L415
+    signed int sample24 = (signed int)((double)sample * (double)8388607.0);
+    b0 = (unsigned char)(sample24);
+    b1 = (unsigned char)(sample24 >> 8);
+    b2 = (unsigned char)(sample24 >> 16);
+};
+
 void* run_pcm(void* context) {
     AlsaPcm& self = *(AlsaPcm*)context;
+    PcmFifo& pcm_fifo = *self.pcm_fifo.get();
     const snd_pcm_channel_area_t* areas;
     snd_pcm_state_t state;
-    snd_pcm_sframes_t avail, delay, commitres;
-    bool first = true;
+    snd_pcm_sframes_t avail, delay, commitres, size, frames_to_write;
     int err;
-    snd_pcm_uframes_t offset, frames, total_commited_frames;
-    snd_pcm_sframes_t channel_frames, size;
-    float sample;
-    unsigned char* buffer;
-    int step;
+    snd_pcm_uframes_t offset, frames;
     bool engine_xrun;
+    PcmFrame_s24_3le* buffer;
     SPDLOG_INFO("ALSA pcm started.");
 
-    total_commited_frames = 0;
     while (!self.stop) {
         state = snd_pcm_state(self.pcm_out);
         SPDLOG_TRACE("state = {}", (long)state);
@@ -48,32 +51,17 @@ void* run_pcm(void* context) {
         SPDLOG_TRACE("snd_pcm_avail_update = {}", (long)avail);
         if (avail < 0) {
             // TODO: Handle xrun
-            first = true;
             continue;
         }
         if (avail < (snd_pcm_sframes_t)self.period_size) {
-            if (first) {
-                first = false;
-                // err = snd_pcm_start(self.pcm_out);
-                // SPDLOG_INFO("snd_pcm_start = {}", err);
-                // if (err < 0) {
-                //     SPDLOG_ERROR("snd_pcm_start failed = {}", snd_strerror(err));
-                //     return 0;
-                // }
-            } else {
-                SPDLOG_DEBUG("Fuck it... [total_commited_frames={}]", total_commited_frames);
+            state = snd_pcm_state(self.pcm_out);
+            SPDLOG_DEBUG("snd_pcm_wait... [state={},avail={},delay={}]", (int)state, avail, delay);
+            err = snd_pcm_wait(self.pcm_out, -1);
+            SPDLOG_TRACE("snd_pcm_wait = {}", err);
+            if (err < 0) {
+                SPDLOG_ERROR("snd_pcm_wait failed = {}", snd_strerror(err));
+                // TODO: Handle xrun
                 return 0;
-
-                state = snd_pcm_state(self.pcm_out);
-                SPDLOG_DEBUG("snd_pcm_wait... [state={},avail={},delay={}]", (int)state, avail, delay);
-                err = snd_pcm_wait(self.pcm_out, -1);
-                SPDLOG_TRACE("snd_pcm_wait = {}", err);
-                if (err < 0) {
-                    SPDLOG_ERROR("snd_pcm_wait failed = {}", snd_strerror(err));
-                    // TODO: Handle xrun
-                    first = true;
-                    return 0;
-                }
             }
             continue;
         }
@@ -87,9 +75,35 @@ void* run_pcm(void* context) {
             if (err < 0) {
                 SPDLOG_ERROR("snd_pcm_mmap_begin failed = {}", snd_strerror(err));
                 // TODO: Handle xrun
-                first = true;
             }
             
+            frames_to_write = frames;
+            buffer = (PcmFrame_s24_3le*)(((char*)areas[0].addr) + (areas[0].first / 8) + (offset * sizeof(PcmFrame_s24_3le)));
+#ifndef NDEBUG
+            if (areas[0].step != sizeof(PcmFrame_s24_3le) * 8) {
+                SPDLOG_ERROR(fmt::format("Invalid step size! [expected={},actual={}]", sizeof(PcmFrame_s24_3le) * 8, areas[0].step));
+                return 0;
+            }
+            static bool area_debug_logged = false;
+            if (!area_debug_logged) {
+                area_debug_logged = true;
+                for (int channel = 0; channel < PCM_OUT_CHANNELS; channel++) {
+                    SPDLOG_TRACE("ch={} area.addr=0x{:x}, area.first={}, area.step={}", channel, (long)areas[channel].addr, areas[channel].first, areas[channel].step);
+                }            
+            }
+#endif            
+            while (frames_to_write-- > 0) {
+                if (!pcm_fifo.pop(*buffer)) {
+                    engine_xrun = true;
+                    SPDLOG_WARN("PCM FIFO xrun...");
+                    do {
+                        usleep(500);
+                    } while (!pcm_fifo.pop(*buffer));
+                    SPDLOG_WARN("PCM FIFO recovered.");
+                }
+                buffer++;
+            }
+/*            
             for (int channel = 0; channel < PCM_OUT_CHANNELS; channel++) {
                 PcmFifo& pcm_fifo = *self.channel_fifos.at(channel);
                 step = areas[channel].step / 8;
@@ -115,30 +129,21 @@ void* run_pcm(void* context) {
                     buffer += step;
                 }
             }
+*/
 
             commitres = snd_pcm_mmap_commit(self.pcm_out, offset, frames);
             SPDLOG_TRACE("snd_pcm_mmap_commit = {}, {}, {}", commitres, offset, frames);       
             if (commitres < 0 || (snd_pcm_uframes_t)commitres != frames) {
                 // TODO: Handle xrun
                 SPDLOG_ERROR("commit {} xrun!", commitres);
-                first = true;
             }
             size -= frames;
-            total_commited_frames += frames;
         }
-        SPDLOG_DEBUG("frames commited [engine xrun={}, total={}]", engine_xrun, total_commited_frames);
+        SPDLOG_DEBUG("frames commited [engine xrun={}]", engine_xrun);
         self.callback();
     }
 
     return 0;
-}
-
-// https://github.com/naudio/NAudio/blob/a106da4eed61774e9bd3eda1fa7922581aee04e1/NAudio.Asio/ASIOSampleConvertor.cs#L415
-void AlsaPcm::float_to_s24_3le(float sample, unsigned char* buffer) {
-    signed int sample24 = (signed int)((double)sample * (double)8388607.0);
-    buffer[0] = (unsigned char)(sample24);
-    buffer[1] = (unsigned char)(sample24 >> 8);
-    buffer[2] = (unsigned char)(sample24 >> 16);
 }
  
 int AlsaPcm::set_hwparams(snd_pcm_t* handle, snd_pcm_hw_params_t* params) {
@@ -296,24 +301,19 @@ snd_pcm_t* AlsaPcm::open_pcm_out(const std::string& pcm_out_name) {
     return result;
 }
 
-std::vector<std::unique_ptr<PcmFifo>> AlsaPcm::create_channel_fifos() {
-    std::vector<std::unique_ptr<PcmFifo>> result;
-    result.reserve(PCM_OUT_CHANNELS);
+std::unique_ptr<PcmFifo> AlsaPcm::create_pcm_fifo() {
     snd_pcm_uframes_t capacity = 1;
     while (capacity <= period_size) {
         capacity *= 2;
     }
-    SPDLOG_WARN("PcmFifo [{} -> {}]", period_size, capacity);
-    for (unsigned int i = 0; i < PCM_OUT_CHANNELS; i++) {
-        result.emplace_back(std::make_unique<PcmFifo>(capacity));
-    }
-    return result;
+    SPDLOG_INFO("PcmFifo [{} -> {}]", period_size, capacity);
+    return std::make_unique<PcmFifo>(capacity);
 }
 
 AlsaPcm::AlsaPcm():
     pcm_out(open_pcm_out(PCM_OUT_NAME)),
     stop(false),
-    channel_fifos(create_channel_fifos()),
+    pcm_fifo(create_pcm_fifo()),
     pcm_thread(0),
     callback(0) {    
 }
@@ -338,8 +338,8 @@ int AlsaPcm::get_channels() const {
     return PCM_OUT_CHANNELS;    
 }
 
-PcmFifo& AlsaPcm::get_channel_fifo(int channel) {
-    return *channel_fifos.at(channel);
+PcmFifo& AlsaPcm::get_pcm_fifo() {
+    return *pcm_fifo.get();
 }
 
 void AlsaPcm::start(std::function<void(void)> _callback) {
