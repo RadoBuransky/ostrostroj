@@ -16,11 +16,16 @@ static constexpr int THREAD_PRIORITY = 80;
 
 PcmSample_s24_3le::PcmSample_s24_3le(float sample) {
     // https://github.com/naudio/NAudio/blob/a106da4eed61774e9bd3eda1fa7922581aee04e1/NAudio.Asio/ASIOSampleConvertor.cs#L415
+    *this = sample;
+};
+
+PcmSample_s24_3le& PcmSample_s24_3le::operator=(float sample) {
     signed int sample24 = (signed int)((double)sample * (double)8388607.0);
     b0 = (unsigned char)(sample24);
     b1 = (unsigned char)(sample24 >> 8);
     b2 = (unsigned char)(sample24 >> 16);
-};
+    return *this;
+}
 
 void* run_pcm(void* context) {
     AlsaPcm& self = *(AlsaPcm*)context;
@@ -319,7 +324,7 @@ void AlsaPcm::start(std::function<void(void)> _callback) {
         return;
     }
     callback = _callback;
-    pcm_thread = create_rt_thread(THREAD_PRIORITY, run_pcm, this);
+    pcm_thread = create_rt_thread("alsa_pcm", THREAD_PRIORITY, run_pcm, this);
 }
 
 void AlsaPcm::play_start() {

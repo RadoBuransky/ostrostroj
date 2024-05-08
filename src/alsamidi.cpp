@@ -143,5 +143,5 @@ void AlsaMidi::start(std::function<void(void)> _callback) {
         return;
     }
     callback = _callback;
-    thru_thread = create_rt_thread(80, run_thru, this);
+    thru_thread = create_rt_thread("alsa_midi", 80, run_thru, this);
 }

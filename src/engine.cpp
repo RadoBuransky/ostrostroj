@@ -1,6 +1,8 @@
 #include "common.hpp"
 #include "engine.hpp"
 
+// TODO: Do we need to wait? Can't we just spin? 
+
 Engine::Engine(Project& project, AlsaMidi& alsa_midi, AlsaPcm& _alsa_pcm) {    
 }
 

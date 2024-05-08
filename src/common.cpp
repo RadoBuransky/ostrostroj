@@ -1,6 +1,6 @@
 #include "common.hpp"
 
-pthread_t create_rt_thread(int sched_priority, void *(*start_routine) (void *), void* arg) {
+pthread_t create_rt_thread(std::string name, int sched_priority, void *(*start_routine) (void *), void* arg) {
     // https://github.com/jackaudio/jack2/blob/c46c1b16e0eabbcf55ef69b0ffb96dfe16521cfa/posix/JackPosixThread.cpp#L117
     pthread_attr_t attributes;
     pthread_attr_init(&attributes);
@@ -38,6 +38,9 @@ pthread_t create_rt_thread(int sched_priority, void *(*start_routine) (void *), 
         return 0;
     }
     pthread_attr_destroy(&attributes);
+    if (res = pthread_setname_np(result, name.c_str())) {
+        SPDLOG_ERROR("pthread_setname_np failed = {}", res);
+    }
     SPDLOG_INFO("ALSA thread created. [0x{:X}]", result);
     return result;
 }

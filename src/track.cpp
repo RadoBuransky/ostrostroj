@@ -1,3 +1,68 @@
+
+#include "common.hpp"
+#include "track.hpp"
+
+void Track::run() {
+    std::array<float, PCM_OUT_CHANNELS> in_frame;
+    InterleavedFifo& fifo_ref = *fifo.get();
+    PcmSample_s24_3le out_frame;
+    bool out_frame_pushed = true;
+    const useconds_t usleep_time = std::chrono::duration<useconds_t, std::micro>(period_time).count();
+    SPDLOG_DEBUG("Track {} started. [channels={},usleep_time={}]", track_number, channels, usleep_time);
+    try {
+        while (!stop) {
+            usleep(usleep_time);
+            if (!out_frame_pushed) {
+                if (!fifo_ref.push(std::move(out_frame))) {
+                    continue;
+                } else {
+                    out_frame_pushed = true;
+                }
+            }
+            out_frame_pushed = node_to_fifo(in_frame, out_frame, fifo_ref);
+        }
+        SPDLOG_DEBUG("Track {} stopped.", track_number);
+    } catch(std::exception const& e) {
+        SPDLOG_ERROR("Track {} failed. {}", track_number, e.what());
+    }
+}
+
+inline bool Track::node_to_fifo(std::array<float, PCM_OUT_CHANNELS>& in_frame, PcmSample_s24_3le& out_frame, InterleavedFifo& fifo_ref) {
+    do {
+        for (auto i = 0; i < channels; i++) {
+            if (track_node.pop(in_frame[i])) {
+                out_frame = in_frame[i];
+            } else {
+                if (i > 0) {
+                    SPDLOG_WARN("Unaligned track {} underrun.", track_number);
+                } else {
+                    SPDLOG_DEBUG("Track {} underrun.", track_number);
+                }
+                return true;
+            }
+        }
+    } while (fifo_ref.push(std::move(out_frame)));
+    return false;
+}
+
+Track::Track(int _track_number, int _channels, std::chrono::milliseconds _period_time, snd_pcm_uframes_t _period_size):
+    track_number(_track_number),
+    channels(_channels),
+    period_time(_period_time),
+    fifo(std::make_unique<InterleavedFifo>(_period_size * 2)),
+    stop(false),
+    dynamic_node(),
+    track_node(dynamic_node),
+    worker_thread(std::bind(&Track::run, this)) {
+    assert(channels <= PCM_OUT_CHANNELS);
+    pthread_setname_np(worker_thread.native_handle(), fmt::format("track{}", track_number).c_str());
+}
+
+Track::~Track() {
+    stop = true;
+    worker_thread.join();
+}
+
 /*
 #include "common.h"
 #include "track.hpp"

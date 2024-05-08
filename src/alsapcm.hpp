@@ -10,6 +10,7 @@ struct PcmSample_s24_3le {
     unsigned char b2;
     PcmSample_s24_3le() = default;
     PcmSample_s24_3le(float sample);
+    PcmSample_s24_3le& operator=(float sample);
 };
 
 struct PcmFrame_s24_3le {
