@@ -6,7 +6,6 @@
 
 // #define TEST_PARAMS
 
-
 static constexpr std::string PCM_OUT_NAME = "hw:UMC1820";
 static constexpr snd_pcm_access_t PCM_OUT_ACCESS = SND_PCM_ACCESS_MMAP_INTERLEAVED;
 static constexpr snd_pcm_uframes_t PCM_OUT_RATE = 96000;
@@ -103,34 +102,6 @@ void* run_pcm(void* context) {
                 }
                 buffer++;
             }
-/*            
-            for (int channel = 0; channel < PCM_OUT_CHANNELS; channel++) {
-                PcmFifo& pcm_fifo = *self.channel_fifos.at(channel);
-                step = areas[channel].step / 8;
-                buffer = ((unsigned char*)areas[channel].addr) + (areas[channel].first / 8) + (offset * step);
-                SPDLOG_TRACE("ch={} area.addr=0x{:x}, area.first={}, area.step={}", channel, (long)areas[channel].addr, areas[channel].first, areas[channel].step);
-                channel_frames = frames;
-                while (channel_frames-- > 0) {
-                    // TODO: Fix this
-                    if (channel > 9) {                        
-                        sample = 0.0;
-                    } else {
-                        if (!pcm_fifo.pop(sample)) {
-                            // TODO: Livelock?
-                            engine_xrun = true;
-                            SPDLOG_WARN("PCM FIFO xrun...[{}ch]", channel);
-                            while (!pcm_fifo.pop(sample)) {
-                                usleep(500);
-                            }
-                            SPDLOG_WARN("PCM FIFO xrun recovered .[{}ch]", channel);
-                        }
-                    }
-                    self.float_to_s24_3le(sample, buffer);
-                    buffer += step;
-                }
-            }
-*/
-
             commitres = snd_pcm_mmap_commit(self.pcm_out, offset, frames);
             SPDLOG_TRACE("snd_pcm_mmap_commit = {}, {}, {}", commitres, offset, frames);       
             if (commitres < 0 || (snd_pcm_uframes_t)commitres != frames) {
