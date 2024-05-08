@@ -43,7 +43,7 @@ class DynamicNode : public Node {
         DynamicNode& operator=(DynamicNode&&) = delete;
         Node& get_parent() const;
         void set_parent(std::unique_ptr<Node>&& _parent);
-        void reset_parent();
+        bool reset_parent();
         virtual bool pop(float& sample);
 };
 
@@ -75,14 +75,11 @@ class MixingNode : public Node {
 
 class TrackNode : public ChildNode {
     private:
-        bool started;
         bool muted;
     public:
         TrackNode(Node& parent);
         virtual ~TrackNode() = default;
         virtual bool pop(float& sample);
-        void start();
-        void stop();
         void set_mute(bool mute);
         bool get_mute() const;
 };

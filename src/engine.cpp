@@ -1,3 +1,5 @@
+#define SPDLOG_ACTIVE_LEVEL 1
+
 #include "common.hpp"
 #include "engine.hpp"
 
@@ -26,18 +28,25 @@ void Engine::process_midi() {
     snd_seq_event_t midi_event;
     while (alsa_midi.get_fifo().pop(midi_event)) {
         switch(midi_event.type) {
-            case SND_SEQ_EVENT_START:
+            case SND_SEQ_EVENT_START: 
+                SPDLOG_DEBUG("Engine MIDI START");
                 alsa_pcm.play_start();
                 break;
-            case SND_SEQ_EVENT_STOP:
+            case SND_SEQ_EVENT_STOP: 
+                SPDLOG_DEBUG("Engine MIDI STOP");
                 alsa_pcm.play_stop();
                 break;
-            case SND_SEQ_EVENT_CONTINUE:
+            case SND_SEQ_EVENT_CONTINUE: 
+                SPDLOG_DEBUG("Engine MIDI CONTINUE");
                 alsa_pcm.play_continue();
                 break;
-            case SND_SEQ_EVENT_PGMCHANGE:
+            case SND_SEQ_EVENT_PGMCHANGE: 
+                SPDLOG_DEBUG("Engine MIDI PROGRAM CHANGE [{}]", midi_event.data.control.value);
                 set_program(midi_event.data.control.value);
                 alsa_pcm.drain();
+                break;
+            default:
+                SPDLOG_DEBUG("Engine MIDI event. [{}]", (int)midi_event.type);
                 break;
         }
     }
@@ -104,7 +113,7 @@ Engine::~Engine() {
 }
 
 int Engine::get_loop_track_count() const {
-    return 0;    
+    return loop_tracks.size();    
 }
 
 void Engine::pcm_callback() {

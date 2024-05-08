@@ -25,6 +25,19 @@ typedef farbot::fifo<PcmFrame_s24_3le,
             farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
             farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty> PcmFifo;
 
+enum PcmEvent {
+    ALSA_PCM_START = 0,
+    ALSA_PCM_STOP,
+    ALSA_PCM_CONTINUE,
+    ALSA_PCM_DRAIN,
+};
+
+typedef farbot::fifo<PcmEvent,
+            farbot::fifo_options::concurrency::single,
+            farbot::fifo_options::concurrency::single,
+            farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
+            farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty> PcmEventFifo;
+
 class AlsaPcm {
     private:
         snd_pcm_t* pcm_out;
@@ -33,9 +46,10 @@ class AlsaPcm {
         std::atomic_bool stop;
         std::unique_ptr<PcmFifo> pcm_fifo;
         std::function<void(void)> callback;
-        std::atomic_bool drain_flag;
+        std::unique_ptr<PcmEventFifo> pcm_event_fifo;
         pthread_t pcm_thread;
         friend void* run_pcm(void* context);
+        void process_events();
         void float_to_s24_3le(float sample, unsigned char* buffer);
         int set_hwparams(snd_pcm_t* handle, snd_pcm_hw_params_t* params);
         int set_swparams(snd_pcm_t* handle, snd_pcm_sw_params_t* swparams);

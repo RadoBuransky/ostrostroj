@@ -10,16 +10,16 @@ static constexpr std::string PCM_OUT_NAME = "hw:UMC1820";
 static constexpr snd_pcm_access_t PCM_OUT_ACCESS = SND_PCM_ACCESS_MMAP_INTERLEAVED;
 static constexpr snd_pcm_uframes_t PCM_OUT_RATE = 96000;
 static constexpr snd_pcm_format_t PCM_OUT_FORMAT = SND_PCM_FORMAT_S24_3LE;
-static constexpr std::chrono::duration<long, std::milli> PCM_OUT_PERIOD_TIME = std::chrono::milliseconds(1);
-static constexpr int PCM_OUT_BUFFER_PERIODS = 100;
+static constexpr std::chrono::duration<long, std::milli> PCM_OUT_PERIOD_TIME = std::chrono::milliseconds(25);
+static constexpr int PCM_OUT_BUFFER_PERIODS = 4;
 static constexpr int THREAD_PRIORITY = 80;
 
 PcmSample_s24_3le::PcmSample_s24_3le(float sample) {
-    // https://github.com/naudio/NAudio/blob/a106da4eed61774e9bd3eda1fa7922581aee04e1/NAudio.Asio/ASIOSampleConvertor.cs#L415
     *this = sample;
 };
 
 PcmSample_s24_3le& PcmSample_s24_3le::operator=(float sample) {
+    // https://github.com/naudio/NAudio/blob/a106da4eed61774e9bd3eda1fa7922581aee04e1/NAudio.Asio/ASIOSampleConvertor.cs#L415
     signed int sample24 = (signed int)((double)sample * (double)8388607.0);
     b0 = (unsigned char)(sample24);
     b1 = (unsigned char)(sample24 >> 8);
@@ -52,20 +52,7 @@ void* run_pcm(void* context) {
     SPDLOG_INFO("ALSA pcm started.");
 
     while (!self.stop) {
-        if (self.drain_flag.exchange(false)) {
-            PcmFrame_s24_3le dropped_frame;
-            SPDLOG_DEBUG("Draining...");
-            snd_pcm_uframes_t dropped_frames = 0;
-            while (pcm_fifo.pop(dropped_frame)) {
-                dropped_frames++;
-            }
-            err = snd_pcm_reset(self.pcm_out);
-            if (err < 0) {
-                SPDLOG_ERROR("snd_pcm_reset failed = {}", snd_strerror(err));                
-            }
-            SPDLOG_DEBUG("Draining done. [dropped_frames={}]", dropped_frames);
-        }
-
+        self.process_events();
         state = snd_pcm_state(self.pcm_out);
         SPDLOG_TRACE("state = {}", (long)state);
         if (state == SND_PCM_STATE_XRUN || state == SND_PCM_STATE_SUSPENDED) {            
@@ -97,7 +84,7 @@ void* run_pcm(void* context) {
         }
         size = self.period_size;
         engine_xrun = false;
-        SPDLOG_DEBUG("commiting {} frames...", self.period_size);
+        SPDLOG_DEBUG("ALSA PCM writing {} frames...", self.period_size);
         while (size > 0) {
             frames = size;
             err = snd_pcm_mmap_begin(self.pcm_out, &areas, &offset, &frames);
@@ -125,11 +112,12 @@ void* run_pcm(void* context) {
             while (frames_to_write-- > 0) {
                 if (!pcm_fifo.pop(*buffer)) {
                     engine_xrun = true;
-                    SPDLOG_WARN("PCM FIFO xrun...");
+                    SPDLOG_WARN("ALSA PCM FIFO xrun...");
                     do {
-                        usleep(500);
+                        self.callback();
+                        usleep(std::chrono::microseconds(PCM_OUT_PERIOD_TIME).count() / 2);
                     } while (!pcm_fifo.pop(*buffer));
-                    SPDLOG_WARN("PCM FIFO recovered.");
+                    SPDLOG_WARN("ALSA PCM FIFO recovered.");
                 }
                 buffer++;
             }
@@ -141,11 +129,55 @@ void* run_pcm(void* context) {
             }
             size -= frames;
         }
-        SPDLOG_DEBUG("frames commited [engine xrun={}]", engine_xrun);
+        SPDLOG_DEBUG("ALSA PCM frames commited [engine xrun={}]", engine_xrun);
         self.callback();
     }
 
     return 0;
+}
+
+void AlsaPcm::process_events() {
+    PcmEvent event;
+    int err;
+    PcmFrame_s24_3le dropped_frame;
+    snd_pcm_uframes_t dropped_frames = 0;
+    while (pcm_event_fifo->pop(event)) {
+        SPDLOG_DEBUG("ALSA PCM event = {}", (int)event);
+        switch(event) {
+            case ALSA_PCM_START:
+                err = snd_pcm_start(pcm_out);
+                if (err < 0) {
+                    SPDLOG_ERROR("snd_pcm_start failed = {}", snd_strerror(err));
+                }
+                break;
+            case ALSA_PCM_STOP:
+                err = snd_pcm_pause(pcm_out, false);
+                if (err < 0) {
+                    SPDLOG_ERROR("snd_pcm_pause failed = {}", snd_strerror(err));
+                }
+                break;
+            case ALSA_PCM_CONTINUE:
+                err = snd_pcm_pause(pcm_out, true);
+                if (err < 0) {
+                    SPDLOG_ERROR("snd_pcm_pause failed = {}", snd_strerror(err));
+                }
+                break;
+            case ALSA_PCM_DRAIN:
+                SPDLOG_DEBUG("Draining...");
+                while (pcm_fifo->pop(dropped_frame)) {
+                    dropped_frames++;
+                }
+                err = snd_pcm_reset(pcm_out);
+                if (err < 0) {
+                    SPDLOG_ERROR("snd_pcm_reset failed = {}", snd_strerror(err));                
+                }
+                SPDLOG_DEBUG("Draining done. [dropped_frames={}]", dropped_frames);
+                break;
+            default:
+                SPDLOG_ERROR("Unknown event! [{}]", (int)event);
+                break;
+        }
+    }
 }
  
 int AlsaPcm::set_hwparams(snd_pcm_t* handle, snd_pcm_hw_params_t* params) {
@@ -317,7 +349,7 @@ AlsaPcm::AlsaPcm():
     stop(false),
     pcm_fifo(create_pcm_fifo()),
     callback(0),
-    drain_flag(false),
+    pcm_event_fifo(std::make_unique<PcmEventFifo>(64)),
     pcm_thread(0){    
 }
 
@@ -363,26 +395,27 @@ void AlsaPcm::start(std::function<void(void)> _callback) {
 }
 
 void AlsaPcm::play_start() {
-    int err = snd_pcm_start(pcm_out);
-    if (err < 0) {
-        SPDLOG_ERROR("snd_pcm_start failed = {}", snd_strerror(err));
-    }
+    snd_pcm_start(pcm_out);
+    // TODO: snd_pcm_wait is waiting...
+    // if (!pcm_event_fifo->push(ALSA_PCM_START)) {
+    //     SPDLOG_ERROR("pcm_event_fifo overflow!");
+    // }
 }
 
 void AlsaPcm::play_stop() {
-    int err = snd_pcm_pause(pcm_out, false);
-    if (err < 0) {
-        SPDLOG_ERROR("snd_pcm_pause failed = {}", snd_strerror(err));
+    if (!pcm_event_fifo->push(ALSA_PCM_STOP)) {
+        SPDLOG_ERROR("pcm_event_fifo overflow!");
     }
 }
 
 void AlsaPcm::play_continue() {
-    int err = snd_pcm_pause(pcm_out, true);
-    if (err < 0) {
-        SPDLOG_ERROR("snd_pcm_pause failed = {}", snd_strerror(err));
+    if (!pcm_event_fifo->push(ALSA_PCM_CONTINUE)) {
+        SPDLOG_ERROR("pcm_event_fifo overflow!");
     }
 }
 
 void AlsaPcm::drain() {
-    drain_flag = true;
+    if (!pcm_event_fifo->push(ALSA_PCM_DRAIN)) {
+        SPDLOG_ERROR("pcm_event_fifo overflow!");
+    }
 }

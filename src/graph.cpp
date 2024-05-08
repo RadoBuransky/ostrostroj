@@ -1,9 +1,8 @@
 #include "common.hpp"
 #include "graph.hpp"
 
-bool NoopNode::pop(float& sample) {
-    sample = 0.0;
-    return true;
+bool NoopNode::pop(float&) {
+    return false;
 }
 
 ChildNode::ChildNode(Node& _parent):
@@ -26,8 +25,12 @@ void DynamicNode::set_parent(std::unique_ptr<Node>&& _parent) {
     parent = std::move(_parent);
 }
 
-void DynamicNode::reset_parent() {
+bool DynamicNode::reset_parent() {
+    if (dynamic_cast<NoopNode*>(parent.get())) {
+        return false;
+    }
     parent = std::make_unique<NoopNode>();
+    return true;
 }
 
 bool DynamicNode::pop(float& sample) {
@@ -59,28 +62,15 @@ std::vector<std::reference_wrapper<Node>> MixingNode::get_parents() const {
 
 TrackNode::TrackNode(Node& _parent):
     ChildNode(_parent),
-    started(false),
     muted(false) {
 }
 
 bool TrackNode::pop(float& sample) {
-    if (started) {
-        if (muted) {
-            float ignored_sample;
-            return parent.pop(ignored_sample);
-        }
-        return parent.pop(sample);
+    if (muted) {
+        float ignored_sample;
+        return parent.pop(ignored_sample);
     }
-    sample = 0.0;
-    return true;
-}
-
-void TrackNode::start() {
-    started = true;
-}
-
-void TrackNode::stop() {
-    started = false;
+    return parent.pop(sample);
 }
 
 void TrackNode::set_mute(bool mute) {

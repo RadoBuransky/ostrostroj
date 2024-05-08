@@ -1,3 +1,5 @@
+#define SPDLOG_ACTIVE_LEVEL 1
+
 #include "common.hpp"
 #include "track.hpp"
 
@@ -6,35 +8,29 @@ void Track::run() {
     float in_sample;
     PcmSample_s24_3le out_sample;
     bool out_sample_pushed = true;
-    SPDLOG_DEBUG("Track {} started. [channels={}]", track_number, channels);
+    SPDLOG_INFO("Track {} started. [channels={},period_time={}]", track_number, channels, std::chrono::microseconds(period_time).count());
     try {
         while (!stop) {            
             std::unique_lock<std::mutex> lock(m);
-            out_sample_pushed = false;
             do {
                 if (track_node.pop(in_sample)) {
                     out_sample = in_sample;
                 } else {
-                    SPDLOG_DEBUG("Track {} underrun.", track_number);
-                    out_sample_pushed = true;
-                    break;
+                    SPDLOG_DEBUG("Track {} is waiting empty...", track_number);
+                    cv.wait(lock);
+                    SPDLOG_DEBUG("Track {} activated", track_number);
+                    continue;
                 }
             } while (fifo_ref.push(std::move(out_sample)));
 
-            if (cv.wait_for(lock, period_time) == std::cv_status::no_timeout) {
-                // Don't push if we changed node
-                out_sample_pushed = true;
-            }
-
-            if (!out_sample_pushed) {
-                if (!fifo_ref.push(std::move(out_sample))) {
-                    continue;
-                } else {
-                    out_sample_pushed = true;
+            while (!out_sample_pushed) {
+                if (cv.wait_for(lock, period_time) == std::cv_status::no_timeout) {
+                    break;
                 }
+                out_sample_pushed = fifo_ref.push(std::move(out_sample));
             }
         }
-        SPDLOG_DEBUG("Track {} stopped.", track_number);
+        SPDLOG_INFO("Track {} stopped.", track_number);
     } catch(std::exception const& e) {
         SPDLOG_ERROR("Track {} failed. {}", track_number, e.what());
     }
@@ -67,11 +63,14 @@ int Track::get_channels() const {
 }
 
 void Track::reset_node() {
+    bool reset;
     {
         std::lock_guard<std::mutex> guard(m);
-        dynamic_node.reset_parent();
+        reset = dynamic_node.reset_parent();
     }
-    cv.notify_all();
+    if (reset) {
+        cv.notify_all();
+    }
 }
 
 void Track::set_node(std::unique_ptr<Node>&& node) {
