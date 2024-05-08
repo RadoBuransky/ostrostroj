@@ -61,6 +61,9 @@ void* run_pcm(void* context) {
                 //     return 0;
                 // }
             } else {
+                SPDLOG_DEBUG("Fuck it... [total_commited_frames={}]", total_commited_frames);
+                return 0;
+
                 state = snd_pcm_state(self.pcm_out);
                 SPDLOG_DEBUG("snd_pcm_wait... [state={},avail={},delay={}]", (int)state, avail, delay);
                 err = snd_pcm_wait(self.pcm_out, -1);

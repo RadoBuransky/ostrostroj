@@ -119,8 +119,9 @@ Engine::Engine(Project& _project, AlsaMidi& alsa_midi, AlsaPcm& _alsa_pcm):
     midi_processed(false),
     program_number(0) {
     static_assert(std::atomic_bool::is_always_lock_free);
-    create_threads();
     set_program(0);
+    midi_start();
+    create_threads();
 }
 
 Engine::~Engine() {   
@@ -276,7 +277,11 @@ void Engine::pcm_callback() {
 }
 
 void Engine::midi_callback() {
-    alsa_pcm.play_start();
+    static std::atomic_bool started = false;
+    if (!started.exchange(true)) {
+        SPDLOG_WARN("midi_callback play_start");
+        alsa_pcm.play_start();
+    }
     midi_processed = false;
     next_flag.clear();
     next_flag.notify_one();
