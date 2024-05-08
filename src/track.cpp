@@ -1,4 +1,3 @@
-
 #include "common.hpp"
 #include "track.hpp"
 
@@ -7,10 +6,10 @@ void Track::run() {
     float in_sample;
     PcmSample_s24_3le out_sample;
     bool out_sample_pushed = true;
-    const useconds_t usleep_time = std::chrono::duration<useconds_t, std::micro>(period_time).count();
-    SPDLOG_DEBUG("Track {} started. [channels={},usleep_time={}]", track_number, channels, usleep_time);
+    SPDLOG_DEBUG("Track {} started. [channels={}]", track_number, channels);
     try {
         while (!stop) {            
+            std::unique_lock<std::mutex> lock(m);
             out_sample_pushed = false;
             do {
                 if (track_node.pop(in_sample)) {
@@ -21,8 +20,8 @@ void Track::run() {
                     break;
                 }
             } while (fifo_ref.push(std::move(out_sample)));
-            
-            usleep(usleep_time);
+
+            cv.wait_for(lock, period_time);
 
             if (!out_sample_pushed) {
                 if (!fifo_ref.push(std::move(out_sample))) {
@@ -46,8 +45,8 @@ Track::Track(int _track_number, int _channels, std::chrono::milliseconds _period
     stop(false),
     dynamic_node(),
     track_node(dynamic_node),
+    m(),
     worker_thread(std::bind(&Track::run, this)) {
-    assert(channels <= PCM_OUT_CHANNELS);
     pthread_setname_np(worker_thread.native_handle(), fmt::format("track{}", track_number).c_str());
 }
 
@@ -56,101 +55,26 @@ Track::~Track() {
     worker_thread.join();
 }
 
-/*
-#include "common.h"
-#include "track.hpp"
-
-bool Track::push_next_frame() {
-    if (next_frame.empty()) {
-        return true;
-    }
-    for (unsigned int channel = 0; channel < channels.size(); channel++) {
-        if (!channels[channel].get().push(std::move(next_frame.at(channel)))) {
-            if (channel != 0) {
-                SPDLOG_WARN("Next frame overflow! [track={}, {} ch]", track_number, channel);
-                next_frame.clear();
-            }
-            return false;
-        }
-    }
-    next_frame.clear();
-    return true;
+InterleavedFifo& Track::get_fifo() const {
+    return *fifo.get();
 }
 
-void Track::pop_next_frame(float sample) {    
-    next_frame.push_back(sample);
-    for (unsigned int channel = 1; channel < channels.size(); channel++) {
-        if (!track_node.pop(sample)) {
-            next_frame.clear();
-            return;
-        }
-        next_frame.push_back(sample);
-    }
-}
-
-Track::Track(int _track_number, PcmFifo& channel):
-    Track(_track_number, std::vector<std::reference_wrapper<PcmFifo>>({std::ref(channel)})) {
-}
-
-Track::Track(int _track_number, PcmFifo& left_channel, PcmFifo& right_channel):
-    Track(_track_number, std::vector<std::reference_wrapper<PcmFifo>>({std::ref(left_channel), std::ref(right_channel)})) {
-}
-
-Track::Track(int _track_number, std::vector<std::reference_wrapper<PcmFifo>> _channels):
-    track_number(_track_number),
-    channels(_channels),
-    dynamic_node(DynamicNode()),
-    track_node(TrackNode(dynamic_node)) {
-}
-
-void Track::set_mute(bool mute) {
-    track_node.set_mute(mute);
-}
-
-void Track::start() {
-    track_node.start();
-}
-
-void Track::stop() {
-    track_node.stop();
-}
-
-void Track::set_node(std::unique_ptr<Node>&& node) {
-    dynamic_node.set_parent(std::move(node));
+int Track::get_channels() const {
+    return channels;
 }
 
 void Track::reset_node() {
-    dynamic_node.reset_parent();
+    {
+        std::lock_guard<std::mutex> guard(m);
+        dynamic_node.reset_parent();
+    }
+    cv.notify_all();
 }
 
-void Track::fill_output() {
-    if (!push_next_frame()) {
-        return;
+void Track::set_node(std::unique_ptr<Node>&& node) {
+    {
+        std::lock_guard<std::mutex> guard(m);
+        dynamic_node.set_parent(std::move(node));
     }
-    const int channels_size = channels.size();
-    int channel = channels_size - 1;
-    bool overflow = false;
-    float sample;
-#ifdef PROFILING
-    Profiler& profiler = Profiler::get();
-#endif
-    while (!overflow && track_node.pop(sample)) {
-        channel = (channel + 1) % channels_size;
-        overflow = !channels[channel].get().push(std::move(sample));
-#ifdef PROFILING
-        profiler.engine_samples_pushed++;
-#endif
-    }
-    SPDLOG_DEBUG("Track full. [{}]", track_number);
-    if (overflow) {
-        if (channel != 0) {
-            // TODO: It is possible that alsapcm popped channel 0 but not popped channel 1 yet. Concurrency.
-            SPDLOG_WARN("FIFO not channel-aligned! [track={}, {}/{} ch]", track_number, channel, channels_size);
-            return;
-        }
-        pop_next_frame(sample);
-    } else {
-        SPDLOG_WARN("Track underrun!");
-    }
+    cv.notify_all();
 }
-*/

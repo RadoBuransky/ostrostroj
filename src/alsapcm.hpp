@@ -11,10 +11,12 @@ struct PcmSample_s24_3le {
     PcmSample_s24_3le() = default;
     PcmSample_s24_3le(float sample);
     PcmSample_s24_3le& operator=(float sample);
+    void silence();
 };
 
 struct PcmFrame_s24_3le {
     std::array<PcmSample_s24_3le,PCM_OUT_CHANNELS> channels;
+    void silence();
 };
 
 typedef farbot::fifo<PcmFrame_s24_3le,
@@ -44,6 +46,8 @@ class AlsaPcm {
         void start(std::function<void(void)> _callback);
         snd_pcm_uframes_t get_sample_rate() const;
         int get_channels() const;
+        std::chrono::milliseconds get_period_time();
+        snd_pcm_uframes_t get_period_size();
         PcmFifo& get_pcm_fifo();
 
         void play_start();

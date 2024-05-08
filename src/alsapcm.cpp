@@ -27,6 +27,18 @@ PcmSample_s24_3le& PcmSample_s24_3le::operator=(float sample) {
     return *this;
 }
 
+void PcmSample_s24_3le::silence() {
+    b0 = 0;
+    b1 = 0;
+    b2 = 0;
+}
+
+void PcmFrame_s24_3le::silence() {
+    for (PcmSample_s24_3le& s: channels) {
+        s.silence();
+    }
+}
+
 void* run_pcm(void* context) {
     AlsaPcm& self = *(AlsaPcm*)context;
     PcmFifo& pcm_fifo = *self.pcm_fifo.get();
@@ -272,8 +284,8 @@ snd_pcm_t* AlsaPcm::open_pcm_out(const std::string& pcm_out_name) {
     snd_pcm_sw_params_get_start_threshold(swparams, &start_threshold);
     snd_pcm_uframes_t avail_min;
     snd_pcm_sw_params_get_avail_min(swparams, &avail_min);
-    SPDLOG_INFO("ALSA pcm out open. [name={},buffer_size={},period_size={},type={},delay={},start_threshold={},avail_min={}]",
-        pcm_name, buffer_size, period_size, (int)pcm_type, delay, start_threshold, avail_min);
+    SPDLOG_INFO("ALSA pcm out open. [name={},buffer_size={},period_size={},type={},delay={},start_threshold={},avail_min={},sample size={}]",
+        pcm_name, buffer_size, period_size, (int)pcm_type, delay, start_threshold, avail_min, sizeof(PcmSample_s24_3le));
     return result;
 }
 
@@ -312,6 +324,14 @@ snd_pcm_uframes_t AlsaPcm::get_sample_rate() const {
 
 int AlsaPcm::get_channels() const {
     return PCM_OUT_CHANNELS;    
+}
+
+std::chrono::milliseconds AlsaPcm::get_period_time() {
+    return PCM_OUT_PERIOD_TIME;
+}
+
+snd_pcm_uframes_t AlsaPcm::get_period_size() {
+    return period_size;
 }
 
 PcmFifo& AlsaPcm::get_pcm_fifo() {
