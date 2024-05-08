@@ -23,7 +23,6 @@ class Track {
         TrackNode track_node;
         std::thread worker_thread;
         void run();
-        inline bool node_to_fifo(std::array<float, PCM_OUT_CHANNELS>& in_frame, PcmSample_s24_3le& out_frame, InterleavedFifo& fifo_ref);
     public:
         Track(int _track_number, int _channels, std::chrono::milliseconds _period_time, snd_pcm_uframes_t _period_size);
         virtual ~Track();
