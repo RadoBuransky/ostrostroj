@@ -67,6 +67,10 @@ InterleavedFifo& Track::get_fifo() const {
     return *fifo.get();
 }
 
+int Track::get_track_number() const {
+    return track_number;
+}
+
 int Track::get_channels() const {
     return channels;
 }

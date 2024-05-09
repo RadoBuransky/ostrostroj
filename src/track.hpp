@@ -30,6 +30,7 @@ class Track {
         Track(int _track_number, int _channels, std::chrono::milliseconds _period_time, snd_pcm_uframes_t _period_size, bool _no_xrun);
         virtual ~Track();
         InterleavedFifo& get_fifo() const;
+        int get_track_number() const;
         int get_channels() const;
         void reset_node();
         void set_node(std::unique_ptr<Node>&& node);

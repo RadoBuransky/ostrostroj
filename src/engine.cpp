@@ -3,6 +3,13 @@
 #include "common.hpp"
 #include "engine.hpp"
 
+static constexpr std::chrono::microseconds TRACK_XRUN_SLEEP = std::chrono::microseconds(100);
+static constexpr int TRACK_XRUN_RETRY = 100;
+
+EngineState::EngineState(PcmFifo& _pcm_fifo):
+    pcm_fifo(_pcm_fifo) {    
+}
+
 bool EngineState::push_pending() {
     if (pending) {
         if (pcm_fifo.push(std::move(frame))) {
@@ -65,7 +72,7 @@ void Engine::process_pcm() {
     TrackState* track;
     int ch;
     PcmSample_s24_3le* sample;
-
+    SPDLOG_DEBUG("Engine processing PCM...");
     while (state.push_pending()) {
         sample = state.frame.channels.data();
         track = state.tracks.data();
@@ -73,9 +80,19 @@ void Engine::process_pcm() {
             ch = track->channels;
             while (ch-- > 0) {
                 if (track->fifo != nullptr) {
-                    while (!track->fifo->pop(*sample)) {
-                        // TODO: Livelock? What if that track never gets data
-                        usleep(500);
+                    if (!track->fifo->pop(*sample)) {
+                        int track_number = (track - state.tracks.data()) + 1;
+                        SPDLOG_DEBUG("Engine track {} underrun waiting...", track_number);
+                        int retry = TRACK_XRUN_RETRY;
+                        do {                            
+                            usleep(TRACK_XRUN_SLEEP.count());
+                        } while (retry-- > 0 && !track->fifo->pop(*sample));
+                        if (retry == 0) {
+                            SPDLOG_WARN("Engine track {} underrun!", track_number);
+                            sample->silence();
+                        } else {
+                            SPDLOG_DEBUG("Engine track {} underrun recovered.", track_number);
+                        }
                     }
                 } else {
                     sample->silence();
@@ -91,16 +108,26 @@ void Engine::process_pcm() {
         }
         state.pending = true;
     }
+    SPDLOG_DEBUG("Engine processing PCM done");
 }
 
 Program& Engine::set_program(int program_number) {
+    state.frame.silence();
+    state.pending = false;
     program = project.get_program(program_number);    
-    for (std::unique_ptr<Track>& track : loop_tracks) {
-        track->reset_node();
+    for (size_t track = 0; track < loop_tracks.size(); track++) {
+        loop_tracks.at(track)->reset_node();
+        state.tracks.at(track).fifo = nullptr;
+        state.tracks.at(track).channels = loop_tracks.at(track)->get_channels();
     }
     for (LoopClip& loop_clip : program.get().get_loops()) {
-        loop_tracks.at(loop_clip.get_track())->set_node(std::make_unique<ClipNode>(loop_clip, true));
+        int track = loop_clip.get_track();
+        loop_tracks.at(track)->set_node(std::make_unique<ClipNode>(loop_clip, true));
+        state.tracks.at(track).fifo = &loop_tracks.at(track)->get_fifo();
+        state.tracks.at(track).channels = loop_tracks.at(track)->get_channels();
     }
+    state.tracks.at(loop_tracks.size()).fifo = &one_shots_track.get_fifo();
+    state.tracks.at(loop_tracks.size()).channels = one_shots_track.get_channels();
     SPDLOG_INFO("Program set = {}", program.get().get_start_number());
     return program;
 }
@@ -118,6 +145,7 @@ Engine::Engine(Project& _project, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm):
         std::make_unique<Track>(6, 2, _alsa_pcm.get_period_time(), _alsa_pcm.get_period_size(), false),
     },
     one_shots_track(Track(7, 2, _alsa_pcm.get_period_time(), _alsa_pcm.get_period_size(), true)),
+    state(_alsa_pcm.get_pcm_fifo()),
     program(set_program(0)),
     stop(false),
     engine_thread(std::bind(&Engine::run, this)) {

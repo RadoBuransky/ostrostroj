@@ -5,6 +5,8 @@
 #include "project.hpp"
 #include "track.hpp"
 
+static constexpr int ENGINE_LOOP_TRACKS = 6;
+
 struct TrackState {
     InterleavedFifo* fifo;
     int channels;
@@ -14,7 +16,8 @@ struct EngineState {
     PcmFifo& pcm_fifo;
     PcmFrame_s24_3le frame;
     bool pending;
-    std::array<TrackState, PCM_OUT_CHANNELS> tracks;
+    std::array<TrackState, ENGINE_LOOP_TRACKS + 1> tracks;
+    EngineState(PcmFifo& _pcm_fifo);
     bool push_pending();
 };
 
@@ -23,10 +26,10 @@ class Engine {
         Project& project;
         AlsaMidi& alsa_midi;
         AlsaPcm& alsa_pcm;
-        std::array<std::unique_ptr<Track>, 6> loop_tracks; // 0-3 mono, 4-5 stereo
+        std::array<std::unique_ptr<Track>, ENGINE_LOOP_TRACKS> loop_tracks; // 0-3 mono, 4-5 stereo
         Track one_shots_track;
-        std::reference_wrapper<Program> program;
         EngineState state;
+        std::reference_wrapper<Program> program;
         std::atomic_bool stop;
         std::atomic_flag heartbeat;
         std::thread engine_thread;

@@ -10,7 +10,7 @@ static constexpr std::string PCM_OUT_NAME = "hw:UMC1820";
 static constexpr snd_pcm_access_t PCM_OUT_ACCESS = SND_PCM_ACCESS_MMAP_INTERLEAVED;
 static constexpr snd_pcm_uframes_t PCM_OUT_RATE = 96000;
 static constexpr snd_pcm_format_t PCM_OUT_FORMAT = SND_PCM_FORMAT_S24_3LE;
-static constexpr std::chrono::duration<long, std::milli> PCM_OUT_PERIOD_TIME = std::chrono::milliseconds(1);
+static constexpr std::chrono::duration<long, std::milli> PCM_OUT_PERIOD_TIME = std::chrono::milliseconds(10);
 static constexpr int PCM_OUT_BUFFER_PERIODS = 100;
 static constexpr int THREAD_PRIORITY = 80;
 
