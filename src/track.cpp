@@ -1,4 +1,4 @@
-#define SPDLOG_ACTIVE_LEVEL 1
+#define SPDLOG_ACTIVE_LEVEL 2
 
 #include "common.hpp"
 #include "track.hpp"
@@ -7,17 +7,12 @@ void Track::run() {
     InterleavedFifo& fifo_ref = *fifo.get();
     float in_sample;
     PcmSample_s24_3le out_sample;
-    bool out_sample_pushed = true;
     SPDLOG_INFO("Track {} started. [channels={},period_time={}]", track_number, channels, std::chrono::microseconds(period_time).count());
-    snd_pcm_uframes_t total_samples_written = 0;
     try {
+        std::unique_lock<std::mutex> lock(m);
         while (!stop) {            
-            std::unique_lock<std::mutex> lock(m);
             do {
                 if (track_node.pop(in_sample)) {
-                    if (track_number == 1 && total_samples_written++ < 10) {
-                        SPDLOG_WARN("Track 1 sample = {:g}", in_sample);
-                    }
                     out_sample = in_sample;
                 } else {
                     if (no_xrun) {
@@ -30,13 +25,11 @@ void Track::run() {
                     }
                 }
             } while (fifo_ref.push(std::move(out_sample)));
-
-            while (!out_sample_pushed) {
+            do {
                 if (cv.wait_for(lock, period_time) == std::cv_status::no_timeout) {
                     break;
                 }
-                out_sample_pushed = fifo_ref.push(std::move(out_sample));
-            }
+            } while (!fifo_ref.push(std::move(out_sample)));
         }
         SPDLOG_INFO("Track {} stopped.", track_number);
     } catch(std::exception const& e) {

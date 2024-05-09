@@ -1,4 +1,4 @@
-#define SPDLOG_ACTIVE_LEVEL 1
+#define SPDLOG_ACTIVE_LEVEL 2
 
 #include "common.hpp"
 #include "alsa/asoundlib.h"
@@ -73,7 +73,7 @@ void* run_pcm(void* context) {
         }
         if (avail < (snd_pcm_sframes_t)self.period_size) {
             state = snd_pcm_state(self.pcm_out);
-            SPDLOG_DEBUG("fuck it... [state={},avail={},delay={},total_frames_written={}]", (int)state, avail, delay, total_frames_written);
+            SPDLOG_WARN("fuck it... [state={},avail={},delay={},total_frames_written={}]", (int)state, avail, delay, total_frames_written);
             return 0;
             
             SPDLOG_DEBUG("snd_pcm_wait... [state={},avail={},delay={},total_frames_written={}]", (int)state, avail, delay, total_frames_written);
@@ -99,7 +99,7 @@ void* run_pcm(void* context) {
             }
             
             frames_to_write = frames;
-            buffer = (PcmFrame_s24_3le*)(((char*)areas[0].addr) + (areas[0].first / 8) + (offset * sizeof(PcmFrame_s24_3le)));
+            buffer = (PcmFrame_s24_3le*)(((char*)areas[0].addr) + (areas[0].first / 8)) + offset;
 #ifndef NDEBUG
             if (areas[0].step != sizeof(PcmFrame_s24_3le) * 8) {
                 SPDLOG_ERROR(fmt::format("Invalid step size! [expected={},actual={}]", sizeof(PcmFrame_s24_3le) * 8, areas[0].step));

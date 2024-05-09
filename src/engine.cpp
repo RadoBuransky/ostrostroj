@@ -1,4 +1,4 @@
-#define SPDLOG_ACTIVE_LEVEL 1
+#define SPDLOG_ACTIVE_LEVEL 2
 
 #include "common.hpp"
 #include "engine.hpp"
@@ -45,24 +45,24 @@ void Engine::process_midi() {
     while (alsa_midi.get_fifo().pop(midi_event)) {
         switch(midi_event.type) {
             case SND_SEQ_EVENT_START: 
-                SPDLOG_DEBUG("Engine MIDI START");
+                SPDLOG_INFO("Engine MIDI START");
                 alsa_pcm.play_start();
                 break;
             case SND_SEQ_EVENT_STOP: 
-                SPDLOG_DEBUG("Engine MIDI STOP");
+                SPDLOG_INFO("Engine MIDI STOP");
                 alsa_pcm.play_stop();
                 break;
             case SND_SEQ_EVENT_CONTINUE: 
-                SPDLOG_DEBUG("Engine MIDI CONTINUE");
+                SPDLOG_INFO("Engine MIDI CONTINUE");
                 alsa_pcm.play_continue();
                 break;
             case SND_SEQ_EVENT_PGMCHANGE: 
-                SPDLOG_DEBUG("Engine MIDI PROGRAM CHANGE [{}]", midi_event.data.control.value);
+                SPDLOG_INFO("Engine MIDI PROGRAM CHANGE [{}]", midi_event.data.control.value);
                 set_program(midi_event.data.control.value);
                 alsa_pcm.drain();
                 break;
             default:
-                SPDLOG_DEBUG("Engine MIDI event. [{}]", (int)midi_event.type);
+                SPDLOG_WARN("Ignored engine MIDI event. [{}]", (int)midi_event.type);
                 break;
         }
     }
@@ -84,7 +84,7 @@ void Engine::process_pcm() {
                         int track_number = (track - state.tracks.data()) + 1;
                         SPDLOG_DEBUG("Engine track {} underrun waiting...", track_number);
                         int retry = TRACK_XRUN_RETRY;
-                        do {                            
+                        do {
                             usleep(TRACK_XRUN_SLEEP.count());
                         } while (retry-- > 0 && !track->fifo->pop(*sample));
                         if (retry == 0) {
