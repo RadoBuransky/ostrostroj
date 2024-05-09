@@ -10,8 +10,8 @@ static constexpr std::string PCM_OUT_NAME = "hw:UMC1820";
 static constexpr snd_pcm_access_t PCM_OUT_ACCESS = SND_PCM_ACCESS_MMAP_INTERLEAVED;
 static constexpr snd_pcm_uframes_t PCM_OUT_RATE = 96000;
 static constexpr snd_pcm_format_t PCM_OUT_FORMAT = SND_PCM_FORMAT_S24_3LE;
-static constexpr std::chrono::duration<long, std::milli> PCM_OUT_PERIOD_TIME = std::chrono::milliseconds(25);
-static constexpr int PCM_OUT_BUFFER_PERIODS = 4;
+static constexpr std::chrono::duration<long, std::milli> PCM_OUT_PERIOD_TIME = std::chrono::milliseconds(1);
+static constexpr int PCM_OUT_BUFFER_PERIODS = 100;
 static constexpr int THREAD_PRIORITY = 80;
 
 PcmSample_s24_3le::PcmSample_s24_3le(float sample) {
@@ -51,6 +51,7 @@ void* run_pcm(void* context) {
     PcmFrame_s24_3le* buffer;
     SPDLOG_INFO("ALSA pcm started.");
 
+    snd_pcm_uframes_t total_frames_written = 0;
     while (!self.stop) {
         self.process_events();
         state = snd_pcm_state(self.pcm_out);
@@ -72,7 +73,10 @@ void* run_pcm(void* context) {
         }
         if (avail < (snd_pcm_sframes_t)self.period_size) {
             state = snd_pcm_state(self.pcm_out);
-            SPDLOG_DEBUG("snd_pcm_wait... [state={},avail={},delay={}]", (int)state, avail, delay);
+            SPDLOG_DEBUG("fuck it... [state={},avail={},delay={},total_frames_written={}]", (int)state, avail, delay, total_frames_written);
+            return 0;
+            
+            SPDLOG_DEBUG("snd_pcm_wait... [state={},avail={},delay={},total_frames_written={}]", (int)state, avail, delay, total_frames_written);
             err = snd_pcm_wait(self.pcm_out, -1);
             SPDLOG_TRACE("snd_pcm_wait = {}", err);
             if (err < 0) {
@@ -117,7 +121,7 @@ void* run_pcm(void* context) {
                         self.callback();
                         usleep(std::chrono::microseconds(PCM_OUT_PERIOD_TIME).count() / 2);
                     } while (!pcm_fifo.pop(*buffer));
-                    SPDLOG_WARN("ALSA PCM FIFO recovered.");
+                    SPDLOG_WARN("ALSA PCM FIFO xrun recovered.");
                 }
                 buffer++;
             }
@@ -128,6 +132,7 @@ void* run_pcm(void* context) {
                 SPDLOG_ERROR("commit {} xrun!", commitres);
             }
             size -= frames;
+            total_frames_written += frames;
         }
         SPDLOG_DEBUG("ALSA PCM frames commited [engine xrun={}]", engine_xrun);
         self.callback();
@@ -283,11 +288,10 @@ int AlsaPcm::set_swparams(snd_pcm_t* handle, snd_pcm_sw_params_t* swparams) {
     // allow the transfer when at least period_size samples can be processed
     // or disable this mechanism when period event is enabled (aka interrupt like style processing)
     // int period_event = 0;
-    // err = snd_pcm_sw_params_set_avail_min(handle, swparams, period_event ? buffer_size : period_size);
-    // if (err < 0) {
-    //     SPDLOG_ERROR("Unable to set avail min for playback: {}", snd_strerror(err));
-    //     return err;
-    // }
+    err = snd_pcm_sw_params_set_avail_min(handle, swparams, 1);
+    if (err < 0) {
+        throw OstrostrojException(fmt::format("snd_pcm_sw_params_set_avail_min failed = {}", snd_strerror(err)));
+    }
     // enable period events when requested
     // if (period_event) {
     //     err = snd_pcm_sw_params_set_period_event(handle, swparams, 1);

@@ -17,6 +17,7 @@ class Track {
         const int track_number;
         const int channels;
         const std::chrono::milliseconds period_time;
+        const bool no_xrun;
         std::unique_ptr<InterleavedFifo> fifo;
         std::atomic_bool stop;
         DynamicNode dynamic_node;
@@ -26,7 +27,7 @@ class Track {
         std::thread worker_thread;
         void run();
     public:
-        Track(int _track_number, int _channels, std::chrono::milliseconds _period_time, snd_pcm_uframes_t _period_size);
+        Track(int _track_number, int _channels, std::chrono::milliseconds _period_time, snd_pcm_uframes_t _period_size, bool _no_xrun);
         virtual ~Track();
         InterleavedFifo& get_fifo() const;
         int get_channels() const;

@@ -9,17 +9,25 @@ void Track::run() {
     PcmSample_s24_3le out_sample;
     bool out_sample_pushed = true;
     SPDLOG_INFO("Track {} started. [channels={},period_time={}]", track_number, channels, std::chrono::microseconds(period_time).count());
+    snd_pcm_uframes_t total_samples_written = 0;
     try {
         while (!stop) {            
             std::unique_lock<std::mutex> lock(m);
             do {
                 if (track_node.pop(in_sample)) {
+                    if (track_number == 1 && total_samples_written++ < 10) {
+                        SPDLOG_WARN("Track 1 sample = {:g}", in_sample);
+                    }
                     out_sample = in_sample;
                 } else {
-                    SPDLOG_DEBUG("Track {} is waiting empty...", track_number);
-                    cv.wait(lock);
-                    SPDLOG_DEBUG("Track {} activated", track_number);
-                    continue;
+                    if (no_xrun) {
+                        out_sample.silence();
+                    } else {
+                        SPDLOG_DEBUG("Track {} is waiting empty...", track_number);
+                        cv.wait(lock);
+                        SPDLOG_DEBUG("Track {} activated", track_number);
+                        continue;
+                    }
                 }
             } while (fifo_ref.push(std::move(out_sample)));
 
@@ -36,11 +44,12 @@ void Track::run() {
     }
 }
 
-Track::Track(int _track_number, int _channels, std::chrono::milliseconds _period_time, snd_pcm_uframes_t _period_size):
+Track::Track(int _track_number, int _channels, std::chrono::milliseconds _period_time, snd_pcm_uframes_t _period_size, bool _no_xrun):
     track_number(_track_number),
     channels(_channels),
     period_time(_period_time),
-    fifo(std::make_unique<InterleavedFifo>(_period_size * 2)),
+    no_xrun(_no_xrun),
+    fifo(std::make_unique<InterleavedFifo>(_period_size * 2 * _channels)),
     stop(false),
     dynamic_node(),
     track_node(dynamic_node),

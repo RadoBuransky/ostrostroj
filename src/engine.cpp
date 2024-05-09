@@ -3,14 +3,23 @@
 #include "common.hpp"
 #include "engine.hpp"
 
+bool EngineState::push_pending() {
+    if (pending) {
+        if (pcm_fifo.push(std::move(frame))) {
+            pending = false;
+            return true;
+        }
+        return false;
+    }
+    return true;
+}
+
 void Engine::run() {
     try {
-        PcmFrame_s24_3le frame;
-        frame.silence();
         SPDLOG_INFO("Engine started.");
         while (!stop) {
             process_midi();
-            process_pcm(frame);
+            process_pcm();
             if (heartbeat.test_and_set()) {
                 heartbeat.wait(true);
                 heartbeat.test_and_set();
@@ -52,27 +61,35 @@ void Engine::process_midi() {
     }
 }
 
-void Engine::process_pcm(PcmFrame_s24_3le& frame) {
-    PcmFifo& pcm_fifo = alsa_pcm.get_pcm_fifo();
-    while(pcm_fifo.push(std::move(frame))) {
-        PcmSample_s24_3le* frame_channel = frame.channels.data();
-        for (size_t loop_track_index = 0; loop_track_index < loop_tracks.size(); loop_track_index++) {
-            InterleavedFifo& loop_track_fifo = loop_tracks[loop_track_index]->get_fifo();
-            for (int channel = 0; channel < loop_tracks[loop_track_index]->get_channels(); channel++) {
-                if (!loop_track_fifo.pop(*frame_channel)) {                
-                    frame_channel->silence();
+void Engine::process_pcm() {
+    TrackState* track;
+    int ch;
+    PcmSample_s24_3le* sample;
+
+    while (state.push_pending()) {
+        sample = state.frame.channels.data();
+        track = state.tracks.data();
+        while (track != state.tracks.end()) {
+            ch = track->channels;
+            while (ch-- > 0) {
+                if (track->fifo != nullptr) {
+                    while (!track->fifo->pop(*sample)) {
+                        // TODO: Livelock? What if that track never gets data
+                        usleep(500);
+                    }
+                } else {
+                    sample->silence();
                 }
-                frame_channel++;
+                sample++;
+#ifndef NDEBUG
+                if (sample >= state.frame.channels.end()) {
+                    throw new OstrostrojException("sample pointer overflow!");
+                }
+#endif
             }
+            track++;
         }
-        if (!one_shots_track.get_fifo().pop(*frame_channel)) {
-            frame_channel->silence();
-        }
-        frame_channel++;
-        while (frame_channel < frame.channels.end()) {
-            frame_channel->silence();
-            frame_channel++;
-        }
+        state.pending = true;
     }
 }
 
@@ -93,14 +110,14 @@ Engine::Engine(Project& _project, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm):
     alsa_midi(_alsa_midi),
     alsa_pcm(_alsa_pcm),
     loop_tracks {
-        std::make_unique<Track>(1, 1, _alsa_pcm.get_period_time(), _alsa_pcm.get_period_size()),
-        std::make_unique<Track>(2, 1, _alsa_pcm.get_period_time(), _alsa_pcm.get_period_size()),
-        std::make_unique<Track>(3, 1, _alsa_pcm.get_period_time(), _alsa_pcm.get_period_size()),
-        std::make_unique<Track>(4, 1, _alsa_pcm.get_period_time(), _alsa_pcm.get_period_size()),
-        std::make_unique<Track>(5, 2, _alsa_pcm.get_period_time(), _alsa_pcm.get_period_size()),
-        std::make_unique<Track>(6, 2, _alsa_pcm.get_period_time(), _alsa_pcm.get_period_size()),
+        std::make_unique<Track>(1, 1, _alsa_pcm.get_period_time(), _alsa_pcm.get_period_size(), false),
+        std::make_unique<Track>(2, 1, _alsa_pcm.get_period_time(), _alsa_pcm.get_period_size(), false),
+        std::make_unique<Track>(3, 1, _alsa_pcm.get_period_time(), _alsa_pcm.get_period_size(), false),
+        std::make_unique<Track>(4, 1, _alsa_pcm.get_period_time(), _alsa_pcm.get_period_size(), false),
+        std::make_unique<Track>(5, 2, _alsa_pcm.get_period_time(), _alsa_pcm.get_period_size(), false),
+        std::make_unique<Track>(6, 2, _alsa_pcm.get_period_time(), _alsa_pcm.get_period_size(), false),
     },
-    one_shots_track(Track(7, 2, _alsa_pcm.get_period_time(), _alsa_pcm.get_period_size())),
+    one_shots_track(Track(7, 2, _alsa_pcm.get_period_time(), _alsa_pcm.get_period_size(), true)),
     program(set_program(0)),
     stop(false),
     engine_thread(std::bind(&Engine::run, this)) {
