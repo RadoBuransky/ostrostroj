@@ -106,7 +106,7 @@ void Engine::process_pcm() {
                 sample++;
 #ifndef NDEBUG
                 if (sample >= state.frame.channels.end()) {
-                    throw new OstrostrojException("sample pointer overflow!");
+                    throw OstrostrojException("sample pointer overflow!");
                 }
 #endif
             }

@@ -55,19 +55,20 @@ void* run_pcm(void* context) {
         self.process_events();
         state = self.alsa_snd_pcm_state();
         if (state == SND_PCM_STATE_XRUN || state == SND_PCM_STATE_SUSPENDED) {
-            throw new OstrostrojException(fmt::format("Invalid state={}", (int)state));
+            throw OstrostrojException(fmt::format("Invalid state={}", (int)state));
         }
-
         err = snd_pcm_avail_delay(self.pcm_out, &avail, &self.current_delay);
         if (err < 0 || avail < 0) {
-            SPDLOG_ERROR("snd_pcm_avail_delay failed = [err={},avail={}]", snd_strerror(err), avail);
-            return 0;
+            throw OstrostrojException(fmt::format("snd_pcm_avail_delay failed = [err={},avail={}]", snd_strerror(err), avail));
         }
         if (avail < (snd_pcm_sframes_t)self.period_size) {
-            if (state == SND_PCM_STATE_PREPARED) {
-                SPDLOG_DEBUG("Waiting for event...");
+            if (state != SND_PCM_STATE_RUNNING) {
+                SPDLOG_DEBUG("ALSA PCM waiting for push flag...");
                 self.pcm_event_pushed_flag.test_and_set();
                 self.pcm_event_pushed_flag.wait(true);
+            } else {
+                SPDLOG_WARN("Busy loop! [state={}]", (int)state);
+                usleep(std::chrono::microseconds(PCM_OUT_PERIOD_TIME).count());
             }
             continue;
         }
@@ -79,16 +80,14 @@ void* run_pcm(void* context) {
             err = snd_pcm_mmap_begin(self.pcm_out, &areas, &offset, &frames);
             SPDLOG_TRACE("snd_pcm_mmap_begin = {}, {}, {}", err, offset, frames);
             if (err < 0) {
-                SPDLOG_ERROR("snd_pcm_mmap_begin failed = {}", snd_strerror(err));
-                // TODO: Handle xrun
+                throw OstrostrojException(fmt::format("snd_pcm_mmap_begin failed = {}", snd_strerror(err)));
             }
             
             frames_to_write = frames;
             buffer = (PcmFrame_s24_3le*)(((char*)areas[0].addr) + (areas[0].first / 8)) + offset;
 #ifndef NDEBUG
             if (areas[0].step != sizeof(PcmFrame_s24_3le) * 8) {
-                SPDLOG_ERROR(fmt::format("Invalid step size! [expected={},actual={}]", sizeof(PcmFrame_s24_3le) * 8, areas[0].step));
-                return 0;
+                throw OstrostrojException(fmt::format("Invalid step size! [expected={},actual={}]", sizeof(PcmFrame_s24_3le) * 8, areas[0].step));
             }
             static bool area_debug_logged = false;
             if (!area_debug_logged) {
@@ -100,21 +99,23 @@ void* run_pcm(void* context) {
 #endif            
             while (frames_to_write-- > 0) {
                 if (!pcm_fifo.pop(*buffer)) {
+                    int c = 0;
                     engine_xrun = true;
+                    useconds_t sleep = std::chrono::microseconds(PCM_OUT_PERIOD_TIME).count();
                     SPDLOG_WARN("ALSA PCM FIFO xrun...");
                     do {
                         self.callback();
-                        usleep(std::chrono::microseconds(PCM_OUT_PERIOD_TIME).count() / 2);
+                        usleep(sleep);
+                        c++;
                     } while (!pcm_fifo.pop(*buffer));
-                    SPDLOG_WARN("ALSA PCM FIFO xrun recovered.");
+                    SPDLOG_WARN("ALSA PCM FIFO xrun recovered. [c={},sleep={},delay={}]", c, sleep, self.current_delay);
                 }
                 buffer++;
             }
             commitres = snd_pcm_mmap_commit(self.pcm_out, offset, frames);
             SPDLOG_TRACE("snd_pcm_mmap_commit = {}, {}, {}", commitres, offset, frames);       
             if (commitres < 0 || (snd_pcm_uframes_t)commitres != frames) {
-                // TODO: Handle xrun
-                SPDLOG_ERROR("commit {} xrun!", commitres);
+                throw OstrostrojException(fmt::format("commit {} xrun!", commitres));
             }
             size -= frames;
             total_frames_written += frames;
