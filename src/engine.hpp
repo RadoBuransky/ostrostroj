@@ -13,7 +13,7 @@ struct TrackState {
 };
 
 struct EngineState {    
-    PcmFifo& pcm_fifo;
+    PcmFifo& fifo;
     PcmFrame_s24_3le frame;
     bool pending;
     std::array<TrackState, ENGINE_LOOP_TRACKS + 1> tracks;

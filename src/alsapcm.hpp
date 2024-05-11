@@ -28,8 +28,7 @@ typedef farbot::fifo<PcmFrame_s24_3le,
 enum PcmEvent {
     ALSA_PCM_START = 0,
     ALSA_PCM_STOP,
-    ALSA_PCM_CONTINUE,
-    ALSA_PCM_DRAIN,
+    ALSA_PCM_CONTINUE
 };
 
 typedef farbot::fifo<PcmEvent,
@@ -68,5 +67,4 @@ class AlsaPcm {
         void play_start();
         void play_stop();
         void play_continue();
-        void drain();
 };

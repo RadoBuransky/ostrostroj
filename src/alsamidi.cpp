@@ -44,7 +44,6 @@ void* run_thru(void* context) {
                             push = true;
                             break;
                         case SND_SEQ_EVENT_PGMCHANGE:
-                            pass = ((event.data.control.value % 2) == 0);
                             push = true;
                             break;
                         default:

@@ -72,10 +72,7 @@ void* run_pcm(void* context) {
             continue;
         }
         if (avail < (snd_pcm_sframes_t)self.period_size) {
-            state = snd_pcm_state(self.pcm_out);
-            SPDLOG_WARN("fuck it... [state={},avail={},delay={},total_frames_written={}]", (int)state, avail, delay, total_frames_written);
-            return 0;
-            
+            state = snd_pcm_state(self.pcm_out);            
             SPDLOG_DEBUG("snd_pcm_wait... [state={},avail={},delay={},total_frames_written={}]", (int)state, avail, delay, total_frames_written);
             err = snd_pcm_wait(self.pcm_out, -1);
             SPDLOG_TRACE("snd_pcm_wait = {}", err);
@@ -144,8 +141,6 @@ void* run_pcm(void* context) {
 void AlsaPcm::process_events() {
     PcmEvent event;
     int err;
-    PcmFrame_s24_3le dropped_frame;
-    snd_pcm_uframes_t dropped_frames = 0;
     while (pcm_event_fifo->pop(event)) {
         SPDLOG_DEBUG("ALSA PCM event = {}", (int)event);
         switch(event) {
@@ -166,17 +161,6 @@ void AlsaPcm::process_events() {
                 if (err < 0) {
                     SPDLOG_ERROR("snd_pcm_pause failed = {}", snd_strerror(err));
                 }
-                break;
-            case ALSA_PCM_DRAIN:
-                SPDLOG_DEBUG("Draining...");
-                while (pcm_fifo->pop(dropped_frame)) {
-                    dropped_frames++;
-                }
-                err = snd_pcm_reset(pcm_out);
-                if (err < 0) {
-                    SPDLOG_ERROR("snd_pcm_reset failed = {}", snd_strerror(err));                
-                }
-                SPDLOG_DEBUG("Draining done. [dropped_frames={}]", dropped_frames);
                 break;
             default:
                 SPDLOG_ERROR("Unknown event! [{}]", (int)event);
@@ -414,12 +398,6 @@ void AlsaPcm::play_stop() {
 
 void AlsaPcm::play_continue() {
     if (!pcm_event_fifo->push(ALSA_PCM_CONTINUE)) {
-        SPDLOG_ERROR("pcm_event_fifo overflow!");
-    }
-}
-
-void AlsaPcm::drain() {
-    if (!pcm_event_fifo->push(ALSA_PCM_DRAIN)) {
         SPDLOG_ERROR("pcm_event_fifo overflow!");
     }
 }

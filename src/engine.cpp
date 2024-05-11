@@ -7,12 +7,12 @@ static constexpr std::chrono::microseconds TRACK_XRUN_SLEEP = std::chrono::micro
 static constexpr int TRACK_XRUN_RETRY = 100;
 
 EngineState::EngineState(PcmFifo& _pcm_fifo):
-    pcm_fifo(_pcm_fifo) {    
+    fifo(_pcm_fifo) {    
 }
 
 bool EngineState::push_pending() {
     if (pending) {
-        if (pcm_fifo.push(std::move(frame))) {
+        if (fifo.push(std::move(frame))) {
             pending = false;
             return true;
         }
@@ -58,8 +58,8 @@ void Engine::process_midi() {
                 break;
             case SND_SEQ_EVENT_PGMCHANGE: 
                 SPDLOG_INFO("Engine MIDI PROGRAM CHANGE [{}]", midi_event.data.control.value);
-                set_program(midi_event.data.control.value);
-                alsa_pcm.drain();
+                // TODO: xfade tracks
+                set_program(midi_event.data.control.value + 1);
                 break;
             default:
                 SPDLOG_WARN("Ignored engine MIDI event. [{}]", (int)midi_event.type);
@@ -146,7 +146,7 @@ Engine::Engine(Project& _project, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm):
     },
     one_shots_track(Track(7, 2, _alsa_pcm.get_period_time(), _alsa_pcm.get_period_size(), true)),
     state(_alsa_pcm.get_pcm_fifo()),
-    program(set_program(0)),
+    program(set_program(1)),
     stop(false),
     engine_thread(std::bind(&Engine::run, this)) {
     pthread_setname_np(engine_thread.native_handle(), "engine");
