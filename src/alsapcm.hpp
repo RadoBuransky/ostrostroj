@@ -27,8 +27,9 @@ typedef farbot::fifo<PcmFrame_s24_3le,
 
 enum PcmEvent {
     ALSA_PCM_START = 0,
-    ALSA_PCM_STOP,
-    ALSA_PCM_CONTINUE
+    ALSA_PCM_PAUSE,
+    ALSA_PCM_RESUME,
+    ALSA_PCM_PROGRAM_CHANGE
 };
 
 typedef farbot::fifo<PcmEvent,
@@ -51,6 +52,11 @@ class AlsaPcm {
         snd_pcm_sframes_t current_delay;
         friend void* run_pcm(void* context);
         void process_events();
+        snd_pcm_state_t alsa_snd_pcm_state();
+        void alsa_snd_pcm_start();
+        void alsa_snd_pcm_pause();
+        void alsa_snd_pcm_resume();
+        void alsa_snd_pcm_drop();
         void push_pcm_event(PcmEvent&& pcm_event);
         int set_hwparams(snd_pcm_t* handle, snd_pcm_hw_params_t* params);
         int set_swparams(snd_pcm_t* handle, snd_pcm_sw_params_t* swparams);
@@ -69,4 +75,5 @@ class AlsaPcm {
         void play_start();
         void play_stop();
         void play_continue();
+        void play_program_change();
 };

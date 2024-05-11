@@ -31,23 +31,21 @@ void* run_thru(void* context) {
                 read_size = 0;
             } else {
                 if (event.type != SND_SEQ_EVENT_NONE) {
+#ifndef NDEBUG
+                    if (event.type != SND_SEQ_EVENT_CLOCK) {
+                        SPDLOG_INFO("ALSA MIDI event [type={}]", (int)event.type);
+                    }
+#endif
                     pass = true;
                     push = false;
                     switch (event.type) {
                         case SND_SEQ_EVENT_START:
-                            push = true;
-                            break;
                         case SND_SEQ_EVENT_CONTINUE:
-                            push = true;
-                            break;
                         case SND_SEQ_EVENT_STOP:
-                            push = true;
-                            break;
+                        case SND_SEQ_EVENT_SETPOS_TICK:
+                        case SND_SEQ_EVENT_SETPOS_TIME:
                         case SND_SEQ_EVENT_PGMCHANGE:
                             push = true;
-                            break;
-                        default:
-                            SPDLOG_TRACE("thru: 0x{:x}", ch);
                             break;
                     }
                     if (pass) {

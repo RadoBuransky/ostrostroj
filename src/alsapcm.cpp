@@ -50,17 +50,14 @@ void* run_pcm(void* context) {
     bool engine_xrun;
     PcmFrame_s24_3le* buffer;
     SPDLOG_INFO("ALSA pcm started.");
-
     snd_pcm_uframes_t total_frames_written = 0;
     while (!self.stop) {
         self.process_events();
-        state = snd_pcm_state(self.pcm_out);
-        SPDLOG_TRACE("state = {}", (long)state);
-        if (state == SND_PCM_STATE_XRUN || state == SND_PCM_STATE_SUSPENDED) {            
-            // TODO: Handle xrun
-            SPDLOG_ERROR("Invalid state! [{}]", (int)state);
-            return 0;
+        state = self.alsa_snd_pcm_state();
+        if (state == SND_PCM_STATE_XRUN || state == SND_PCM_STATE_SUSPENDED) {
+            throw new OstrostrojException(fmt::format("Invalid state={}", (int)state));
         }
+
         err = snd_pcm_avail_delay(self.pcm_out, &avail, &self.current_delay);
         if (err < 0 || avail < 0) {
             SPDLOG_ERROR("snd_pcm_avail_delay failed = [err={},avail={}]", snd_strerror(err), avail);
@@ -130,32 +127,91 @@ void* run_pcm(void* context) {
 
 void AlsaPcm::process_events() {
     PcmEvent event;
-    int err;
+    snd_pcm_state_t state;
     while (pcm_event_fifo->pop(event)) {
         SPDLOG_DEBUG("ALSA PCM event = {}", (int)event);
         switch(event) {
             case ALSA_PCM_START:
-                err = snd_pcm_start(pcm_out);
-                if (err < 0) {
-                    SPDLOG_ERROR("snd_pcm_start failed = {}", snd_strerror(err));
+                state = alsa_snd_pcm_state();
+                if (state == SND_PCM_STATE_PREPARED) {
+                    alsa_snd_pcm_start();
+                } else {
+                    SPDLOG_WARN("Invalid ALSA_PCM_START. [state={}]", (int)state);
                 }
                 break;
-            case ALSA_PCM_STOP:
-                err = snd_pcm_pause(pcm_out, true);
-                if (err < 0) {
-                    SPDLOG_ERROR("snd_pcm_pause failed = {}", snd_strerror(err));
+            case ALSA_PCM_PAUSE:
+                state = alsa_snd_pcm_state();
+                if (state == SND_PCM_STATE_RUNNING) {
+                    alsa_snd_pcm_pause();
+                } else {
+                    SPDLOG_WARN("Invalid ALSA_PCM_PAUSE. [state={}]", (int)state);
                 }
                 break;
-            case ALSA_PCM_CONTINUE:
-                err = snd_pcm_pause(pcm_out, false);
-                if (err < 0) {
-                    SPDLOG_ERROR("snd_pcm_pause failed = {}", snd_strerror(err));
+            case ALSA_PCM_RESUME:
+                state = alsa_snd_pcm_state();
+                if (state == SND_PCM_STATE_PAUSED) {
+                    alsa_snd_pcm_resume();
+                } else {
+                    SPDLOG_WARN("Invalid ALSA_PCM_RESUME. [state={}]", (int)state);
                 }
+                break;
+            case ALSA_PCM_PROGRAM_CHANGE:
+                state = alsa_snd_pcm_state();
+                if (state == SND_PCM_STATE_RUNNING) {
+                    SPDLOG_DEBUG("ALSA_PCM_PROGRAM_CHANGE while running.");
+                    break;
+                }
+                alsa_snd_pcm_drop();
                 break;
             default:
                 SPDLOG_ERROR("Unknown event! [{}]", (int)event);
                 break;
         }
+    }
+}
+
+snd_pcm_state_t AlsaPcm::alsa_snd_pcm_state() {
+    snd_pcm_state_t result = snd_pcm_state(pcm_out);
+    SPDLOG_TRACE("snd_pcm_state = {}", (long)result);
+    if (result < 0) {
+        throw OstrostrojException(fmt::format("snd_pcm_state failed={}", snd_strerror(result)));
+    }
+    return result;
+}
+
+void AlsaPcm::alsa_snd_pcm_start() {
+    int err = snd_pcm_start(pcm_out);
+    if (err < 0) {
+        throw OstrostrojException(fmt::format("snd_pcm_start failed={}", snd_strerror(err)));
+    }
+}
+
+void AlsaPcm::alsa_snd_pcm_pause() {    
+    int err = snd_pcm_pause(pcm_out, true);
+    if (err < 0) {
+        throw OstrostrojException(fmt::format("snd_pcm_pause (pause) failed={}", snd_strerror(err)));
+    }
+}
+
+void AlsaPcm::alsa_snd_pcm_resume() {  
+    int err = snd_pcm_pause(pcm_out, false);
+    if (err < 0) {
+        throw OstrostrojException(fmt::format("snd_pcm_pause (resume) failed={}", snd_strerror(err)));
+    }  
+}
+
+void AlsaPcm::alsa_snd_pcm_drop() {
+    int err = snd_pcm_drop(pcm_out);
+    if (err < 0) {
+        throw OstrostrojException(fmt::format("snd_pcm_drop failed={}", snd_strerror(err)));
+    }
+    err = snd_pcm_prepare(pcm_out);
+    if (err < 0) {
+        throw OstrostrojException(fmt::format("snd_pcm_prepare failed={}", snd_strerror(err)));
+    }
+    snd_pcm_state_t state = alsa_snd_pcm_state();
+    if (state != SND_PCM_STATE_PREPARED) {
+        throw OstrostrojException(fmt::format("Not in SND_PCM_STATE_PREPARED state. [{}]", (int)state));        
     }
 }
 
@@ -337,9 +393,9 @@ AlsaPcm::AlsaPcm():
     pcm_out(open_pcm_out(PCM_OUT_NAME)),
     stop(false),
     pcm_fifo(create_pcm_fifo()),
-    pcm_event_pushed_flag(ATOMIC_FLAG_INIT),
     callback(0),
     pcm_event_fifo(std::make_unique<PcmEventFifo>(64)),
+    pcm_event_pushed_flag(ATOMIC_FLAG_INIT),
     pcm_thread(0){    
 }
 
@@ -389,9 +445,13 @@ void AlsaPcm::play_start() {
 }
 
 void AlsaPcm::play_stop() {
-    push_pcm_event(ALSA_PCM_STOP);
+    push_pcm_event(ALSA_PCM_PAUSE);
 }
 
 void AlsaPcm::play_continue() {
-    push_pcm_event(ALSA_PCM_CONTINUE);
+    push_pcm_event(ALSA_PCM_RESUME);
+}
+
+void AlsaPcm::play_program_change() {
+    push_pcm_event(ALSA_PCM_PROGRAM_CHANGE);
 }

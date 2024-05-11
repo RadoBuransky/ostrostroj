@@ -7,7 +7,9 @@ static constexpr std::chrono::microseconds TRACK_XRUN_SLEEP = std::chrono::micro
 static constexpr int TRACK_XRUN_RETRY = 100;
 
 EngineState::EngineState(PcmFifo& _pcm_fifo):
-    fifo(_pcm_fifo) {    
+    fifo(_pcm_fifo),
+    frame(),
+    pending(false) {    
 }
 
 bool EngineState::push_pending() {
@@ -45,21 +47,25 @@ void Engine::process_midi() {
     while (alsa_midi.get_fifo().pop(midi_event)) {
         switch(midi_event.type) {
             case SND_SEQ_EVENT_START: 
-                SPDLOG_INFO("Engine MIDI START");
+                SPDLOG_INFO("Engine MIDI START [d0={},d1={},queue={}]", midi_event.data.queue.param.d32[0], midi_event.data.queue.param.d32[1],
+                    midi_event.data.queue.queue);
                 alsa_pcm.play_start();
                 break;
             case SND_SEQ_EVENT_STOP: 
-                SPDLOG_INFO("Engine MIDI STOP");
+                SPDLOG_INFO("Engine MIDI STOP [d0={},d1={},queue={}]", midi_event.data.queue.param.d32[0], midi_event.data.queue.param.d32[1],
+                    midi_event.data.queue.queue);
                 alsa_pcm.play_stop();
                 break;
             case SND_SEQ_EVENT_CONTINUE: 
-                SPDLOG_INFO("Engine MIDI CONTINUE");
+                SPDLOG_INFO("Engine MIDI CONTINUE [d0={},d1={},queue={}]", midi_event.data.queue.param.d32[0], midi_event.data.queue.param.d32[1],
+                    midi_event.data.queue.queue);
                 alsa_pcm.play_continue();
                 break;
             case SND_SEQ_EVENT_PGMCHANGE: 
-                SPDLOG_INFO("Engine MIDI PROGRAM CHANGE [{}]", midi_event.data.control.value);
+                SPDLOG_INFO("Engine MIDI PROGRAM CHANGE [param={},value={}]", midi_event.data.control.param, midi_event.data.control.value);
                 // TODO: xfade tracks
                 set_program(midi_event.data.control.value + 1);
+                alsa_pcm.play_program_change();
                 break;
             default:
                 SPDLOG_WARN("Ignored engine MIDI event. [{}]", (int)midi_event.type);

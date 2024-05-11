@@ -38,7 +38,7 @@ pthread_t create_rt_thread(std::string name, int sched_priority, void *(*start_r
         return 0;
     }
     pthread_attr_destroy(&attributes);
-    if (res = pthread_setname_np(result, name.c_str())) {
+    if ((res = pthread_setname_np(result, name.c_str()))) {
         SPDLOG_ERROR("pthread_setname_np failed = {}", res);
     }
     SPDLOG_INFO("ALSA thread created. [0x{:X}]", result);
