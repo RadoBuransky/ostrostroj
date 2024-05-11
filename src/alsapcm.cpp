@@ -1,4 +1,4 @@
-#define SPDLOG_ACTIVE_LEVEL 2
+#define SPDLOG_ACTIVE_LEVEL 1
 
 #include "common.hpp"
 #include "alsa/asoundlib.h"
@@ -72,14 +72,10 @@ void* run_pcm(void* context) {
             continue;
         }
         if (avail < (snd_pcm_sframes_t)self.period_size) {
-            state = snd_pcm_state(self.pcm_out);            
-            SPDLOG_DEBUG("snd_pcm_wait... [state={},avail={},delay={},total_frames_written={}]", (int)state, avail, delay, total_frames_written);
-            err = snd_pcm_wait(self.pcm_out, -1);
-            SPDLOG_TRACE("snd_pcm_wait = {}", err);
-            if (err < 0) {
-                SPDLOG_ERROR("snd_pcm_wait failed = {}", snd_strerror(err));
-                // TODO: Handle xrun
-                return 0;
+            if (state == SND_PCM_STATE_PREPARED) {
+                SPDLOG_DEBUG("Waiting for event...");
+                self.pcm_event_pushed_flag.test_and_set();
+                self.pcm_event_pushed_flag.wait(true);
             }
             continue;
         }
@@ -167,6 +163,14 @@ void AlsaPcm::process_events() {
                 break;
         }
     }
+}
+
+void AlsaPcm::push_pcm_event(PcmEvent&& pcm_event) {
+    if (!pcm_event_fifo->push(std::move(pcm_event))) {
+        SPDLOG_ERROR("pcm_event_fifo overflow!");
+    }
+    pcm_event_pushed_flag.clear();
+    pcm_event_pushed_flag.notify_one();
 }
  
 int AlsaPcm::set_hwparams(snd_pcm_t* handle, snd_pcm_hw_params_t* params) {
@@ -336,6 +340,7 @@ AlsaPcm::AlsaPcm():
     pcm_out(open_pcm_out(PCM_OUT_NAME)),
     stop(false),
     pcm_fifo(create_pcm_fifo()),
+    pcm_event_pushed_flag(ATOMIC_FLAG_INIT),
     callback(0),
     pcm_event_fifo(std::make_unique<PcmEventFifo>(64)),
     pcm_thread(0){    
@@ -383,21 +388,13 @@ void AlsaPcm::start(std::function<void(void)> _callback) {
 }
 
 void AlsaPcm::play_start() {
-    snd_pcm_start(pcm_out);
-    // TODO: snd_pcm_wait is waiting...
-    // if (!pcm_event_fifo->push(ALSA_PCM_START)) {
-    //     SPDLOG_ERROR("pcm_event_fifo overflow!");
-    // }
+    push_pcm_event(ALSA_PCM_START);
 }
 
 void AlsaPcm::play_stop() {
-    if (!pcm_event_fifo->push(ALSA_PCM_STOP)) {
-        SPDLOG_ERROR("pcm_event_fifo overflow!");
-    }
+    push_pcm_event(ALSA_PCM_STOP);
 }
 
 void AlsaPcm::play_continue() {
-    if (!pcm_event_fifo->push(ALSA_PCM_CONTINUE)) {
-        SPDLOG_ERROR("pcm_event_fifo overflow!");
-    }
+    push_pcm_event(ALSA_PCM_CONTINUE);
 }

@@ -46,10 +46,11 @@ class AlsaPcm {
         std::unique_ptr<PcmFifo> pcm_fifo;
         std::function<void(void)> callback;
         std::unique_ptr<PcmEventFifo> pcm_event_fifo;
+        std::atomic_flag pcm_event_pushed_flag;
         pthread_t pcm_thread;
         friend void* run_pcm(void* context);
         void process_events();
-        void float_to_s24_3le(float sample, unsigned char* buffer);
+        void push_pcm_event(PcmEvent&& pcm_event);
         int set_hwparams(snd_pcm_t* handle, snd_pcm_hw_params_t* params);
         int set_swparams(snd_pcm_t* handle, snd_pcm_sw_params_t* swparams);
         snd_pcm_t* open_pcm_out(const std::string& pcm_out_name);
