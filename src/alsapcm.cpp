@@ -44,7 +44,7 @@ void* run_pcm(void* context) {
     PcmFifo& pcm_fifo = *self.pcm_fifo.get();
     const snd_pcm_channel_area_t* areas;
     snd_pcm_state_t state;
-    snd_pcm_sframes_t avail, delay, commitres, size, frames_to_write;
+    snd_pcm_sframes_t avail, commitres, size, frames_to_write;
     int err;
     snd_pcm_uframes_t offset, frames;
     bool engine_xrun;
@@ -61,15 +61,10 @@ void* run_pcm(void* context) {
             SPDLOG_ERROR("Invalid state! [{}]", (int)state);
             return 0;
         }
-        err = snd_pcm_avail_delay(self.pcm_out, &avail, &delay);
-        if (err < 0) {
-            SPDLOG_ERROR("snd_pcm_avail_delay failed = {}", snd_strerror(err));
+        err = snd_pcm_avail_delay(self.pcm_out, &avail, &self.current_delay);
+        if (err < 0 || avail < 0) {
+            SPDLOG_ERROR("snd_pcm_avail_delay failed = [err={},avail={}]", snd_strerror(err), avail);
             return 0;
-        }
-        SPDLOG_TRACE("snd_pcm_avail_update = {}", (long)avail);
-        if (avail < 0) {
-            // TODO: Handle xrun
-            continue;
         }
         if (avail < (snd_pcm_sframes_t)self.period_size) {
             if (state == SND_PCM_STATE_PREPARED) {
@@ -81,7 +76,7 @@ void* run_pcm(void* context) {
         }
         size = self.period_size;
         engine_xrun = false;
-        SPDLOG_DEBUG("ALSA PCM writing {} frames...", self.period_size);
+        SPDLOG_TRACE("ALSA PCM writing {} frames...", self.period_size);
         while (size > 0) {
             frames = size;
             err = snd_pcm_mmap_begin(self.pcm_out, &areas, &offset, &frames);
@@ -127,10 +122,9 @@ void* run_pcm(void* context) {
             size -= frames;
             total_frames_written += frames;
         }
-        SPDLOG_DEBUG("ALSA PCM frames commited [engine xrun={}]", engine_xrun);
+        SPDLOG_TRACE("ALSA PCM frames commited [engine xrun={}]", engine_xrun);
         self.callback();
     }
-
     return 0;
 }
 
@@ -147,13 +141,13 @@ void AlsaPcm::process_events() {
                 }
                 break;
             case ALSA_PCM_STOP:
-                err = snd_pcm_pause(pcm_out, false);
+                err = snd_pcm_pause(pcm_out, true);
                 if (err < 0) {
                     SPDLOG_ERROR("snd_pcm_pause failed = {}", snd_strerror(err));
                 }
                 break;
             case ALSA_PCM_CONTINUE:
-                err = snd_pcm_pause(pcm_out, true);
+                err = snd_pcm_pause(pcm_out, false);
                 if (err < 0) {
                     SPDLOG_ERROR("snd_pcm_pause failed = {}", snd_strerror(err));
                 }
@@ -251,7 +245,10 @@ int AlsaPcm::set_hwparams(snd_pcm_t* handle, snd_pcm_hw_params_t* params) {
     if (err < 0) {
         throw OstrostrojException(fmt::format("snd_pcm_hw_params_get_buffer_size failed = {}", snd_strerror(err)));
     }
-
+    err = snd_pcm_hw_params_can_pause(params);
+    if (err < 0) {
+        throw OstrostrojException(fmt::format("snd_pcm_hw_params_can_pause failed = {}", snd_strerror(err)));
+    }
     err = snd_pcm_hw_params(handle, params);
     if (err < 0) {
         throw OstrostrojException(fmt::format("Unable to set hw params for playback: {}", snd_strerror(err)));

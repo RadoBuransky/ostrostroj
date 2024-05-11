@@ -48,6 +48,7 @@ class AlsaPcm {
         std::unique_ptr<PcmEventFifo> pcm_event_fifo;
         std::atomic_flag pcm_event_pushed_flag;
         pthread_t pcm_thread;
+        snd_pcm_sframes_t current_delay;
         friend void* run_pcm(void* context);
         void process_events();
         void push_pcm_event(PcmEvent&& pcm_event);
