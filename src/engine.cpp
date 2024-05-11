@@ -88,12 +88,13 @@ void Engine::process_pcm() {
                 if (track->fifo != nullptr) {
                     if (!track->fifo->pop(*sample)) {
                         int track_number = (track - state.tracks.data()) + 1;
-                        SPDLOG_DEBUG("Engine track {} underrun waiting...", track_number);
+                        SPDLOG_WARN("Engine track {} xrun...", track_number);                        
                         int retry = TRACK_XRUN_RETRY;
                         do {
                             usleep(TRACK_XRUN_SLEEP.count());
                         } while (retry-- > 0 && !track->fifo->pop(*sample));
                         if (retry == 0) {
+                            // TODO: Remove this, just keep retrying.
                             SPDLOG_WARN("Engine track {} underrun!", track_number);
                             sample->silence();
                         } else {

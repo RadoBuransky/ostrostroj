@@ -67,7 +67,7 @@ void* run_pcm(void* context) {
                 self.pcm_event_pushed_flag.test_and_set();
                 self.pcm_event_pushed_flag.wait(true);
             } else {
-                SPDLOG_WARN("Busy loop! [state={}]", (int)state);
+                SPDLOG_TRACE("ALSA PCM busy loop. [state={}]", (int)state);
                 usleep(std::chrono::microseconds(PCM_OUT_PERIOD_TIME).count());
             }
             continue;
@@ -383,6 +383,7 @@ snd_pcm_t* AlsaPcm::open_pcm_out(const std::string& pcm_out_name) {
 
 std::unique_ptr<PcmFifo> AlsaPcm::create_pcm_fifo() {
     snd_pcm_uframes_t capacity = 1;
+    // TODO: Increase this to buffer size?
     while (capacity <= period_size) {
         capacity *= 2;
     }
