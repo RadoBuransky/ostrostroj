@@ -19,12 +19,6 @@ struct PcmFrame_s24_3le {
     void silence();
 };
 
-typedef farbot::fifo<PcmFrame_s24_3le,
-            farbot::fifo_options::concurrency::single,
-            farbot::fifo_options::concurrency::single,
-            farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
-            farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty> PcmFifo;
-
 enum PcmEvent {
     ALSA_PCM_START = 0,
     ALSA_PCM_PAUSE,
@@ -32,22 +26,14 @@ enum PcmEvent {
     ALSA_PCM_PROGRAM_CHANGE
 };
 
-typedef farbot::fifo<PcmEvent,
-            farbot::fifo_options::concurrency::single,
-            farbot::fifo_options::concurrency::single,
-            farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty,
-            farbot::fifo_options::full_empty_failure_mode::return_false_on_full_or_empty> PcmEventFifo;
-
 class AlsaPcm {
     private:
         snd_pcm_t* pcm_out;
         snd_pcm_uframes_t buffer_size;
         snd_pcm_uframes_t period_size;
         std::atomic_bool stop;
-        std::unique_ptr<PcmFifo> pcm_fifo;
-        std::function<void(void)> callback;
-        std::unique_ptr<PcmEventFifo> pcm_event_fifo;
-        std::atomic_flag pcm_event_pushed_flag;
+        std::function<bool(PcmEvent&, bool)> pcm_event_callback;
+        std::function<bool(PcmFrame_s24_3le&)> pcm_callback;
         pthread_t pcm_thread;
         snd_pcm_sframes_t current_delay;
         friend void* run_pcm(void* context);
@@ -57,23 +43,15 @@ class AlsaPcm {
         void alsa_snd_pcm_pause();
         void alsa_snd_pcm_resume();
         void alsa_snd_pcm_drop();
-        void push_pcm_event(PcmEvent&& pcm_event);
         int set_hwparams(snd_pcm_t* handle, snd_pcm_hw_params_t* params);
         int set_swparams(snd_pcm_t* handle, snd_pcm_sw_params_t* swparams);
         snd_pcm_t* open_pcm_out(const std::string& pcm_out_name);
-        std::unique_ptr<PcmFifo> create_pcm_fifo();
     public:
         AlsaPcm();
         virtual ~AlsaPcm();
-        void start(std::function<void(void)> _callback);
+        void start(std::function<bool(PcmEvent&, bool)> _pcm_event_callback, std::function<bool(PcmFrame_s24_3le&)> _pcm_callback);
         snd_pcm_uframes_t get_sample_rate() const;
         int get_channels() const;
         std::chrono::milliseconds get_period_time();
         snd_pcm_uframes_t get_period_size();
-        PcmFifo& get_pcm_fifo();
-
-        void play_start();
-        void play_stop();
-        void play_continue();
-        void play_program_change();
 };

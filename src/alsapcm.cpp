@@ -41,7 +41,6 @@ void PcmFrame_s24_3le::silence() {
 
 void* run_pcm(void* context) {
     AlsaPcm& self = *(AlsaPcm*)context;
-    PcmFifo& pcm_fifo = *self.pcm_fifo.get();
     const snd_pcm_channel_area_t* areas;
     snd_pcm_state_t state;
     snd_pcm_sframes_t avail, commitres, size, frames_to_write;
@@ -63,9 +62,10 @@ void* run_pcm(void* context) {
         }
         if (avail < (snd_pcm_sframes_t)self.period_size) {
             if (state != SND_PCM_STATE_RUNNING) {
-                SPDLOG_DEBUG("ALSA PCM waiting for push flag...");
-                self.pcm_event_pushed_flag.test_and_set();
-                self.pcm_event_pushed_flag.wait(true);
+                // TODO: Sync wait for event callback
+                // SPDLOG_DEBUG("ALSA PCM waiting for push flag...");
+                // self.pcm_event_pushed_flag.test_and_set();
+                // self.pcm_event_pushed_flag.wait(true);
             } else {
                 SPDLOG_TRACE("ALSA PCM busy loop. [state={}]", (int)state);
                 usleep(std::chrono::microseconds(PCM_OUT_PERIOD_TIME).count());
@@ -99,16 +99,16 @@ void* run_pcm(void* context) {
 #endif            
             while (frames_to_write-- > 0) {
                 // TODO: Instead of PCM FIFO, get it directly from track FIFOs
-                if (!pcm_fifo.pop(*buffer)) {
+                if (!self.pcm_callback(*buffer)) {
                     int c = 0;
                     engine_xrun = true;
                     useconds_t sleep = std::chrono::microseconds(PCM_OUT_PERIOD_TIME).count();
                     SPDLOG_WARN("ALSA PCM FIFO xrun...");
                     do {
-                        self.callback();
+                        // self.callback();
                         usleep(sleep);
                         c++;
-                    } while (!pcm_fifo.pop(*buffer));
+                    } while (!self.pcm_callback(*buffer));
                     SPDLOG_WARN("ALSA PCM FIFO xrun recovered. [c={},sleep={},delay={}]", c, sleep, self.current_delay);
                 }
                 buffer++;
@@ -122,7 +122,6 @@ void* run_pcm(void* context) {
             total_frames_written += frames;
         }
         SPDLOG_TRACE("ALSA PCM frames commited [engine xrun={}]", engine_xrun);
-        self.callback();
     }
     return 0;
 }
@@ -130,7 +129,7 @@ void* run_pcm(void* context) {
 void AlsaPcm::process_events() {
     PcmEvent event;
     snd_pcm_state_t state;
-    while (pcm_event_fifo->pop(event)) {
+    while (pcm_event_callback(event, false)) {
         SPDLOG_DEBUG("ALSA PCM event = {}", (int)event);
         switch(event) {
             case ALSA_PCM_START:
@@ -215,14 +214,6 @@ void AlsaPcm::alsa_snd_pcm_drop() {
     if (state != SND_PCM_STATE_PREPARED) {
         throw OstrostrojException(fmt::format("Not in SND_PCM_STATE_PREPARED state. [{}]", (int)state));        
     }
-}
-
-void AlsaPcm::push_pcm_event(PcmEvent&& pcm_event) {
-    if (!pcm_event_fifo->push(std::move(pcm_event))) {
-        SPDLOG_ERROR("pcm_event_fifo overflow!");
-    }
-    pcm_event_pushed_flag.clear();
-    pcm_event_pushed_flag.notify_one();
 }
  
 int AlsaPcm::set_hwparams(snd_pcm_t* handle, snd_pcm_hw_params_t* params) {
@@ -382,23 +373,11 @@ snd_pcm_t* AlsaPcm::open_pcm_out(const std::string& pcm_out_name) {
     return result;
 }
 
-std::unique_ptr<PcmFifo> AlsaPcm::create_pcm_fifo() {
-    snd_pcm_uframes_t capacity = 1;
-    // TODO: Increase this to buffer size?
-    while (capacity <= period_size) {
-        capacity *= 2;
-    }
-    SPDLOG_INFO("PcmFifo [{} -> {}]", period_size, capacity);
-    return std::make_unique<PcmFifo>(capacity);
-}
-
 AlsaPcm::AlsaPcm():
     pcm_out(open_pcm_out(PCM_OUT_NAME)),
     stop(false),
-    pcm_fifo(create_pcm_fifo()),
-    callback(0),
-    pcm_event_fifo(std::make_unique<PcmEventFifo>(64)),
-    pcm_event_pushed_flag(ATOMIC_FLAG_INIT),
+    pcm_event_callback(0),
+    pcm_callback(0),
     pcm_thread(0){    
 }
 
@@ -430,31 +409,12 @@ snd_pcm_uframes_t AlsaPcm::get_period_size() {
     return period_size;
 }
 
-PcmFifo& AlsaPcm::get_pcm_fifo() {
-    return *pcm_fifo.get();
-}
-
-void AlsaPcm::start(std::function<void(void)> _callback) {
-    if (pcm_thread || callback) {
+void AlsaPcm::start(std::function<bool(PcmEvent&, bool)> _pcm_event_callback, std::function<bool(PcmFrame_s24_3le&)> _pcm_callback) {
+    if (pcm_thread || pcm_callback) {
         SPDLOG_ERROR("Thread already started! [{}]", pcm_thread);
         return;
     }
-    callback = _callback;
+    pcm_event_callback = _pcm_event_callback;
+    pcm_callback = _pcm_callback;
     pcm_thread = create_rt_thread("alsa_pcm", THREAD_PRIORITY, run_pcm, this);
-}
-
-void AlsaPcm::play_start() {
-    push_pcm_event(ALSA_PCM_START);
-}
-
-void AlsaPcm::play_stop() {
-    push_pcm_event(ALSA_PCM_PAUSE);
-}
-
-void AlsaPcm::play_continue() {
-    push_pcm_event(ALSA_PCM_RESUME);
-}
-
-void AlsaPcm::play_program_change() {
-    push_pcm_event(ALSA_PCM_PROGRAM_CHANGE);
 }
