@@ -11,12 +11,15 @@ struct PcmSample_s24_3le {
     PcmSample_s24_3le() = default;
     PcmSample_s24_3le(float sample);
     PcmSample_s24_3le& operator=(float sample);
-    void silence();
+    inline void silence() {
+        b0 = 0;
+        b1 = 0;
+        b2 = 0;
+    }
 };
 
 struct PcmFrame_s24_3le {
     std::array<PcmSample_s24_3le,PCM_OUT_CHANNELS> channels;
-    void silence();
 };
 
 enum PcmEvent {
@@ -33,7 +36,7 @@ class AlsaPcm {
         snd_pcm_uframes_t period_size;
         std::atomic_bool stop;
         std::function<bool(PcmEvent&, bool)> pcm_event_callback;
-        std::function<bool(PcmFrame_s24_3le&)> pcm_callback;
+        std::function<void(PcmFrame_s24_3le&)> pcm_callback;
         pthread_t pcm_thread;
         snd_pcm_sframes_t current_delay;
         friend void* run_pcm(void* context);
@@ -49,7 +52,7 @@ class AlsaPcm {
     public:
         AlsaPcm();
         virtual ~AlsaPcm();
-        void start(std::function<bool(PcmEvent&, bool)> _pcm_event_callback, std::function<bool(PcmFrame_s24_3le&)> _pcm_callback);
+        void start(std::function<bool(PcmEvent&, bool)> _pcm_event_callback, std::function<void(PcmFrame_s24_3le&)> _pcm_callback);
         snd_pcm_uframes_t get_sample_rate() const;
         int get_channels() const;
         std::chrono::milliseconds get_period_time();

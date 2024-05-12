@@ -36,20 +36,29 @@ bool Engine::handle_midi_event(snd_seq_event_t& midi_event, PcmEvent& result) {
 
 Program& Engine::set_program(int program_number) {
     program = project.get_program(program_number);
-    // TODO: ...
-    // for (size_t track = 0; track < loop_tracks.size(); track++) {
-    //     loop_tracks.at(track)->reset_node();
-    //     state.tracks.at(track).fifo = nullptr;
-    //     state.tracks.at(track).channels = loop_tracks.at(track)->get_channels();
-    // }
-    // for (LoopClip& loop_clip : program.get().get_loops()) {
-    //     int track = loop_clip.get_track();
-    //     loop_tracks.at(track)->set_node(std::make_unique<ClipNode>(loop_clip, true));
-    //     state.tracks.at(track).fifo = &loop_tracks.at(track)->get_fifo();
-    //     state.tracks.at(track).channels = loop_tracks.at(track)->get_channels();
-    // }
-    // state.tracks.at(loop_tracks.size()).fifo = &one_shots_track.get_fifo();
-    // state.tracks.at(loop_tracks.size()).channels = one_shots_track.get_channels();
+    for (size_t track = 0; track < loop_tracks.size(); track++) {
+        loop_tracks.at(track)->reset_node();
+    }
+    track_fifos.fill(nullptr);
+    for (LoopClip& loop_clip : program.get().get_loops()) {
+        int track = loop_clip.get_track();
+        assert(track < ENGINE_LOOP_TRACKS);
+        Track& loop_track = *loop_tracks.at(track);
+        InterleavedFifo& loop_track_fifo = loop_track.get_fifo();
+        loop_track.set_node(std::make_unique<ClipNode>(loop_clip, true));
+        if (track < ENGINE_LOOP_MONO_TRACKS) {
+            assert(loop_track.get_channels() == 1);
+            track_fifos.at(track) = &loop_track_fifo;
+        } else {
+            // Stereo tracks are interleaved
+            assert(loop_track.get_channels() == 2);
+            track_fifos.at(ENGINE_LOOP_MONO_TRACKS + (track - ENGINE_LOOP_MONO_TRACKS) * 2) = &loop_track_fifo;
+            track_fifos.at(ENGINE_LOOP_MONO_TRACKS + (track - ENGINE_LOOP_MONO_TRACKS) * 2 + 1) = &loop_track_fifo;
+        }
+    }
+    // One-shots track is stereo interleaved
+    track_fifos.at(ENGINE_LOOP_TRACKS) = &one_shots_track.get_fifo();
+    track_fifos.at(ENGINE_LOOP_TRACKS + 1) = &one_shots_track.get_fifo();
     SPDLOG_INFO("Program set = {}", program.get().get_start_number());
     return program;
 }
@@ -92,42 +101,26 @@ bool Engine::pcm_event_callback(PcmEvent& event, bool sync) {
     }
 }
 
-bool Engine::pcm_callback(PcmFrame_s24_3le& frame) {
-//     TrackState* track;
-//     int ch;
-//     PcmSample_s24_3le* sample;
-//     SPDLOG_DEBUG("Engine processing PCM...");
-//     while (state.push_pending()) {
-//         sample = state.frame.channels.data();
-//         track = state.tracks.data();
-//         while (track != state.tracks.end()) {
-//             ch = track->channels;
-//             while (ch-- > 0) {
-//                 if (track->fifo != nullptr) {
-//                     if (!track->fifo->pop(*sample)) {
-//                         int track_number = (track - state.tracks.data()) + 1;
-//                         SPDLOG_WARN("Engine track {} xrun...", track_number);                        
-//                         do {
-//                             usleep(TRACK_XRUN_SLEEP.count());
-//                         } while (!track->fifo->pop(*sample));
-//                         SPDLOG_DEBUG("Engine track {} underrun recovered.", track_number);
-//                     }
-//                 } else {
-//                     sample->silence();
-//                 }
-//                 sample++;
-// #ifndef NDEBUG
-//                 if (sample >= state.frame.channels.end()) {
-//                     throw OstrostrojException("sample pointer overflow!");
-//                 }
-// #endif
-//             }
-//             track++;
-//         }
-//         state.pending = true;
-//     }
-//     SPDLOG_DEBUG("Engine processing PCM done");
-    return false;
+void Engine::pcm_callback(PcmFrame_s24_3le& frame) {
+    PcmSample_s24_3le* sample = frame.channels.data();
+    InterleavedFifo** track_fifo = track_fifos.data();
+    while (sample != frame.channels.end() && track_fifo != track_fifos.end()) {
+        if (*track_fifo == nullptr) {
+            sample->silence();
+        } else {
+            if (!(*track_fifo)->pop(*sample)) {
+                SPDLOG_WARN("Engine track FIFO {} underrun...", sample - frame.channels.data());
+                int retries = 0;
+                do {
+                    usleep(TRACK_XRUN_SLEEP.count());
+                    retries++;
+                } while (!(*track_fifo)->pop(*sample));
+                SPDLOG_WARN("Engine track FIFO {} underrun recovered [retries={}]", sample - frame.channels.data(), retries);
+            }
+        }
+        sample++;
+        track_fifo++;
+    }
 }
 
 void Engine::midi_callback() {

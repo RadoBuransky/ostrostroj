@@ -27,18 +27,6 @@ PcmSample_s24_3le& PcmSample_s24_3le::operator=(float sample) {
     return *this;
 }
 
-void PcmSample_s24_3le::silence() {
-    b0 = 0;
-    b1 = 0;
-    b2 = 0;
-}
-
-void PcmFrame_s24_3le::silence() {
-    for (PcmSample_s24_3le& s: channels) {
-        s.silence();
-    }
-}
-
 void* run_pcm(void* context) {
     AlsaPcm& self = *(AlsaPcm*)context;
     const snd_pcm_channel_area_t* areas;
@@ -98,19 +86,7 @@ void* run_pcm(void* context) {
             }
 #endif            
             while (frames_to_write-- > 0) {
-                // TODO: Instead of PCM FIFO, get it directly from track FIFOs
-                if (!self.pcm_callback(*buffer)) {
-                    int c = 0;
-                    engine_xrun = true;
-                    useconds_t sleep = std::chrono::microseconds(PCM_OUT_PERIOD_TIME).count();
-                    SPDLOG_WARN("ALSA PCM FIFO xrun...");
-                    do {
-                        // self.callback();
-                        usleep(sleep);
-                        c++;
-                    } while (!self.pcm_callback(*buffer));
-                    SPDLOG_WARN("ALSA PCM FIFO xrun recovered. [c={},sleep={},delay={}]", c, sleep, self.current_delay);
-                }
+                self.pcm_callback(*buffer);
                 buffer++;
             }
             commitres = snd_pcm_mmap_commit(self.pcm_out, offset, frames);
@@ -409,7 +385,7 @@ snd_pcm_uframes_t AlsaPcm::get_period_size() {
     return period_size;
 }
 
-void AlsaPcm::start(std::function<bool(PcmEvent&, bool)> _pcm_event_callback, std::function<bool(PcmFrame_s24_3le&)> _pcm_callback) {
+void AlsaPcm::start(std::function<bool(PcmEvent&, bool)> _pcm_event_callback, std::function<void(PcmFrame_s24_3le&)> _pcm_callback) {
     if (pcm_thread || pcm_callback) {
         SPDLOG_ERROR("Thread already started! [{}]", pcm_thread);
         return;
