@@ -28,78 +28,26 @@ PcmSample_s24_3le& PcmSample_s24_3le::operator=(float sample) {
 }
 
 void* run_pcm(void* context) {
-    AlsaPcm& self = *(AlsaPcm*)context;
-    const snd_pcm_channel_area_t* areas;
-    snd_pcm_state_t state;
-    snd_pcm_sframes_t avail, commitres, size, frames_to_write;
-    int err;
-    snd_pcm_uframes_t offset, frames;
-    bool engine_xrun;
-    PcmFrame_s24_3le* buffer;
-    SPDLOG_INFO("ALSA pcm started.");
-    snd_pcm_uframes_t total_frames_written = 0;
-    while (!self.stop) {
-        self.process_events();
-        state = self.alsa_snd_pcm_state();
-        if (state == SND_PCM_STATE_XRUN || state == SND_PCM_STATE_SUSPENDED) {
-            throw OstrostrojException(fmt::format("Invalid state={}", (int)state));
-        }
-        err = snd_pcm_avail_delay(self.pcm_out, &avail, &self.current_delay);
-        if (err < 0 || avail < 0) {
-            throw OstrostrojException(fmt::format("snd_pcm_avail_delay failed = [err={},avail={}]", snd_strerror(err), avail));
-        }
-        if (avail < (snd_pcm_sframes_t)self.period_size) {
-            if (state != SND_PCM_STATE_RUNNING) {
-                // TODO: Sync wait for event callback
-                // SPDLOG_DEBUG("ALSA PCM waiting for push flag...");
-                // self.pcm_event_pushed_flag.test_and_set();
-                // self.pcm_event_pushed_flag.wait(true);
-            } else {
-                SPDLOG_TRACE("ALSA PCM busy loop. [state={}]", (int)state);
-                usleep(std::chrono::microseconds(PCM_OUT_PERIOD_TIME).count());
-            }
-            continue;
-        }
-        size = self.period_size;
-        engine_xrun = false;
-        SPDLOG_TRACE("ALSA PCM writing {} frames...", self.period_size);
-        while (size > 0) {
-            frames = size;
-            err = snd_pcm_mmap_begin(self.pcm_out, &areas, &offset, &frames);
-            SPDLOG_TRACE("snd_pcm_mmap_begin = {}, {}, {}", err, offset, frames);
-            if (err < 0) {
-                throw OstrostrojException(fmt::format("snd_pcm_mmap_begin failed = {}", snd_strerror(err)));
-            }
-            
-            frames_to_write = frames;
-            buffer = (PcmFrame_s24_3le*)(((char*)areas[0].addr) + (areas[0].first / 8)) + offset;
-#ifndef NDEBUG
-            if (areas[0].step != sizeof(PcmFrame_s24_3le) * 8) {
-                throw OstrostrojException(fmt::format("Invalid step size! [expected={},actual={}]", sizeof(PcmFrame_s24_3le) * 8, areas[0].step));
-            }
-            static bool area_debug_logged = false;
-            if (!area_debug_logged) {
-                area_debug_logged = true;
-                for (int channel = 0; channel < PCM_OUT_CHANNELS; channel++) {
-                    SPDLOG_TRACE("ch={} area.addr=0x{:x}, area.first={}, area.step={}", channel, (long)areas[channel].addr, areas[channel].first, areas[channel].step);
-                }            
-            }
-#endif            
-            while (frames_to_write-- > 0) {
-                self.pcm_callback(*buffer);
-                buffer++;
-            }
-            commitres = snd_pcm_mmap_commit(self.pcm_out, offset, frames);
-            SPDLOG_TRACE("snd_pcm_mmap_commit = {}, {}, {}", commitres, offset, frames);       
-            if (commitres < 0 || (snd_pcm_uframes_t)commitres != frames) {
-                throw OstrostrojException(fmt::format("commit {} xrun!", commitres));
-            }
-            size -= frames;
-            total_frames_written += frames;
-        }
-        SPDLOG_TRACE("ALSA PCM frames commited [engine xrun={}]", engine_xrun);
-    }
+    ((AlsaPcm*)context)->run();
     return 0;
+}
+
+void AlsaPcm::run() {    
+    SPDLOG_INFO("ALSA PCM started.");
+    try {
+        snd_pcm_uframes_t total_frames_written = 0;
+        while (!stop) {
+            process_events();
+            if (!wait_until_avail()) {
+                continue;
+            }
+            write(period_size);
+            total_frames_written += period_size;
+        }
+        SPDLOG_INFO("ALSA PCM stopped.");
+    } catch(std::exception const& e) {
+        SPDLOG_ERROR("ALSA PCM failed {}", e.what());
+    }
 }
 
 void AlsaPcm::process_events() {
@@ -140,6 +88,70 @@ void AlsaPcm::process_events() {
                 SPDLOG_ERROR("Unknown event! [{}]", (int)event);
                 break;
         }
+    }
+}
+
+bool AlsaPcm::wait_until_avail() {
+    snd_pcm_sframes_t avail;
+    int err = snd_pcm_avail_delay(pcm_out, &avail, &current_delay);
+    if (err < 0 || avail < 0) {
+        throw OstrostrojException(fmt::format("snd_pcm_avail_delay failed = [err={},avail={}]", snd_strerror(err), avail));
+    }
+    snd_pcm_state_t state = alsa_snd_pcm_state();
+    if (state == SND_PCM_STATE_XRUN || state == SND_PCM_STATE_SUSPENDED) {
+        throw OstrostrojException(fmt::format("Invalid state={}", (int)state));
+    }
+    if (avail < (snd_pcm_sframes_t)period_size) {
+        if (state != SND_PCM_STATE_RUNNING) {
+            // TODO: Sync wait for event callback
+            // SPDLOG_DEBUG("ALSA PCM waiting for push flag...");
+            // pcm_event_pushed_flag.test_and_set();
+            // pcm_event_pushed_flag.wait(true);
+        } else {
+            SPDLOG_TRACE("ALSA PCM busy loop. [state={}]", (int)state);
+            usleep(std::chrono::microseconds(PCM_OUT_PERIOD_TIME).count());
+        }
+        return false;
+    }
+    return true;
+}
+
+void AlsaPcm::write(snd_pcm_uframes_t size) {
+    const snd_pcm_channel_area_t* areas;
+    snd_pcm_uframes_t offset, frames;
+    PcmFrame_s24_3le* buffer;
+    SPDLOG_TRACE("ALSA PCM writing {} frames...", period_size);
+    while (size > 0) {
+        frames = size;
+        alsa_snd_pcm_mmap_begin(&areas, &offset, &frames);
+        buffer = (PcmFrame_s24_3le*)(((char*)areas[0].addr) + (areas[0].first / 8)) + offset;
+        write_to_mmap(buffer, frames);
+        alsa_snd_pcm_mmap_commit(offset, frames);
+        size -= frames;
+    }
+    SPDLOG_TRACE("ALSA PCM frames commited");
+}
+
+void AlsaPcm::write_to_mmap(PcmFrame_s24_3le* buffer, snd_pcm_uframes_t frames_to_write) {
+    while (frames_to_write-- > 0) {
+        pcm_callback(*buffer);
+        buffer++;
+    }
+}
+
+void AlsaPcm::alsa_snd_pcm_mmap_begin(const snd_pcm_channel_area_t **areas, snd_pcm_uframes_t *offset, snd_pcm_uframes_t *frames) {
+    int err = snd_pcm_mmap_begin(pcm_out, areas, offset, frames);
+    SPDLOG_TRACE("snd_pcm_mmap_begin = {}, {}, {}", err, offset, frames);
+    if (err < 0) {
+        throw OstrostrojException(fmt::format("snd_pcm_mmap_begin failed={}", snd_strerror(err)));
+    }
+}
+
+void AlsaPcm::alsa_snd_pcm_mmap_commit(snd_pcm_uframes_t offset, snd_pcm_uframes_t frames) {
+    snd_pcm_sframes_t commitres = snd_pcm_mmap_commit(pcm_out, offset, frames);
+    SPDLOG_TRACE("snd_pcm_mmap_commit = {}, {}, {}", commitres, offset, frames);       
+    if (commitres < 0 || (snd_pcm_uframes_t)commitres != frames) {
+        throw OstrostrojException(fmt::format("snd_pcm_mmap_commit failed={}", commitres));
     }
 }
 

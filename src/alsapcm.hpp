@@ -40,7 +40,13 @@ class AlsaPcm {
         pthread_t pcm_thread;
         snd_pcm_sframes_t current_delay;
         friend void* run_pcm(void* context);
+        void run();
         void process_events();
+        bool wait_until_avail();
+        void write(snd_pcm_uframes_t size);
+        void write_to_mmap(PcmFrame_s24_3le* buffer, snd_pcm_uframes_t frames_to_write);
+        void alsa_snd_pcm_mmap_begin(const snd_pcm_channel_area_t **areas, snd_pcm_uframes_t *offset, snd_pcm_uframes_t *frames);
+        void alsa_snd_pcm_mmap_commit(snd_pcm_uframes_t offset, snd_pcm_uframes_t frames);
         snd_pcm_state_t alsa_snd_pcm_state();
         void alsa_snd_pcm_start();
         void alsa_snd_pcm_pause();
