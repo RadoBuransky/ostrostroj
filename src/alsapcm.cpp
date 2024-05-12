@@ -1,4 +1,4 @@
-#define SPDLOG_ACTIVE_LEVEL 1
+#define SPDLOG_ACTIVE_LEVEL 2
 
 #include "common.hpp"
 #include "alsa/asoundlib.h"
@@ -54,6 +54,7 @@ void AlsaPcm::process_events(bool wait_for_event) {
     PcmEvent event;
     snd_pcm_state_t state = alsa_snd_pcm_state();
     while (pcm_event_callback(event, state == SND_PCM_STATE_RUNNING, wait_for_event)) {
+        wait_for_event = false;
         SPDLOG_DEBUG("APCM  event = {}", (int)event);
         switch(event) {
             case ALSA_PCM_START:
@@ -104,6 +105,7 @@ bool AlsaPcm::wait_until_avail(bool& wait_for_event) {
     }
     if (avail < (snd_pcm_sframes_t)period_size) {
         if (state != SND_PCM_STATE_RUNNING) {
+            SPDLOG_TRACE("APCM  wait_for_event. [state={}]", (int)state);
             wait_for_event = true;
         } else {
             SPDLOG_TRACE("APCM  busy loop. [state={}]", (int)state);
@@ -139,7 +141,7 @@ void AlsaPcm::write_to_mmap(PcmFrame_s24_3le* buffer, snd_pcm_uframes_t frames_t
 
 void AlsaPcm::alsa_snd_pcm_mmap_begin(const snd_pcm_channel_area_t **areas, snd_pcm_uframes_t *offset, snd_pcm_uframes_t *frames) {
     int err = snd_pcm_mmap_begin(pcm_out, areas, offset, frames);
-    SPDLOG_TRACE("APCM  snd_pcm_mmap_begin = {}, {}, {}", err, offset, frames);
+    SPDLOG_TRACE("APCM  snd_pcm_mmap_begin = {}, {}, {}", err, *offset, *frames);
     if (err < 0) {
         throw OstrostrojException(fmt::format("APCM  snd_pcm_mmap_begin failed={}", snd_strerror(err)));
     }

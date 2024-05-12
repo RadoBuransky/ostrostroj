@@ -194,10 +194,12 @@ bool Engine::pcm_event_callback(PcmEvent& event, bool running, bool sync) {
     } else {
         if (sync) {
             midi_flag.test_and_set();
+            SPDLOG_TRACE("ENGIN waiting for MIDI flag...");
             midi_flag.wait(true);
             if (!alsa_midi.get_fifo().pop(midi_event)) {
                 throw OstrostrojException("ENGIN MIDI FIFO empty!");
             }
+            SPDLOG_TRACE("ENGIN waiting for MIDI flag done.");
             return handle_midi_event(midi_event, running, event);
         }
         return false;

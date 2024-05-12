@@ -7,8 +7,7 @@ Track::Track(int _track_number, int _channels, snd_pcm_uframes_t _period_size, b
     track_number(_track_number),
     channels(_channels),
     no_xrun(_no_xrun),
-    // TODO: Increase this to ALSA PCM buffer size?
-    fifo(std::make_unique<InterleavedFifo>(_period_size * 2 * _channels)),
+    fifo(std::make_unique<InterleavedFifo>(_period_size * 32 * _channels)), // TODO: 32?
     dynamic_node(),
     track_node(dynamic_node),
     sample(0.0),
