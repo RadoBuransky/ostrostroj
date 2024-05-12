@@ -9,6 +9,23 @@ static constexpr int ENGINE_LOOP_TRACKS = 6;
 static constexpr int ENGINE_LOOP_MONO_TRACKS = 4;
 static_assert(ENGINE_LOOP_MONO_TRACKS + (ENGINE_LOOP_TRACKS - ENGINE_LOOP_MONO_TRACKS) * 2 + 2 < PCM_OUT_CHANNELS);
 
+class EngineWorker {
+    private:
+        int worker_index;
+        useconds_t sleep_time;
+        std::atomic_bool stop;
+        std::mutex m;
+        std::condition_variable cv;
+        std::vector<std::reference_wrapper<Track>> tracks;
+        std::thread thread;
+        void run();
+        bool run_tracks();
+    public:
+        EngineWorker(int _worker_index, useconds_t _sleep_time);
+        virtual ~EngineWorker();
+        void set_tracks(std::vector<std::reference_wrapper<Track>> _tracks);
+};
+
 class Engine {
     private:
         Project& project;
@@ -19,14 +36,21 @@ class Engine {
         Track one_shots_track;
         std::reference_wrapper<Program> program;
         std::array<InterleavedFifo*, PCM_OUT_CHANNELS> track_fifos;
+        useconds_t worker_sleep_time;
+        std::vector<std::unique_ptr<EngineWorker>> workers;
         bool handle_midi_event(snd_seq_event_t& midi_event, PcmEvent& result);
         Program& set_program(int program_number);
+        void update_worker_tracks();
+        std::vector<std::unique_ptr<EngineWorker>> create_workers();
     public:
         Engine(Project& _project, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm);
         virtual ~Engine();
 
+        // pcm_* callbacks are called from ALSA PCM thread (never called concerruntly!)
         bool pcm_event_callback(PcmEvent& event, bool sync);
         void pcm_callback(PcmFrame_s24_3le& frame);
+
+        // Called from ALSA MIDI thread
         void midi_callback();
 
         int get_loop_track_count() const;

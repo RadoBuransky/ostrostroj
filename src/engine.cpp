@@ -3,7 +3,51 @@
 #include "common.hpp"
 #include "engine.hpp"
 
-static constexpr std::chrono::microseconds TRACK_XRUN_SLEEP = std::chrono::microseconds(100);
+void EngineWorker::run() {
+    try {
+        SPDLOG_INFO("Engine worker started. [{},sleep_time={}]", worker_index, sleep_time);
+        while (!stop) {
+            if (run_tracks()) {
+                usleep(sleep_time);
+            }
+        }
+        SPDLOG_INFO("Engine worker stopped. [{}]", worker_index);
+    } catch(std::exception const& e) {
+        SPDLOG_ERROR("Engine worker {} failed. {}", worker_index, e.what());
+    }
+}
+
+bool EngineWorker::run_tracks() {
+    std::unique_lock lock(m);
+    if (tracks.empty()) {
+        SPDLOG_INFO("Engine worker {} waiting for tracks...", worker_index);
+        cv.wait(lock, [&]{ return tracks.empty(); });
+        return false;
+    }
+    for (std::reference_wrapper<Track> track: tracks) {
+        track.get().run();
+    }
+    return true;
+}
+
+EngineWorker::EngineWorker(int _worker_index, useconds_t _sleep_time):
+    worker_index(_worker_index),
+    sleep_time(_sleep_time),
+    thread(std::bind(&EngineWorker::run, this)) {    
+    pthread_setname_np(thread.native_handle(), fmt::format("worker{}", _worker_index).c_str());
+}
+
+EngineWorker::~EngineWorker() {
+    stop = true;
+    thread.join();
+}
+
+void EngineWorker::set_tracks(std::vector<std::reference_wrapper<Track>> _tracks) {
+    std::lock_guard lock(m);
+    tracks = _tracks;
+    cv.notify_one();
+    SPDLOG_INFO("Engine worker tracks set. [size={}]", tracks.size());
+}
 
 bool Engine::handle_midi_event(snd_seq_event_t& midi_event, PcmEvent& result) {
     switch(midi_event.type) {
@@ -25,6 +69,8 @@ bool Engine::handle_midi_event(snd_seq_event_t& midi_event, PcmEvent& result) {
         case SND_SEQ_EVENT_PGMCHANGE: 
             SPDLOG_INFO("Engine MIDI PROGRAM CHANGE [param={},value={}]", midi_event.data.control.param, midi_event.data.control.value);
             // TODO: xfade tracks
+
+            // TODO: Mutex
             set_program(midi_event.data.control.value + 1);
             result = ALSA_PCM_PROGRAM_CHANGE;
             return true;
@@ -59,8 +105,35 @@ Program& Engine::set_program(int program_number) {
     // One-shots track is stereo interleaved
     track_fifos.at(ENGINE_LOOP_TRACKS) = &one_shots_track.get_fifo();
     track_fifos.at(ENGINE_LOOP_TRACKS + 1) = &one_shots_track.get_fifo();
+    update_worker_tracks();
     SPDLOG_INFO("Program set = {}", program.get().get_start_number());
     return program;
+}
+
+void Engine::update_worker_tracks() {
+    std::vector<std::reference_wrapper<Track>> all_tracks;
+    for (LoopClip& loop_clip : program.get().get_loops()) {
+        all_tracks.push_back(std::ref(*loop_tracks.at(loop_clip.get_track())));
+    }
+    all_tracks.push_back(std::ref(one_shots_track));
+
+    for (size_t worker_index = 0; worker_index < workers.size(); worker_index++) {
+        std::vector<std::reference_wrapper<Track>> worker_tracks;
+        size_t track_index = worker_index;        
+        while (track_index < all_tracks.size()) {
+            worker_tracks.push_back(std::ref(all_tracks.at(track_index)));
+            track_index += workers.size();
+        }
+        workers.at(worker_index)->set_tracks(worker_tracks);
+    }
+}
+
+std::vector<std::unique_ptr<EngineWorker>> Engine::create_workers() {
+    std::vector<std::unique_ptr<EngineWorker>> result;
+    for (size_t i = 0; i < std::thread::hardware_concurrency(); i++) {
+        result.emplace_back(std::make_unique<EngineWorker>(i, worker_sleep_time));
+    }
+    return result;
 }
 
 Engine::Engine(Project& _project, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm):
@@ -77,8 +150,9 @@ Engine::Engine(Project& _project, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm):
         std::make_unique<Track>(6, 2, _alsa_pcm.get_period_size(), false),
     },
     one_shots_track(Track(7, 2, _alsa_pcm.get_period_size(), true)),
-    program(set_program(1)) {
-    // TODO: Create worker threads and call Track::run
+    program(set_program(1)),
+    worker_sleep_time(std::chrono::microseconds(_alsa_pcm.get_period_time()).count() / 2),
+    workers(create_workers()) {
 }
 
 Engine::~Engine() {
@@ -112,7 +186,7 @@ void Engine::pcm_callback(PcmFrame_s24_3le& frame) {
                 SPDLOG_WARN("Engine track FIFO {} underrun...", sample - frame.channels.data());
                 int retries = 0;
                 do {
-                    usleep(TRACK_XRUN_SLEEP.count());
+                    usleep(worker_sleep_time);
                     retries++;
                 } while (!(*track_fifo)->pop(*sample));
                 SPDLOG_WARN("Engine track FIFO {} underrun recovered [retries={}]", sample - frame.channels.data(), retries);
