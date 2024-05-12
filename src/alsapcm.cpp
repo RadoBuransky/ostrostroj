@@ -36,13 +36,13 @@ void AlsaPcm::run() {
     SPDLOG_INFO("ALSA PCM started.");
     try {
         snd_pcm_uframes_t total_frames_written = 0;
+        bool wait_for_event = false;
         while (!stop) {
-            process_events();
-            if (!wait_until_avail()) {
-                continue;
+            process_events(wait_for_event);
+            if (wait_until_avail(wait_for_event)) {
+                write(period_size);
+                total_frames_written += period_size;
             }
-            write(period_size);
-            total_frames_written += period_size;
         }
         SPDLOG_INFO("ALSA PCM stopped.");
     } catch(std::exception const& e) {
@@ -50,10 +50,10 @@ void AlsaPcm::run() {
     }
 }
 
-void AlsaPcm::process_events() {
+void AlsaPcm::process_events(bool wait_for_event) {
     PcmEvent event;
     snd_pcm_state_t state = alsa_snd_pcm_state();
-    while (pcm_event_callback(event, state == SND_PCM_STATE_RUNNING, false)) {
+    while (pcm_event_callback(event, state == SND_PCM_STATE_RUNNING, wait_for_event)) {
         SPDLOG_DEBUG("ALSA PCM event = {}", (int)event);
         switch(event) {
             case ALSA_PCM_START:
@@ -91,8 +91,9 @@ void AlsaPcm::process_events() {
     }
 }
 
-bool AlsaPcm::wait_until_avail() {
+bool AlsaPcm::wait_until_avail(bool& wait_for_event) {
     snd_pcm_sframes_t avail;
+    wait_for_event = false;
     int err = snd_pcm_avail_delay(pcm_out, &avail, &current_delay);
     if (err < 0 || avail < 0) {
         throw OstrostrojException(fmt::format("snd_pcm_avail_delay failed = [err={},avail={}]", snd_strerror(err), avail));
@@ -103,10 +104,7 @@ bool AlsaPcm::wait_until_avail() {
     }
     if (avail < (snd_pcm_sframes_t)period_size) {
         if (state != SND_PCM_STATE_RUNNING) {
-            // TODO: Sync wait for event callback
-            // SPDLOG_DEBUG("ALSA PCM waiting for push flag...");
-            // pcm_event_pushed_flag.test_and_set();
-            // pcm_event_pushed_flag.wait(true);
+            wait_for_event = true;
         } else {
             SPDLOG_TRACE("ALSA PCM busy loop. [state={}]", (int)state);
             usleep(std::chrono::microseconds(PCM_OUT_PERIOD_TIME).count());
