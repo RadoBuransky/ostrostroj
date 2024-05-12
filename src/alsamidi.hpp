@@ -25,4 +25,5 @@ class AlsaMidi {
         virtual ~AlsaMidi();
         AlsaMidiFifo& get_fifo();
         void start(std::function<void(void)> _callback);
+        void shutdown();
 };

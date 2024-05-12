@@ -1,4 +1,4 @@
-#define SPDLOG_ACTIVE_LEVEL 1
+#define SPDLOG_ACTIVE_LEVEL 2
 
 #include "common.hpp"
 #include "alsa/asoundlib.h"
@@ -46,7 +46,7 @@ void AlsaPcm::run() {
         }
         SPDLOG_INFO("APCM  stopped.");
     } catch(std::exception const& e) {
-        SPDLOG_ERROR("APCM  failed {}", e.what());
+        SPDLOG_ERROR("APCM  failed [e={}]", e.what());
     }
 }
 
@@ -165,6 +165,7 @@ snd_pcm_state_t AlsaPcm::alsa_snd_pcm_state() {
 }
 
 void AlsaPcm::alsa_snd_pcm_start() {
+    SPDLOG_DEBUG("APCM  alsa_snd_pcm_start");
     int err = snd_pcm_start(pcm_out);
     if (err < 0) {
         throw OstrostrojException(fmt::format("APCM  snd_pcm_start failed={}", snd_strerror(err)));
@@ -172,13 +173,15 @@ void AlsaPcm::alsa_snd_pcm_start() {
 }
 
 void AlsaPcm::alsa_snd_pcm_pause() {    
+    SPDLOG_DEBUG("APCM  alsa_snd_pcm_pause");
     int err = snd_pcm_pause(pcm_out, true);
     if (err < 0) {
         throw OstrostrojException(fmt::format("APCM  snd_pcm_pause (pause) failed={}", snd_strerror(err)));
     }
 }
 
-void AlsaPcm::alsa_snd_pcm_resume() {  
+void AlsaPcm::alsa_snd_pcm_resume() {
+    SPDLOG_DEBUG("APCM  alsa_snd_pcm_resume");
     int err = snd_pcm_pause(pcm_out, false);
     if (err < 0) {
         throw OstrostrojException(fmt::format("APCM  snd_pcm_pause (resume) failed={}", snd_strerror(err)));
@@ -186,6 +189,7 @@ void AlsaPcm::alsa_snd_pcm_resume() {
 }
 
 void AlsaPcm::alsa_snd_pcm_drop() {
+    SPDLOG_DEBUG("APCM  alsa_snd_pcm_drop");
     int err = snd_pcm_drop(pcm_out);
     if (err < 0) {
         throw OstrostrojException(fmt::format("APCM  snd_pcm_drop failed={}", snd_strerror(err)));
@@ -366,14 +370,10 @@ AlsaPcm::AlsaPcm():
 }
 
 AlsaPcm::~AlsaPcm() {
-    if (pcm_thread) {
-        stop = true;
-        void* status;
-        pthread_join(pcm_thread, &status);
-    }
+    shutdown();
     if (pcm_out) {
-        snd_pcm_drain(pcm_out);
         snd_pcm_close(pcm_out);
+        pcm_out = nullptr;
     }
 }
 
@@ -401,4 +401,13 @@ void AlsaPcm::start(std::function<bool(PcmEvent&, bool, bool)> _pcm_event_callba
     pcm_event_callback = _pcm_event_callback;
     pcm_callback = _pcm_callback;
     pcm_thread = create_rt_thread("alsa_pcm", THREAD_PRIORITY, run_pcm, this);
+}
+
+void AlsaPcm::shutdown() {
+    if (pcm_thread) {
+        stop = true;
+        void* status;
+        pthread_join(pcm_thread, &status);
+        pcm_thread = 0;
+    }
 }

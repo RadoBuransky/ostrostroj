@@ -33,6 +33,7 @@ class Engine {
         AlsaMidi& alsa_midi;
         AlsaPcm& alsa_pcm;
         std::atomic_flag midi_flag;
+        std::atomic_bool stop;
         std::array<std::unique_ptr<Track>, ENGINE_LOOP_TRACKS> loop_tracks; // 0-3 mono, 4-5 stereo
         Track one_shots_track;
         std::reference_wrapper<Program> program;
@@ -50,6 +51,8 @@ class Engine {
     public:
         Engine(Project& _project, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm);
         virtual ~Engine();
+
+        void shutdown();
 
         // pcm_* callbacks are called from ALSA PCM thread (never called concerruntly!)
         bool pcm_event_callback(PcmEvent& event, bool running, bool sync);

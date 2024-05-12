@@ -11,6 +11,12 @@
 #include "alsamidi.hpp"
 #include "alsapcm.hpp"
 
+static std::atomic_flag running_flag = ATOMIC_FLAG_INIT;
+static void sigaction_handler(int) {
+    running_flag.clear();
+    running_flag.notify_all();
+}
+
 class OstrostrojApp {
     private:
         AlsaPcm alsa_pcm;
@@ -18,17 +24,14 @@ class OstrostrojApp {
         Project project;
         Engine engine;
 
-        static void sigaction_handler(int s) {
-            SPDLOG_INFO("Signal received [{}].", s);
-        }
-
         void waitForSignal() const {
             struct sigaction sigIntHandler;
             sigIntHandler.sa_handler = sigaction_handler;
             sigemptyset(&sigIntHandler.sa_mask);
             sigIntHandler.sa_flags = 0;
             sigaction(SIGINT, &sigIntHandler, NULL);
-            pause();
+            running_flag.test_and_set();
+            running_flag.wait(true);
         }
 
     public:
@@ -49,9 +52,11 @@ class OstrostrojApp {
             }
         }
 
-        virtual ~OstrostrojApp() { 
+        virtual ~OstrostrojApp() {
+            engine.shutdown();
+            alsa_pcm.shutdown();
+            alsa_midi.shutdown();
             SPDLOG_INFO("Ostrostroj finished.");
-            spdlog::shutdown();           
         }
 
         void main() const {
@@ -63,16 +68,17 @@ int main(int argc, char* argv[]) {
     spdlog::set_pattern("%L [%H:%M:%S.%e] [%t] %v");
     spdlog::set_level(spdlog::level::trace);
     SPDLOG_INFO("Ostrostroj started. [{}]", static_cast<int>(spdlog::get_level()));
-    if ((argc > 1) && (strcmp(argv[1], "shutdown") == 0)) {
-        sync();
-        reboot(RB_POWER_OFF); 
-        SPDLOG_INFO("Shutdown!");
-    } else {
-        auto ostrostrojApp = OstrostrojApp();
-        try {
+    try {
+        if ((argc > 1) && (strcmp(argv[1], "shutdown") == 0)) {
+            sync();
+            reboot(RB_POWER_OFF); 
+            SPDLOG_INFO("Shutdown!");
+        } else {
+            auto ostrostrojApp = OstrostrojApp();
             ostrostrojApp.main();
-        } catch (std::exception const &ex) {
-            SPDLOG_ERROR(ex.what());
-        }
+        }    
+    } catch (std::exception const &ex) {
+        SPDLOG_ERROR(ex.what());
     }
+    spdlog::shutdown();
 }

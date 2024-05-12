@@ -21,7 +21,7 @@ bool EngineWorker::run_tracks() {
     std::unique_lock lock(mutex);
     if (tracks.empty()) {
         SPDLOG_DEBUG("EW{}   waiting for tracks...", worker_index);
-        cv.wait(lock, [&]{ return !tracks.empty(); });
+        cv.wait(lock, [&]{ return stop || !tracks.empty(); });
         SPDLOG_DEBUG("EW{}   waiting done. [tracks={}]", worker_index, tracks.size());
         return false;
     }
@@ -44,6 +44,7 @@ EngineWorker::EngineWorker(int _worker_index, useconds_t _sleep_time):
 
 EngineWorker::~EngineWorker() {
     stop = true;
+    cv.notify_one();
     thread.join();
 }
 
@@ -164,6 +165,7 @@ Engine::Engine(Project& _project, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm):
     alsa_midi(_alsa_midi),
     alsa_pcm(_alsa_pcm),
     midi_flag(ATOMIC_FLAG_INIT),
+    stop(false),
     loop_tracks {
         std::make_unique<Track>(1, 1, _alsa_pcm.get_period_size(), false),
         std::make_unique<Track>(2, 1, _alsa_pcm.get_period_size(), false),
@@ -187,7 +189,16 @@ Engine::Engine(Project& _project, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm):
 Engine::~Engine() {
 }
 
+void Engine::shutdown() {
+    workers.clear();
+    stop = true;
+    midi_callback();
+}
+
 bool Engine::pcm_event_callback(PcmEvent& event, bool running, bool sync) {
+    if (stop) {
+        return false;
+    }
     snd_seq_event_t midi_event;
     if (alsa_midi.get_fifo().pop(midi_event)) {
         return handle_midi_event(midi_event, running, event);
@@ -197,6 +208,9 @@ bool Engine::pcm_event_callback(PcmEvent& event, bool running, bool sync) {
             SPDLOG_TRACE("ENGIN waiting for MIDI flag...");
             midi_flag.wait(true);
             if (!alsa_midi.get_fifo().pop(midi_event)) {
+                if (stop) {
+                    return false;
+                }
                 throw OstrostrojException("ENGIN MIDI FIFO empty!");
             }
             SPDLOG_TRACE("ENGIN waiting for MIDI flag done.");
@@ -219,7 +233,7 @@ void Engine::pcm_callback(PcmFrame_s24_3le& frame) {
                 do {
                     usleep(worker_sleep_time);
                     retries++;
-                } while (!(*track_fifo)->pop(*sample));
+                } while (!(*track_fifo)->pop(*sample) && (!stop));
                 SPDLOG_WARN("ENGIN track FIFO {} underrun recovered [retries={}]", sample - frame.channels.data(), retries);
             }
         }

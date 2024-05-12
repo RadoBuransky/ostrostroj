@@ -111,18 +111,16 @@ AlsaMidi::AlsaMidi():
 }
 
 AlsaMidi::~AlsaMidi() {
-    if (thru_thread) {
-        stop = true;
-        void* status;
-        pthread_join(thru_thread, &status);
-    }
+    shutdown();
     if (handle_in) {
         snd_rawmidi_drain(handle_in);
         snd_rawmidi_close(handle_in);
+        handle_in = nullptr;
     }
     if (handle_out) {
         snd_rawmidi_drain(handle_out);
         snd_rawmidi_close(handle_out);
+        handle_out = nullptr;
     }
 }
 
@@ -137,4 +135,13 @@ void AlsaMidi::start(std::function<void(void)> _callback) {
     }
     callback = _callback;
     thru_thread = create_rt_thread("alsa_midi", 80, run_thru, this);
+}
+
+void AlsaMidi::shutdown() {
+    if (thru_thread) {
+        stop = true;
+        void* status;
+        pthread_join(thru_thread, &status);
+        thru_thread = 0;
+    }
 }

@@ -59,6 +59,7 @@ class AlsaPcm {
         AlsaPcm();
         virtual ~AlsaPcm();
         void start(std::function<bool(PcmEvent&, bool, bool)> _pcm_event_callback, std::function<void(PcmFrame_s24_3le&)> _pcm_callback);
+        void shutdown();
         snd_pcm_uframes_t get_sample_rate() const;
         int get_channels() const;
         std::chrono::milliseconds get_period_time();
