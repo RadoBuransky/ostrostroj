@@ -1,4 +1,4 @@
-#define SPDLOG_ACTIVE_LEVEL 2
+#define SPDLOG_ACTIVE_LEVEL 1
 
 #include "common.hpp"
 #include "alsa/asoundlib.h"
@@ -79,7 +79,7 @@ void AlsaPcm::process_events(bool wait_for_event) {
                 }
                 break;
             case ALSA_PCM_PROGRAM_CHANGE:
-                if (state == SND_PCM_STATE_RUNNING || state == SND_PCM_STATE_PAUSED) {
+                if (state == SND_PCM_STATE_RUNNING) {
                     SPDLOG_DEBUG("APCM  ALSA_PCM_PROGRAM_CHANGE while running.");
                     break;
                 }

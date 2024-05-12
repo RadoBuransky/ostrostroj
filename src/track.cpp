@@ -33,7 +33,6 @@ void Track::run() {
                 if (!no_xrun) {
                     throw OstrostrojException(fmt::format("TRAK{} underrun!", track_number));
                 }
-                // TODO: Useless busy loop for idle one-shot track
                 // Be careful because we're desyncing tracks here
                 SPDLOG_TRACE("TRAK{} no_xrun silence", track_number);
                 sample.silence();
