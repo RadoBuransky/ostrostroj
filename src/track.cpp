@@ -61,3 +61,10 @@ void Track::reset_node() {
 void Track::set_node(std::unique_ptr<Node>&& node) {
     dynamic_node.set_parent(std::move(node));
 }
+
+void Track::drop() {
+    PcmSample_s24_3le dropped;
+    while (fifo->pop(dropped)) {
+        // NOOP
+    }
+}

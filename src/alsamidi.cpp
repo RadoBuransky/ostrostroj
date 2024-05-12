@@ -2,8 +2,6 @@
 #include <alsa/asoundlib.h>
 #include "alsamidi.hpp"
 
-// TODO: https://alsamodular.sourceforge.net/seqdemo.c
-
 void* run_thru(void* context) {
     AlsaMidi& self = *(AlsaMidi*)context;
     snd_midi_event_t* parser;

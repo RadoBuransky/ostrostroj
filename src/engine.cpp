@@ -18,7 +18,7 @@ void EngineWorker::run() {
 }
 
 bool EngineWorker::run_tracks() {
-    std::unique_lock lock(m);
+    std::unique_lock lock(mutex);
     if (tracks.empty()) {
         SPDLOG_INFO("Engine worker {} waiting for tracks...", worker_index);
         cv.wait(lock, [&]{ return tracks.empty(); });
@@ -42,14 +42,19 @@ EngineWorker::~EngineWorker() {
     thread.join();
 }
 
-void EngineWorker::set_tracks(std::vector<std::reference_wrapper<Track>> _tracks) {
-    std::lock_guard lock(m);
+void EngineWorker::assign_tracks(std::vector<std::reference_wrapper<Track>> _tracks) {
+    std::lock_guard lock(mutex);
     tracks = _tracks;
     cv.notify_one();
     SPDLOG_INFO("Engine worker tracks set. [size={}]", tracks.size());
 }
 
-bool Engine::handle_midi_event(snd_seq_event_t& midi_event, PcmEvent& result) {
+void EngineWorker::release_tracks() {
+    std::lock_guard lock(mutex);
+    tracks.clear();
+}
+
+bool Engine::handle_midi_event(snd_seq_event_t& midi_event, bool running, PcmEvent& result) {
     switch(midi_event.type) {
         case SND_SEQ_EVENT_START: 
             SPDLOG_INFO("Engine MIDI START [d0={},d1={},queue={}]", midi_event.data.queue.param.d32[0], midi_event.data.queue.param.d32[1],
@@ -69,9 +74,7 @@ bool Engine::handle_midi_event(snd_seq_event_t& midi_event, PcmEvent& result) {
         case SND_SEQ_EVENT_PGMCHANGE: 
             SPDLOG_INFO("Engine MIDI PROGRAM CHANGE [param={},value={}]", midi_event.data.control.param, midi_event.data.control.value);
             // TODO: xfade tracks
-
-            // TODO: Mutex
-            set_program(midi_event.data.control.value + 1);
+            change_program(midi_event.data.control.value + 1, running);
             result = ALSA_PCM_PROGRAM_CHANGE;
             return true;
         default:
@@ -80,12 +83,17 @@ bool Engine::handle_midi_event(snd_seq_event_t& midi_event, PcmEvent& result) {
     }   
 }
 
-Program& Engine::set_program(int program_number) {
+Program& Engine::change_program(int program_number, bool running) {
     program = project.get_program(program_number);
-    for (size_t track = 0; track < loop_tracks.size(); track++) {
-        loop_tracks.at(track)->reset_node();
-    }
-    track_fifos.fill(nullptr);
+    release_worker_tracks();
+    reset_program(running);
+    update_tracks();
+    assign_worker_tracks();
+    SPDLOG_INFO("Program set = {}", program.get().get_start_number());
+    return program;
+}
+
+void Engine::update_tracks() {
     for (LoopClip& loop_clip : program.get().get_loops()) {
         int track = loop_clip.get_track();
         assert(track < ENGINE_LOOP_TRACKS);
@@ -102,15 +110,18 @@ Program& Engine::set_program(int program_number) {
             track_fifos.at(ENGINE_LOOP_MONO_TRACKS + (track - ENGINE_LOOP_MONO_TRACKS) * 2 + 1) = &loop_track_fifo;
         }
     }
-    // One-shots track is stereo interleaved
-    track_fifos.at(ENGINE_LOOP_TRACKS) = &one_shots_track.get_fifo();
-    track_fifos.at(ENGINE_LOOP_TRACKS + 1) = &one_shots_track.get_fifo();
-    update_worker_tracks();
-    SPDLOG_INFO("Program set = {}", program.get().get_start_number());
-    return program;
 }
 
-void Engine::update_worker_tracks() {
+void Engine::reset_program(bool running) {
+    for (size_t i = 0; i < loop_tracks.size(); i++) {
+        loop_tracks.at(i)->reset_node();
+        if (!running) {
+            loop_tracks.at(i)->drop();
+        }
+    }
+}
+
+void Engine::assign_worker_tracks() {
     std::vector<std::reference_wrapper<Track>> all_tracks;
     for (LoopClip& loop_clip : program.get().get_loops()) {
         all_tracks.push_back(std::ref(*loop_tracks.at(loop_clip.get_track())));
@@ -119,12 +130,19 @@ void Engine::update_worker_tracks() {
 
     for (size_t worker_index = 0; worker_index < workers.size(); worker_index++) {
         std::vector<std::reference_wrapper<Track>> worker_tracks;
-        size_t track_index = worker_index;        
+        size_t track_index = worker_index;
         while (track_index < all_tracks.size()) {
             worker_tracks.push_back(std::ref(all_tracks.at(track_index)));
             track_index += workers.size();
         }
-        workers.at(worker_index)->set_tracks(worker_tracks);
+        workers.at(worker_index)->assign_tracks(worker_tracks);
+    }
+}
+
+// Call these before touching Tracks and Nodes, they are not thread safe
+void Engine::release_worker_tracks() {
+    for (std::unique_ptr<EngineWorker>& worker: workers) {
+        worker->release_tracks();
     }
 }
 
@@ -150,18 +168,21 @@ Engine::Engine(Project& _project, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm):
         std::make_unique<Track>(6, 2, _alsa_pcm.get_period_size(), false),
     },
     one_shots_track(Track(7, 2, _alsa_pcm.get_period_size(), true)),
-    program(set_program(1)),
+    program(change_program(1, false)),
     worker_sleep_time(std::chrono::microseconds(_alsa_pcm.get_period_time()).count() / 2),
     workers(create_workers()) {
+    // One-shots track is stereo interleaved
+    track_fifos.at(ENGINE_LOOP_TRACKS) = &one_shots_track.get_fifo();
+    track_fifos.at(ENGINE_LOOP_TRACKS + 1) = &one_shots_track.get_fifo();
 }
 
 Engine::~Engine() {
 }
 
-bool Engine::pcm_event_callback(PcmEvent& event, bool sync) {
+bool Engine::pcm_event_callback(PcmEvent& event, bool running, bool sync) {
     snd_seq_event_t midi_event;
     if (alsa_midi.get_fifo().pop(midi_event)) {
-        return handle_midi_event(midi_event, event);
+        return handle_midi_event(midi_event, running, event);
     } else {
         if (sync) {
             midi_flag.test_and_set();
@@ -169,7 +190,7 @@ bool Engine::pcm_event_callback(PcmEvent& event, bool sync) {
             if (!alsa_midi.get_fifo().pop(midi_event)) {
                 throw OstrostrojException("Engine MIDI FIFO empty!");
             }
-            return handle_midi_event(midi_event, event);
+            return handle_midi_event(midi_event, running, event);
         }
         return false;
     }

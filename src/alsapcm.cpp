@@ -104,12 +104,11 @@ void* run_pcm(void* context) {
 
 void AlsaPcm::process_events() {
     PcmEvent event;
-    snd_pcm_state_t state;
-    while (pcm_event_callback(event, false)) {
+    snd_pcm_state_t state = alsa_snd_pcm_state();
+    while (pcm_event_callback(event, state == SND_PCM_STATE_RUNNING, false)) {
         SPDLOG_DEBUG("ALSA PCM event = {}", (int)event);
         switch(event) {
             case ALSA_PCM_START:
-                state = alsa_snd_pcm_state();
                 if (state == SND_PCM_STATE_PREPARED) {
                     alsa_snd_pcm_start();
                 } else {
@@ -117,7 +116,6 @@ void AlsaPcm::process_events() {
                 }
                 break;
             case ALSA_PCM_PAUSE:
-                state = alsa_snd_pcm_state();
                 if (state == SND_PCM_STATE_RUNNING) {
                     alsa_snd_pcm_pause();
                 } else {
@@ -125,7 +123,6 @@ void AlsaPcm::process_events() {
                 }
                 break;
             case ALSA_PCM_RESUME:
-                state = alsa_snd_pcm_state();
                 if (state == SND_PCM_STATE_PAUSED) {
                     alsa_snd_pcm_resume();
                 } else {
@@ -133,8 +130,7 @@ void AlsaPcm::process_events() {
                 }
                 break;
             case ALSA_PCM_PROGRAM_CHANGE:
-                state = alsa_snd_pcm_state();
-                if (state == SND_PCM_STATE_RUNNING) {
+                if (state == SND_PCM_STATE_RUNNING || state == SND_PCM_STATE_PAUSED) {
                     SPDLOG_DEBUG("ALSA_PCM_PROGRAM_CHANGE while running.");
                     break;
                 }
@@ -385,7 +381,7 @@ snd_pcm_uframes_t AlsaPcm::get_period_size() {
     return period_size;
 }
 
-void AlsaPcm::start(std::function<bool(PcmEvent&, bool)> _pcm_event_callback, std::function<void(PcmFrame_s24_3le&)> _pcm_callback) {
+void AlsaPcm::start(std::function<bool(PcmEvent&, bool, bool)> _pcm_event_callback, std::function<void(PcmFrame_s24_3le&)> _pcm_callback) {
     if (pcm_thread || pcm_callback) {
         SPDLOG_ERROR("Thread already started! [{}]", pcm_thread);
         return;

@@ -41,7 +41,7 @@ class OstrostrojApp {
             try {
                 project.verify(alsa_pcm.get_sample_rate(), engine.get_loop_track_count());
                 alsa_pcm.start(
-                    std::bind(&Engine::pcm_event_callback, &engine, std::placeholders::_1, std::placeholders::_2),
+                    std::bind(&Engine::pcm_event_callback, &engine, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
                     std::bind(&Engine::pcm_callback, &engine, std::placeholders::_1));
                 alsa_midi.start(std::bind(&Engine::midi_callback, &engine));
             } catch (std::exception const &ex) {

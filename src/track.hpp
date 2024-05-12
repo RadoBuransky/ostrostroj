@@ -33,4 +33,5 @@ class Track {
         int get_channels() const;
         void reset_node();
         void set_node(std::unique_ptr<Node>&& node);
+        void drop();
 };
