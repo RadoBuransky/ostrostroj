@@ -98,6 +98,7 @@ void* run_pcm(void* context) {
             }
 #endif            
             while (frames_to_write-- > 0) {
+                // TODO: Instead of PCM FIFO, get it directly from track FIFOs
                 if (!pcm_fifo.pop(*buffer)) {
                     int c = 0;
                     engine_xrun = true;

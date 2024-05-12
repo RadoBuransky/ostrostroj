@@ -16,19 +16,18 @@ class Track {
     private:
         const int track_number;
         const int channels;
-        const std::chrono::milliseconds period_time;
         const bool no_xrun;
         std::unique_ptr<InterleavedFifo> fifo;
-        std::atomic_bool stop;
         DynamicNode dynamic_node;
         TrackNode track_node;
-        std::mutex m;    
-        std::condition_variable cv;
-        std::thread worker_thread;
-        void run();
+        float sample;
+        bool sample_pending;
     public:
-        Track(int _track_number, int _channels, std::chrono::milliseconds _period_time, snd_pcm_uframes_t _period_size, bool _no_xrun);
+        Track(int _track_number, int _channels, snd_pcm_uframes_t _period_size, bool _no_xrun);
         virtual ~Track();
+        
+        void run();
+
         InterleavedFifo& get_fifo() const;
         int get_track_number() const;
         int get_channels() const;

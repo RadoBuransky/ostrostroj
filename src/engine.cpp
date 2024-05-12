@@ -4,7 +4,6 @@
 #include "engine.hpp"
 
 static constexpr std::chrono::microseconds TRACK_XRUN_SLEEP = std::chrono::microseconds(100);
-static constexpr int TRACK_XRUN_RETRY = 100;
 
 EngineState::EngineState(PcmFifo& _pcm_fifo):
     fifo(_pcm_fifo),
@@ -89,17 +88,10 @@ void Engine::process_pcm() {
                     if (!track->fifo->pop(*sample)) {
                         int track_number = (track - state.tracks.data()) + 1;
                         SPDLOG_WARN("Engine track {} xrun...", track_number);                        
-                        int retry = TRACK_XRUN_RETRY;
                         do {
                             usleep(TRACK_XRUN_SLEEP.count());
-                        } while (retry-- > 0 && !track->fifo->pop(*sample));
-                        if (retry == 0) {
-                            // TODO: Remove this, just keep retrying. Track would desync!
-                            SPDLOG_WARN("Engine track {} underrun!", track_number);
-                            sample->silence();
-                        } else {
-                            SPDLOG_DEBUG("Engine track {} underrun recovered.", track_number);
-                        }
+                        } while (!track->fifo->pop(*sample));
+                        SPDLOG_DEBUG("Engine track {} underrun recovered.", track_number);
                     }
                 } else {
                     sample->silence();
@@ -144,14 +136,14 @@ Engine::Engine(Project& _project, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm):
     alsa_midi(_alsa_midi),
     alsa_pcm(_alsa_pcm),
     loop_tracks {
-        std::make_unique<Track>(1, 1, _alsa_pcm.get_period_time(), _alsa_pcm.get_period_size(), false),
-        std::make_unique<Track>(2, 1, _alsa_pcm.get_period_time(), _alsa_pcm.get_period_size(), false),
-        std::make_unique<Track>(3, 1, _alsa_pcm.get_period_time(), _alsa_pcm.get_period_size(), false),
-        std::make_unique<Track>(4, 1, _alsa_pcm.get_period_time(), _alsa_pcm.get_period_size(), false),
-        std::make_unique<Track>(5, 2, _alsa_pcm.get_period_time(), _alsa_pcm.get_period_size(), false),
-        std::make_unique<Track>(6, 2, _alsa_pcm.get_period_time(), _alsa_pcm.get_period_size(), false),
+        std::make_unique<Track>(1, 1, _alsa_pcm.get_period_size(), false),
+        std::make_unique<Track>(2, 1, _alsa_pcm.get_period_size(), false),
+        std::make_unique<Track>(3, 1, _alsa_pcm.get_period_size(), false),
+        std::make_unique<Track>(4, 1, _alsa_pcm.get_period_size(), false),
+        std::make_unique<Track>(5, 2, _alsa_pcm.get_period_size(), false),
+        std::make_unique<Track>(6, 2, _alsa_pcm.get_period_size(), false),
     },
-    one_shots_track(Track(7, 2, _alsa_pcm.get_period_time(), _alsa_pcm.get_period_size(), true)),
+    one_shots_track(Track(7, 2, _alsa_pcm.get_period_size(), true)),
     state(_alsa_pcm.get_pcm_fifo()),
     program(set_program(1)),
     stop(false),
