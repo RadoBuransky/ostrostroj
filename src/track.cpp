@@ -10,7 +10,7 @@ Track::Track(int _track_number, int _channels, snd_pcm_uframes_t _period_size, b
     fifo(std::make_unique<InterleavedFifo>(_period_size * 32 * _channels)), // TODO: 32?
     dynamic_node(),
     track_node(dynamic_node),
-    sample(0.0),
+    sample(0),
     sample_pending(false) {
 }
 
@@ -19,23 +19,28 @@ Track::~Track() {
 
 void Track::run() {
     InterleavedFifo& fifo_ref = *fifo.get();
-    PcmSample_s24_3le out_sample;
+    float in_sample;
+    snd_pcm_uframes_t frames_pushed = 0;
     try {
-        if (sample_pending && !fifo_ref.push(std::move(out_sample))) {
+        if (sample_pending && !fifo_ref.push(std::move(sample))) {
+            SPDLOG_TRACE("TRAK{} FIFO overrun", track_number);
             return;
         }
         do {
-            if ((sample_pending = track_node.pop(sample))) {
-                out_sample = sample;
+            if ((sample_pending = track_node.pop(in_sample))) {
+                sample = in_sample;
             } else {
-                if (no_xrun) {
-                    // Be careful because we're desyncing tracks here
-                    out_sample.silence();
-                } else {
-                    SPDLOG_WARN("TRAK{} underrun!", track_number);
+                if (!no_xrun) {
+                    throw OstrostrojException(fmt::format("TRAK{} underrun!", track_number));
                 }
+                // TODO: Useless busy loop for idle one-shot track
+                // Be careful because we're desyncing tracks here
+                SPDLOG_TRACE("TRAK{} no_xrun silence", track_number);
+                sample.silence();
             }
-        } while (fifo_ref.push(std::move(out_sample)));
+            frames_pushed++;
+        } while (fifo_ref.push(std::move(sample)));
+        SPDLOG_TRACE("TRAK{} FIFO filled up [frames_pushed={}]", track_number, frames_pushed - 1);
     } catch(std::exception const& e) {
         SPDLOG_ERROR("TRAK{} failed. {}", track_number, e.what());
     }

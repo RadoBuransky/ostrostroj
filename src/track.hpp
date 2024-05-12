@@ -20,7 +20,7 @@ class Track {
         std::unique_ptr<InterleavedFifo> fifo;
         DynamicNode dynamic_node;
         TrackNode track_node;
-        float sample;
+        PcmSample_s24_3le sample;
         bool sample_pending;
     public:
         Track(int _track_number, int _channels, snd_pcm_uframes_t _period_size, bool _no_xrun);
