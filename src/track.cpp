@@ -33,12 +33,12 @@ void Track::run() {
                     // Be careful because we're desyncing tracks here
                     out_sample.silence();
                 } else {
-                    SPDLOG_WARN("Track {} underrun!", track_number);
+                    SPDLOG_WARN("TRAK{} underrun!", track_number);
                 }
             }
         } while (fifo_ref.push(std::move(out_sample)));
     } catch(std::exception const& e) {
-        SPDLOG_ERROR("Track {} failed. {}", track_number, e.what());
+        SPDLOG_ERROR("TRAK{} failed. {}", track_number, e.what());
     }
 }
 

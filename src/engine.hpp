@@ -41,7 +41,7 @@ class Engine {
         std::vector<std::unique_ptr<EngineWorker>> workers;
         bool handle_midi_event(snd_seq_event_t& midi_event, bool running, PcmEvent& result);
         void drop_track_fifos();
-        Program& change_program(int program_number, bool running);
+        void change_program(int program_number, bool running);
         void update_tracks();
         void reset_program(bool running);
         void assign_worker_tracks();

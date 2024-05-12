@@ -5,23 +5,24 @@
 
 void EngineWorker::run() {
     try {
-        SPDLOG_INFO("Engine worker started. [{},sleep_time={}]", worker_index, sleep_time);
+        SPDLOG_INFO("EW{}   started [sleep_time={}us]", worker_index, sleep_time);
         while (!stop) {
             if (run_tracks()) {
                 usleep(sleep_time);
             }
         }
-        SPDLOG_INFO("Engine worker stopped. [{}]", worker_index);
+        SPDLOG_INFO("EW{}   stopped", worker_index);
     } catch(std::exception const& e) {
-        SPDLOG_ERROR("Engine worker {} failed. {}", worker_index, e.what());
+        SPDLOG_ERROR("EW{}   failed. {}", worker_index, e.what());
     }
 }
 
 bool EngineWorker::run_tracks() {
     std::unique_lock lock(mutex);
     if (tracks.empty()) {
-        SPDLOG_INFO("Engine worker {} waiting for tracks...", worker_index);
-        cv.wait(lock, [&]{ return tracks.empty(); });
+        SPDLOG_DEBUG("EW{}   waiting for tracks...", worker_index);
+        cv.wait(lock, [&]{ return !tracks.empty(); });
+        SPDLOG_DEBUG("EW{}   waiting done. [tracks={}]", worker_index, tracks.size());
         return false;
     }
     for (std::reference_wrapper<Track> track: tracks) {
@@ -33,6 +34,10 @@ bool EngineWorker::run_tracks() {
 EngineWorker::EngineWorker(int _worker_index, useconds_t _sleep_time):
     worker_index(_worker_index),
     sleep_time(_sleep_time),
+    stop(false),
+    mutex(),
+    cv(),
+    tracks(),
     thread(std::bind(&EngineWorker::run, this)) {    
     pthread_setname_np(thread.native_handle(), fmt::format("worker{}", _worker_index).c_str());
 }
@@ -46,7 +51,7 @@ void EngineWorker::assign_tracks(std::vector<std::reference_wrapper<Track>> _tra
     std::lock_guard lock(mutex);
     tracks = _tracks;
     cv.notify_one();
-    SPDLOG_INFO("Engine worker tracks set. [size={}]", tracks.size());
+    SPDLOG_INFO("EW{}   tracks set. [size={}]", worker_index, tracks.size());
 }
 
 void EngineWorker::release_tracks() {
@@ -57,43 +62,43 @@ void EngineWorker::release_tracks() {
 bool Engine::handle_midi_event(snd_seq_event_t& midi_event, bool running, PcmEvent& result) {
     switch(midi_event.type) {
         case SND_SEQ_EVENT_START: 
-            SPDLOG_INFO("Engine MIDI START [d0={},d1={},queue={}]", midi_event.data.queue.param.d32[0], midi_event.data.queue.param.d32[1],
+            SPDLOG_INFO("ENGIN MIDI START [d0={},d1={},queue={}]", midi_event.data.queue.param.d32[0], midi_event.data.queue.param.d32[1],
                 midi_event.data.queue.queue);
             result = ALSA_PCM_START;
             return true;
         case SND_SEQ_EVENT_STOP: 
-            SPDLOG_INFO("Engine MIDI STOP [d0={},d1={},queue={}]", midi_event.data.queue.param.d32[0], midi_event.data.queue.param.d32[1],
+            SPDLOG_INFO("ENGIN MIDI STOP [d0={},d1={},queue={}]", midi_event.data.queue.param.d32[0], midi_event.data.queue.param.d32[1],
                 midi_event.data.queue.queue);
             result = ALSA_PCM_PAUSE;
             return true;
         case SND_SEQ_EVENT_CONTINUE: 
-            SPDLOG_INFO("Engine MIDI CONTINUE [d0={},d1={},queue={}]", midi_event.data.queue.param.d32[0], midi_event.data.queue.param.d32[1],
+            SPDLOG_INFO("ENGIN MIDI CONTINUE [d0={},d1={},queue={}]", midi_event.data.queue.param.d32[0], midi_event.data.queue.param.d32[1],
                 midi_event.data.queue.queue);
             result = ALSA_PCM_RESUME;
             return true;
         case SND_SEQ_EVENT_PGMCHANGE: 
-            SPDLOG_INFO("Engine MIDI PROGRAM CHANGE [param={},value={}]", midi_event.data.control.param, midi_event.data.control.value);
+            SPDLOG_INFO("ENGIN MIDI PROGRAM CHANGE [param={},value={}]", midi_event.data.control.param, midi_event.data.control.value);
             // TODO: xfade tracks
             change_program(midi_event.data.control.value + 1, running);
             result = ALSA_PCM_PROGRAM_CHANGE;
             return true;
         default:
-            SPDLOG_WARN("Ignored engine MIDI event. [{}]", (int)midi_event.type);
+            SPDLOG_WARN("ENGIN ignored engine MIDI event. [{}]", (int)midi_event.type);
             return false;
     }   
 }
 
-Program& Engine::change_program(int program_number, bool running) {
+void Engine::change_program(int program_number, bool running) {
     program = project.get_program(program_number);
     release_worker_tracks();
     reset_program(running);
     update_tracks();
     assign_worker_tracks();
-    SPDLOG_INFO("Program set = {}", program.get().get_start_number());
-    return program;
+    SPDLOG_INFO("ENGIN program set={}", program.get().get_start_number());
 }
 
 void Engine::update_tracks() {
+    track_fifos.fill(nullptr);
     for (LoopClip& loop_clip : program.get().get_loops()) {
         int track = loop_clip.get_track();
         assert(track < ENGINE_LOOP_TRACKS);
@@ -168,12 +173,15 @@ Engine::Engine(Project& _project, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm):
         std::make_unique<Track>(6, 2, _alsa_pcm.get_period_size(), false),
     },
     one_shots_track(Track(7, 2, _alsa_pcm.get_period_size(), true)),
-    program(change_program(1, false)),
+    program(project.get_program(1)),
     worker_sleep_time(std::chrono::microseconds(_alsa_pcm.get_period_time()).count() / 2),
     workers(create_workers()) {
     // One-shots track is stereo interleaved
     track_fifos.at(ENGINE_LOOP_TRACKS) = &one_shots_track.get_fifo();
     track_fifos.at(ENGINE_LOOP_TRACKS + 1) = &one_shots_track.get_fifo();
+
+    // Initialize
+    change_program(1, false);
 }
 
 Engine::~Engine() {
@@ -188,7 +196,7 @@ bool Engine::pcm_event_callback(PcmEvent& event, bool running, bool sync) {
             midi_flag.test_and_set();
             midi_flag.wait(true);
             if (!alsa_midi.get_fifo().pop(midi_event)) {
-                throw OstrostrojException("Engine MIDI FIFO empty!");
+                throw OstrostrojException("ENGIN MIDI FIFO empty!");
             }
             return handle_midi_event(midi_event, running, event);
         }
@@ -204,13 +212,13 @@ void Engine::pcm_callback(PcmFrame_s24_3le& frame) {
             sample->silence();
         } else {
             if (!(*track_fifo)->pop(*sample)) {
-                SPDLOG_WARN("Engine track FIFO {} underrun...", sample - frame.channels.data());
+                SPDLOG_WARN("ENGIN track FIFO {} underrun...", sample - frame.channels.data());
                 int retries = 0;
                 do {
                     usleep(worker_sleep_time);
                     retries++;
                 } while (!(*track_fifo)->pop(*sample));
-                SPDLOG_WARN("Engine track FIFO {} underrun recovered [retries={}]", sample - frame.channels.data(), retries);
+                SPDLOG_WARN("ENGIN track FIFO {} underrun recovered [retries={}]", sample - frame.channels.data(), retries);
             }
         }
         sample++;

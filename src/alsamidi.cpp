@@ -7,7 +7,7 @@ void* run_thru(void* context) {
     snd_midi_event_t* parser;
     int res = snd_midi_event_new(256, &parser);
     if (res < 0) {
-        SPDLOG_ERROR("snd_midi_event_new failed = {}", res);
+        SPDLOG_ERROR("AMIDI snd_midi_event_new failed = {}", res);
         return 0;
     }
     snd_seq_event_t event;
@@ -15,15 +15,14 @@ void* run_thru(void* context) {
     unsigned char* decoded_current;
     bool pass;
     bool push;
-    SPDLOG_INFO("ALSA rawmidi thru started.");
-
+    SPDLOG_INFO("AMIDI started.");
     while (!self.stop) {
         decoded_current = decoded.data();
         ssize_t read_size = snd_rawmidi_read(self.handle_in, decoded.data(), decoded.size());
         while (read_size > 0) {
             int event_encode_res = snd_midi_event_encode(parser, decoded_current, read_size, &event);
             if (event_encode_res < 0) {
-                SPDLOG_ERROR("snd_midi_event_encode_byte failed = {}", event_encode_res);
+                SPDLOG_ERROR("AMIDI snd_midi_event_encode_byte failed = {}", event_encode_res);
                 snd_midi_event_reset_encode(parser);
                 decoded_current = decoded.data();
                 read_size = 0;
@@ -31,7 +30,7 @@ void* run_thru(void* context) {
                 if (event.type != SND_SEQ_EVENT_NONE) {
 #ifndef NDEBUG
                     if (event.type != SND_SEQ_EVENT_CLOCK) {
-                        SPDLOG_INFO("ALSA MIDI event [type={}]", (int)event.type);
+                        SPDLOG_INFO("AMIDI event [type={}]", (int)event.type);
                     }
 #endif
                     pass = true;
@@ -52,7 +51,7 @@ void* run_thru(void* context) {
                     }
                     if (push) {
                         if (!self.fifo.push(std::move(event))) {
-                            SPDLOG_ERROR("MIDI FIFO overrun!");
+                            SPDLOG_ERROR("AMIDI FIFO overrun!");
                         }
                         self.callback();
                     }
@@ -60,13 +59,13 @@ void* run_thru(void* context) {
                 decoded_current += event_encode_res;
                 read_size -= event_encode_res;
                 if (read_size > 0 && decoded_current >= decoded.end()) {
-                    SPDLOG_ERROR("Decoded buffer overflow!");
+                    SPDLOG_ERROR("AMIDI Decoded buffer overflow!");
                     decoded_current = decoded.data();
                 }
             }
         }
     }
-    SPDLOG_INFO("ALSA rawmidi thru stopped.");
+    SPDLOG_INFO("AMIDI stopped.");
     snd_midi_event_free(parser);
     return 0;
 }
@@ -76,19 +75,18 @@ snd_rawmidi_t* AlsaMidi::open_midi_in(const std::string& device_name) {
     int err;
     err = snd_rawmidi_open(&result, NULL, device_name.c_str(), 0);    
     if (err) {
-        SPDLOG_ERROR("snd_rawmidi_open {} failed: {}", device_name, err);
+        SPDLOG_ERROR("AMIDI snd_rawmidi_open {} failed: {}", device_name, err);
     }
     snd_rawmidi_params_t *params;
     snd_rawmidi_params_malloc(&params);
     snd_rawmidi_params_current(result, params);
-    size_t avail_min = snd_rawmidi_params_get_avail_min(params);
-    SPDLOG_INFO("ALSA rawmidi params [avail_min={}]", avail_min);
+    SPDLOG_DEBUG("AMIDI params [avail_min={}]", snd_rawmidi_params_get_avail_min(params));
     // err = snd_rawmidi_params(result, params);  
     // if (err) {
     //     SPDLOG_ERROR("snd_rawmidi_params {} failed: {}", device_name, err);
     // }
     snd_rawmidi_params_free(params);
-    SPDLOG_INFO("ALSA rawmidi input open. [{}]", device_name);
+    SPDLOG_INFO("AMIDI input open. [{}]", device_name);
     return result;
 }
 
@@ -97,9 +95,9 @@ snd_rawmidi_t* AlsaMidi::open_midi_out(const std::string& device_name) {
     int err;
     err = snd_rawmidi_open(NULL, &result, device_name.c_str(), 0);    
     if (err) {
-        SPDLOG_ERROR("snd_rawmidi_open {} failed: {}", device_name, err);
+        SPDLOG_ERROR("AMIDI snd_rawmidi_open {} failed: {}", device_name, err);
     }
-    SPDLOG_INFO("ALSA rawmidi output open. [{}]", device_name);
+    SPDLOG_INFO("AMIDI output open. [{}]", device_name);
     return result;
 }
 
@@ -134,7 +132,7 @@ AlsaMidiFifo& AlsaMidi::get_fifo() {
 
 void AlsaMidi::start(std::function<void(void)> _callback) {
     if (thru_thread || callback) {
-        SPDLOG_ERROR("Thread already started! [{}]", thru_thread);
+        SPDLOG_ERROR("AMIDI thread already started! [{}]", thru_thread);
         return;
     }
     callback = _callback;
