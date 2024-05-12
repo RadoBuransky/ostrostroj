@@ -16,6 +16,7 @@ void Track::run() {
                     out_sample = in_sample;
                 } else {
                     if (no_xrun) {
+                        // TODO: Be careful because we're desyncing tracks here
                         out_sample.silence();
                     } else {
                         SPDLOG_DEBUG("Track {} is waiting empty...", track_number);

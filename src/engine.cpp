@@ -94,7 +94,7 @@ void Engine::process_pcm() {
                             usleep(TRACK_XRUN_SLEEP.count());
                         } while (retry-- > 0 && !track->fifo->pop(*sample));
                         if (retry == 0) {
-                            // TODO: Remove this, just keep retrying.
+                            // TODO: Remove this, just keep retrying. Track would desync!
                             SPDLOG_WARN("Engine track {} underrun!", track_number);
                             sample->silence();
                         } else {
