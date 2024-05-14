@@ -4,28 +4,11 @@
 #include "alsapcm.hpp"
 #include "project.hpp"
 #include "track.hpp"
+#include "engineworker.hpp"
 
 static constexpr int ENGINE_LOOP_TRACKS = 6;
 static constexpr int ENGINE_LOOP_MONO_TRACKS = 4;
 static_assert(ENGINE_LOOP_MONO_TRACKS + (ENGINE_LOOP_TRACKS - ENGINE_LOOP_MONO_TRACKS) * 2 + 2 < PCM_OUT_CHANNELS);
-
-class EngineWorker {
-    private:
-        int worker_index;
-        useconds_t sleep_time;
-        std::atomic_bool stop;
-        std::mutex mutex;
-        std::condition_variable cv;
-        std::vector<std::reference_wrapper<Track>> tracks;
-        std::thread thread;
-        void run();
-        bool run_tracks();
-    public:
-        EngineWorker(int _worker_index, useconds_t _sleep_time);
-        virtual ~EngineWorker();
-        void assign_tracks(std::vector<std::reference_wrapper<Track>> _tracks);
-        void release_tracks();
-};
 
 class Engine {
     private:

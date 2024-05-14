@@ -3,63 +3,6 @@
 #include "common.hpp"
 #include "engine.hpp"
 
-void EngineWorker::run() {
-    try {
-        SPDLOG_INFO("EW{}   started [sleep_time={}us]", worker_index, sleep_time);
-        while (!stop) {
-            if (run_tracks()) {
-                usleep(sleep_time);
-            }
-        }
-        SPDLOG_INFO("EW{}   stopped", worker_index);
-    } catch(std::exception const& e) {
-        SPDLOG_ERROR("EW{}   failed. {}", worker_index, e.what());
-    }
-}
-
-bool EngineWorker::run_tracks() {
-    std::unique_lock lock(mutex);
-    if (tracks.empty()) {
-        SPDLOG_DEBUG("EW{}   waiting for tracks...", worker_index);
-        cv.wait(lock, [&]{ return stop || !tracks.empty(); });
-        SPDLOG_DEBUG("EW{}   waiting done. [tracks={}]", worker_index, tracks.size());
-        return false;
-    }
-    for (std::reference_wrapper<Track> track: tracks) {
-        track.get().run();
-    }
-    return true;
-}
-
-EngineWorker::EngineWorker(int _worker_index, useconds_t _sleep_time):
-    worker_index(_worker_index),
-    sleep_time(_sleep_time),
-    stop(false),
-    mutex(),
-    cv(),
-    tracks(),
-    thread(std::bind(&EngineWorker::run, this)) {    
-    pthread_setname_np(thread.native_handle(), fmt::format("worker{}", _worker_index).c_str());
-}
-
-EngineWorker::~EngineWorker() {
-    stop = true;
-    cv.notify_one();
-    thread.join();
-}
-
-void EngineWorker::assign_tracks(std::vector<std::reference_wrapper<Track>> _tracks) {
-    std::lock_guard lock(mutex);
-    tracks = _tracks;
-    cv.notify_one();
-    SPDLOG_INFO("EW{}   tracks set. [size={}]", worker_index, tracks.size());
-}
-
-void EngineWorker::release_tracks() {
-    std::lock_guard lock(mutex);
-    tracks.clear();
-}
-
 bool Engine::handle_midi_event(snd_seq_event_t& midi_event, bool running, PcmEvent& result) {
     switch(midi_event.type) {
         case SND_SEQ_EVENT_START: 
@@ -105,7 +48,8 @@ void Engine::update_tracks() {
         assert(track < ENGINE_LOOP_TRACKS);
         Track& loop_track = *loop_tracks.at(track);
         InterleavedFifo& loop_track_fifo = loop_track.get_fifo();
-        loop_track.set_node(std::make_unique<ClipNode>(loop_clip, true));
+        //loop_track.set_node(std::make_unique<ClipNode>(loop_clip, true));
+        loop_track.add_clip(loop_clip);
         if (track < ENGINE_LOOP_MONO_TRACKS) {
             assert(loop_track.get_channels() == 1);
             track_fifos.at(track) = &loop_track_fifo;
@@ -120,10 +64,7 @@ void Engine::update_tracks() {
 
 void Engine::reset_program(bool running) {
     for (size_t i = 0; i < loop_tracks.size(); i++) {
-        loop_tracks.at(i)->reset_node();
-        if (!running) {
-            loop_tracks.at(i)->drop();
-        }
+        loop_tracks.at(i)->clear(!running);
     }
 }
 
@@ -167,14 +108,14 @@ Engine::Engine(Project& _project, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm):
     midi_flag(ATOMIC_FLAG_INIT),
     stop(false),
     loop_tracks {
-        std::make_unique<Track>(1, 1, _alsa_pcm.get_period_size(), false),
-        std::make_unique<Track>(2, 1, _alsa_pcm.get_period_size(), false),
-        std::make_unique<Track>(3, 1, _alsa_pcm.get_period_size(), false),
-        std::make_unique<Track>(4, 1, _alsa_pcm.get_period_size(), false),
-        std::make_unique<Track>(5, 2, _alsa_pcm.get_period_size(), false),
-        std::make_unique<Track>(6, 2, _alsa_pcm.get_period_size(), false),
+        std::make_unique<Track>(1, 1, _alsa_pcm.get_period_size(), true),
+        std::make_unique<Track>(2, 1, _alsa_pcm.get_period_size(), true),
+        std::make_unique<Track>(3, 1, _alsa_pcm.get_period_size(), true),
+        std::make_unique<Track>(4, 1, _alsa_pcm.get_period_size(), true),
+        std::make_unique<Track>(5, 2, _alsa_pcm.get_period_size(), true),
+        std::make_unique<Track>(6, 2, _alsa_pcm.get_period_size(), true),
     },
-    one_shots_track(Track(7, 2, _alsa_pcm.get_period_size(), true)),
+    one_shots_track(Track(7, 2, _alsa_pcm.get_period_size(), false)),
     program(project.get_program(1)),
     worker_sleep_time(std::chrono::microseconds(_alsa_pcm.get_period_time()).count() / 2),
     workers(create_workers()) {

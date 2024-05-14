@@ -46,7 +46,7 @@ void FileClip::assert_sample_rate(const int expected_sample_rate) const {
     }
 }
 
-ClipBlock& FileClip::get_head() {
+ClipBlock& FileClip::get_head() const {
     return *head;
 }
 

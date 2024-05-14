@@ -10,7 +10,7 @@ class Clip {
     public:
         Clip() = default;
         virtual ~Clip() = default;
-        virtual ClipBlock& get_head() = 0;
+        virtual ClipBlock& get_head() const = 0;
 };
 
 class FileClip: public Clip {
@@ -26,7 +26,7 @@ class FileClip: public Clip {
         const std::filesystem::path& get_path() const;
         SF_INFO& get_info();
         void assert_sample_rate(const int expected_sample_rate) const;
-        ClipBlock& get_head();
+        ClipBlock& get_head() const;
 };
 
 class LoopClip: public FileClip {

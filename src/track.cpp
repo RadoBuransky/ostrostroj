@@ -3,6 +3,7 @@
 #include "common.hpp"
 #include "track.hpp"
 
+/*
 Track::Track(int _track_number, int _channels, snd_pcm_uframes_t _period_size, bool _no_xrun):
     track_number(_track_number),
     channels(_channels),
@@ -10,6 +11,21 @@ Track::Track(int _track_number, int _channels, snd_pcm_uframes_t _period_size, b
     fifo(std::make_unique<InterleavedFifo>(_period_size * 32 * _channels)), // TODO: 32?
     dynamic_node(),
     track_node(dynamic_node),
+    sample(0),
+    sample_pending(false) {
+}
+*/
+
+bool Track::pop(float& sample) {
+    // TODO:
+    return false;
+}
+
+Track::Track(int _track_number, int _channels, snd_pcm_uframes_t _period_size, bool _loop):
+    track_number(_track_number),
+    channels(_channels),
+    fifo(std::make_unique<InterleavedFifo>(_period_size * 32 * _channels)), // TODO: Why 32?
+    loop(_loop),
     sample(0),
     sample_pending(false) {
 }
@@ -27,10 +43,10 @@ void Track::run() {
             return;
         }
         do {
-            if ((sample_pending = track_node.pop(in_sample))) {
+            if ((sample_pending = pop(in_sample))) {
                 sample = in_sample;
             } else {
-                if (!no_xrun) {
+                if (loop) {
                     throw OstrostrojException(fmt::format("TRAK{} underrun!", track_number));
                 }
                 // Be careful because we're desyncing tracks here
@@ -57,6 +73,15 @@ int Track::get_channels() const {
     return channels;
 }
 
+void Track::add_clip(Clip& clip) {    
+    // TODO:
+}
+
+void Track::clear(bool drop) {
+    // TODO:    
+}
+
+/*
 void Track::reset_node() {
     dynamic_node.reset_parent();
 }
@@ -71,3 +96,4 @@ void Track::drop() {
         // NOOP
     }
 }
+*/

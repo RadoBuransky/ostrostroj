@@ -4,7 +4,7 @@
 #include <alsa/asoundlib.h>
 #include "farbot/fifo.hpp"
 #include "alsapcm.hpp"
-#include "graph.hpp"
+#include "clipplayer.hpp"
 
 typedef farbot::fifo<PcmSample_s24_3le,
             farbot::fifo_options::concurrency::single,
@@ -16,14 +16,21 @@ class Track {
     private:
         const int track_number;
         const int channels;
-        const bool no_xrun;
+        const bool loop;
         std::unique_ptr<InterleavedFifo> fifo;
-        DynamicNode dynamic_node;
-        TrackNode track_node;
+        std::vector<std::unique_ptr<ClipPlayer>> clip_players;
+        // TODO:
+        // DynamicNode dynamic_node;
+        // std::vector<ClipPlayer>
+        //    - mixing of all
+        //    - if track is loop then xfade and release
+        // TODO: directly support mute
+        //TrackNode track_node;
         PcmSample_s24_3le sample;
         bool sample_pending;
+        bool pop(float& sample);
     public:
-        Track(int _track_number, int _channels, snd_pcm_uframes_t _period_size, bool _no_xrun);
+        Track(int _track_number, int _channels, snd_pcm_uframes_t _period_size, bool _loop);
         virtual ~Track();
         
         void run();
@@ -31,7 +38,9 @@ class Track {
         InterleavedFifo& get_fifo() const;
         int get_track_number() const;
         int get_channels() const;
-        void reset_node();
-        void set_node(std::unique_ptr<Node>&& node);
-        void drop();
+
+        // void reset_node();
+        // void set_node(std::unique_ptr<Node>&& node);
+        void add_clip(Clip& clip);
+        void clear(bool drop);
 };
