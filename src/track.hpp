@@ -22,8 +22,6 @@ class Track {
         PcmSample_s24_3le sample;
         bool sample_pending;
         bool pop(float& _sample);
-        void single_loop_run(ClipPlayer& clip_player, InterleavedFifo& fifo_ref);
-        void generic_run(InterleavedFifo& fifo_ref);
     public:
         Track(int _track_number, int _channels, snd_pcm_uframes_t _period_size, bool _loop);
         virtual ~Track();        
