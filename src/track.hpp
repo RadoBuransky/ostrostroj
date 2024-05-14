@@ -19,28 +19,18 @@ class Track {
         const bool loop;
         std::unique_ptr<InterleavedFifo> fifo;
         std::vector<std::unique_ptr<ClipPlayer>> clip_players;
-        // TODO:
-        // DynamicNode dynamic_node;
-        // std::vector<ClipPlayer>
-        //    - mixing of all
-        //    - if track is loop then xfade and release
-        // TODO: directly support mute
-        //TrackNode track_node;
         PcmSample_s24_3le sample;
         bool sample_pending;
-        bool pop(float& sample);
+        bool pop(float& _sample);
+        void single_loop_run(ClipPlayer& clip_player, InterleavedFifo& fifo_ref);
+        void generic_run(InterleavedFifo& fifo_ref);
     public:
         Track(int _track_number, int _channels, snd_pcm_uframes_t _period_size, bool _loop);
-        virtual ~Track();
-        
+        virtual ~Track();        
         void run();
-
         InterleavedFifo& get_fifo() const;
         int get_track_number() const;
         int get_channels() const;
-
-        // void reset_node();
-        // void set_node(std::unique_ptr<Node>&& node);
         void add_clip(Clip& clip);
         void clear(bool drop);
 };
