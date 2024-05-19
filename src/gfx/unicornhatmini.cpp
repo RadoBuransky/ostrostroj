@@ -64,9 +64,8 @@ UnicornHatMini::UnicornHatMini():
     canvas.fill({0,0,0});
 
     canvas[0].r = 0xFF;
-    canvas[0].g = 0xFF;
-    canvas[0].b = 0xFF;
-
+    canvas[UNICORN_HAT_MINI_ROWS - 1].g = 0xFF;
+    canvas[(UNICORN_HAT_MINI_COLS - 1) * UNICORN_HAT_MINI_ROWS].b = 0xFF;
     canvas.back().r = 0xFF;
     canvas.back().g = 0xFF;
     canvas.back().b = 0xFF;
