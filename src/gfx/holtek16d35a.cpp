@@ -34,17 +34,19 @@ SPI Holtek16D35A::create_spi(std::string name) {
     return result;
 }
 
-Holtek16D35A::Holtek16D35A(std::string name, gpiod_line* _cs_pin):
+Holtek16D35A::Holtek16D35A(std::string name, gpiod_line* _cs_pin, size_t _offset):
     spi(create_spi(name)),
-    cs_pin(_cs_pin) {
+    cs_pin(_cs_pin),
+    offset(_offset) {
     soft_reset();
-    global_brightness();
+    global_brightness(0.1);
     scroll_ctrl();
     system_ctrl(0x00);
     com_pin_ctrl();
     row_pin_ctrl();
     system_ctrl(0x03);
-    SPDLOG_INFO("HLTEK initialized [{}]", name);
+    write_display_data();
+    SPDLOG_DEBUG("HLTEK initialized [{}]", name);
 }
 
 Holtek16D35A::~Holtek16D35A() {
@@ -59,9 +61,9 @@ void Holtek16D35A::soft_reset() {
     write(1);
 }
 
-void Holtek16D35A::global_brightness() {
+void Holtek16D35A::global_brightness(float level) {
     tx_buffer[0] = 0x37;
-    tx_buffer[1] = 0x01;
+    tx_buffer[1] = level * 0x40;
     write(2);
 }
 
@@ -90,4 +92,14 @@ void Holtek16D35A::row_pin_ctrl() {
     tx_buffer[3] = 0xff;
     tx_buffer[4] = 0xff;
     write(5);
+}
+
+uint8_t* Holtek16D35A::get_display_data_buffer() {
+    return tx_buffer.data() + 2;
+}
+
+void Holtek16D35A::write_display_data() {
+    tx_buffer[0] = 0x80;
+    tx_buffer[1] = 0x00;
+    write(2 + HOLTEK_MAGIC_NUM);
 }
