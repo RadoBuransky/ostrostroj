@@ -34,23 +34,25 @@ gpiod_line* UnicornHatMini::open_out_line(int pin_number) {
 void UnicornHatMini::show() {
     uint8_t* chip0_buffer = chip0.get_display_data_buffer();
     uint8_t* chip1_buffer = chip1.get_display_data_buffer();
-    for (size_t i = 0; i < UNICORN_HAT_MINI_COLS * UNICORN_HAT_MINI_ROWS; i++) {
-        const std::array<uint, 3>& irgb = LUT[i];
-        const RGB& rgb = canvas[i];
-        if (irgb[0] < HOLTEK_MAGIC_NUM) {
-            chip0_buffer[irgb[0]] = rgb.r;
-        } else {
-            chip1_buffer[irgb[0] - HOLTEK_MAGIC_NUM] = rgb.r;
-        }
-        if (irgb[1] < HOLTEK_MAGIC_NUM) {
-            chip0_buffer[irgb[1]] = rgb.g;
-        } else {
-            chip1_buffer[irgb[1] - HOLTEK_MAGIC_NUM] = rgb.g;
-        }
-        if (irgb[2] < HOLTEK_MAGIC_NUM) {
-            chip0_buffer[irgb[2]] = rgb.b;
-        } else {
-            chip1_buffer[irgb[2] - HOLTEK_MAGIC_NUM] = rgb.b;
+    for (size_t row = 0; row < UNICORN_HAT_MINI_ROWS; row++) {
+        for (size_t col = 0; col < UNICORN_HAT_MINI_COLS; col++) {
+            const std::array<uint, 3>& irgb = LUT[row + col * UNICORN_HAT_MINI_ROWS];
+            const RGB& rgb = canvas[col][row];
+            if (irgb[0] < HOLTEK_MAGIC_NUM) {
+                chip0_buffer[irgb[0]] = rgb.r;
+            } else {
+                chip1_buffer[irgb[0] - HOLTEK_MAGIC_NUM] = rgb.r;
+            }
+            if (irgb[1] < HOLTEK_MAGIC_NUM) {
+                chip0_buffer[irgb[1]] = rgb.g;
+            } else {
+                chip1_buffer[irgb[1] - HOLTEK_MAGIC_NUM] = rgb.g;
+            }
+            if (irgb[2] < HOLTEK_MAGIC_NUM) {
+                chip0_buffer[irgb[2]] = rgb.b;
+            } else {
+                chip1_buffer[irgb[2] - HOLTEK_MAGIC_NUM] = rgb.b;
+            }
         }
     }
     chip0.write_display_data();
@@ -63,12 +65,12 @@ UnicornHatMini::UnicornHatMini():
     chip1("/dev/spidev0.1", open_out_line(26), HOLTEK_MAGIC_NUM) {
     canvas.fill({0,0,0});
 
-    canvas[0].r = 0xFF;
-    canvas[UNICORN_HAT_MINI_ROWS - 1].g = 0xFF;
-    canvas[(UNICORN_HAT_MINI_COLS - 1) * UNICORN_HAT_MINI_ROWS].b = 0xFF;
-    canvas.back().r = 0xFF;
-    canvas.back().g = 0xFF;
-    canvas.back().b = 0xFF;
+    canvas[0][0].r = 0xFF;
+    canvas[UNICORN_HAT_MINI_COLS - 1][0].g = 0xFF;
+    canvas[0][UNICORN_HAT_MINI_ROWS - 1].b = 0xFF;
+    canvas[UNICORN_HAT_MINI_COLS - 1][UNICORN_HAT_MINI_ROWS - 1].r = 0xFF;
+    canvas[UNICORN_HAT_MINI_COLS - 1][UNICORN_HAT_MINI_ROWS - 1].g = 0xFF;
+    canvas[UNICORN_HAT_MINI_COLS - 1][UNICORN_HAT_MINI_ROWS - 1].b = 0xFF;
 
     show();
     SPDLOG_DEBUG("UHATM initialized");
