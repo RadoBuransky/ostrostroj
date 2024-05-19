@@ -8,7 +8,6 @@
 // https://github.com/solarsamuel/raspi5_blink_LED
 
 // Holtek 16D35A https://cdn.shopify.com/s/files/1/0174/1800/files/HT16D35A_Bv120.pdf?v=1587113912
-constexpr uint8_t HOLTEK_CMD_SOFT_RESET = 0xCC;
 
 void Holtek16D35A::write(size_t size) {
     if (gpiod_line_set_value(cs_pin, 0) < 0) {
@@ -38,6 +37,13 @@ SPI Holtek16D35A::create_spi(std::string name) {
 Holtek16D35A::Holtek16D35A(std::string name, gpiod_line* _cs_pin):
     spi(create_spi(name)),
     cs_pin(_cs_pin) {
+    soft_reset();
+    global_brightness();
+    scroll_ctrl();
+    system_ctrl(0x00);
+    com_pin_ctrl();
+    row_pin_ctrl();
+    system_ctrl(0x03);
     SPDLOG_INFO("HLTEK initialized [{}]", name);
 }
 
@@ -49,6 +55,39 @@ Holtek16D35A::~Holtek16D35A() {
 }
 
 void Holtek16D35A::soft_reset() {
-    tx_buffer[0] = HOLTEK_CMD_SOFT_RESET;
+    tx_buffer[0] = 0xCC;
     write(1);
+}
+
+void Holtek16D35A::global_brightness() {
+    tx_buffer[0] = 0x37;
+    tx_buffer[1] = 0x01;
+    write(2);
+}
+
+void Holtek16D35A::scroll_ctrl() {
+    tx_buffer[0] = 0x20;
+    tx_buffer[1] = 0x00;
+    write(2);
+}
+
+void Holtek16D35A::system_ctrl(uint8_t value) {
+    tx_buffer[0] = 0x35;
+    tx_buffer[1] = value;
+    write(2);
+}
+
+void Holtek16D35A::com_pin_ctrl() {
+    tx_buffer[0] = 0x41;
+    tx_buffer[1] = 0xff;
+    write(2);
+}
+
+void Holtek16D35A::row_pin_ctrl() {
+    tx_buffer[0] = 0x42;
+    tx_buffer[1] = 0xff;
+    tx_buffer[2] = 0xff;
+    tx_buffer[3] = 0xff;
+    tx_buffer[4] = 0xff;
+    write(5);
 }

@@ -16,4 +16,9 @@ class Holtek16D35A {
         virtual ~Holtek16D35A();
 
         void soft_reset();
+        void global_brightness();
+        void scroll_ctrl();
+        void system_ctrl(uint8_t value);
+        void com_pin_ctrl();
+        void row_pin_ctrl();
 };
