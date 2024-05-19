@@ -42,8 +42,8 @@ Holtek16D35A::Holtek16D35A(std::string name, gpiod_line* _cs_pin, size_t _offset
     global_brightness(0.1);
     scroll_ctrl();
     system_ctrl(0x00);
-    com_pin_ctrl();
-    row_pin_ctrl();
+    com_pin_ctrl(0xFF);
+    row_pin_ctrl(0xFF);
     system_ctrl(0x03);
     write_display_data();
     SPDLOG_DEBUG("HLTEK initialized [{}]", name);
@@ -79,18 +79,18 @@ void Holtek16D35A::system_ctrl(uint8_t value) {
     write(2);
 }
 
-void Holtek16D35A::com_pin_ctrl() {
+void Holtek16D35A::com_pin_ctrl(uint8_t value) {
     tx_buffer[0] = 0x41;
-    tx_buffer[1] = 0xff;
+    tx_buffer[1] = value;
     write(2);
 }
 
-void Holtek16D35A::row_pin_ctrl() {
+void Holtek16D35A::row_pin_ctrl(uint8_t value) {
     tx_buffer[0] = 0x42;
-    tx_buffer[1] = 0xff;
-    tx_buffer[2] = 0xff;
-    tx_buffer[3] = 0xff;
-    tx_buffer[4] = 0xff;
+    tx_buffer[1] = value;
+    tx_buffer[2] = value;
+    tx_buffer[3] = value;
+    tx_buffer[4] = value;
     write(5);
 }
 
@@ -102,4 +102,10 @@ void Holtek16D35A::write_display_data() {
     tx_buffer[0] = 0x80;
     tx_buffer[1] = 0x00;
     write(2 + HOLTEK_MAGIC_NUM);
+}
+
+void Holtek16D35A::shutdown() {    
+    com_pin_ctrl(0x00);
+    row_pin_ctrl(0x00);
+    system_ctrl(0x00);
 }

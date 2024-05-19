@@ -78,6 +78,8 @@ UnicornHatMini::UnicornHatMini():
 
 UnicornHatMini::~UnicornHatMini() {
     if (gpio) {
+        chip1.shutdown();
+        chip0.shutdown();
         gpiod_chip_close(gpio);
         gpio = nullptr;
     }

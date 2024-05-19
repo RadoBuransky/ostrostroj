@@ -42,11 +42,13 @@ class Holtek16D35A {
         /**
          * This command is used to setup the COM pin output on/off status. 
         */
-        void com_pin_ctrl();
+        void com_pin_ctrl(uint8_t value);
         /**
          * This command consists of four consecutive bytes to set up the ROW pin output on/off status.
         */
-        void row_pin_ctrl();
+        void row_pin_ctrl(uint8_t value);
         uint8_t* get_display_data_buffer();
         void write_display_data();
+        void shutdown();
+
 };
