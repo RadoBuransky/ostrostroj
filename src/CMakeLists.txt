@@ -1,6 +1,17 @@
-file(GLOB ostrostroj_SRC "*.h" "*.hpp" "*.cpp")
-add_executable(ostrostroj ${ostrostroj_SRC})
+# file(GLOB_RECURSE ostrostroj_SRC "*.hpp" "*.cpp")
+add_executable(ostrostroj "")
+
+target_sources(ostrostroj
+    PRIVATE
+        ${CMAKE_CURRENT_LIST_DIR}/main.cpp)
+
 set_target_properties(ostrostroj PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE)
+
+add_subdirectory(engine)
+add_subdirectory(gfx)
+add_subdirectory(project)
+add_subdirectory(snd)
+add_subdirectory(utils)
 
 find_package(ALSA REQUIRED)
 target_include_directories(ostrostroj SYSTEM PRIVATE ${ALSA_INCLUDE_DIR}

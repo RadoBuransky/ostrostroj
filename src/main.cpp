@@ -10,7 +10,7 @@
 #include "profiler.hpp"
 #include "alsamidi.hpp"
 #include "alsapcm.hpp"
-#include "unicornhatmini.hpp"
+#include "gfx/unicornhatmini.hpp"
 
 static std::atomic_flag running_flag = ATOMIC_FLAG_INIT;
 static void sigaction_handler(int) {
