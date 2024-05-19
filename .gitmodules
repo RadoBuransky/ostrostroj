@@ -7,3 +7,6 @@
 [submodule "lib/farbot"]
 	path = lib/farbot
 	url = git@github.com:hogliux/farbot.git
+[submodule "lib/spidev-lib"]
+	path = lib/spidev-lib
+	url = git@github.com:milekium/spidev-lib.git
