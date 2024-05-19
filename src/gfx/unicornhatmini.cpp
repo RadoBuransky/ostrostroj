@@ -30,6 +30,9 @@ UnicornHatMini::UnicornHatMini():
     gpio(open_gpio("/dev/gpiochip4")),
     chip0("/dev/spidev0.0", open_out_line(24)),
     chip1("/dev/spidev0.1", open_out_line(26)) {
+
+    chip0.soft_reset();
+    chip1.soft_reset();
     SPDLOG_INFO("UHATM initialized");
 }
 

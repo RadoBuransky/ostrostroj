@@ -11,13 +11,13 @@
 constexpr uint8_t HOLTEK_CMD_SOFT_RESET = 0xCC;
 
 void Holtek16D35A::write(size_t size) {
-    if (!gpiod_line_set_value(cs_pin, 0)) {
+    if (gpiod_line_set_value(cs_pin, 0) < 0) {
         throw OstrostrojException(fmt::format("UHATM gpiod_line_set_value(0) failed! [errno={}]", strerror(errno)));
     }
     if (spi.write(tx_buffer.data(), size) < 0) {
         throw OstrostrojException(fmt::format("UHATM write failed! [errno={}]", strerror(errno)));
     }
-    if (!gpiod_line_set_value(cs_pin, 1)) {
+    if (gpiod_line_set_value(cs_pin, 1) < 0) {
         throw OstrostrojException(fmt::format("UHATM gpiod_line_set_value(1) failed! [errno={}]", strerror(errno)));
     }
 }
