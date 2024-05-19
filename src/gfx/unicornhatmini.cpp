@@ -28,8 +28,8 @@ gpiod_line* UnicornHatMini::open_out_line(int pin_number) {
 
 UnicornHatMini::UnicornHatMini():
     gpio(open_gpio("/dev/gpiochip4")),
-    chip0("/dev/spidev0.0", open_out_line(8)),
-    chip1("/dev/spidev0.1", open_out_line(7)) {
+    chip0("/dev/spidev0.0", open_out_line(24)),
+    chip1("/dev/spidev0.1", open_out_line(26)) {
     SPDLOG_INFO("UHATM initialized");
 }
 
