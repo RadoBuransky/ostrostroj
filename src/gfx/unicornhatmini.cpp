@@ -1,7 +1,4 @@
 #include "common.hpp"
-#include <linux/spi/spidev.h>
-#include <errno.h>
-#include <gpiod.h>
 #include "unicornhatmini.hpp"
 
 // https://pinout.xyz/pinout/unicorn_hat_mini#
@@ -10,44 +7,35 @@
 // https://www.kernel.org/doc/Documentation/spi/spi-summary
 // https://forums.raspberrypi.com/viewtopic.php?t=364364
 
+gpiod_chip* UnicornHatMini::open_gpio(std::string name) {
+    gpiod_chip* result = gpiod_chip_open(name.c_str());
+    if (!result) {
+        throw OstrostrojException(fmt::format("UHATM gpiod_chip_open failed! [{},err={}]", name, strerror(errno)));
+    }
+    return result;
+}
 
-// Holtek 16D35A https://cdn.shopify.com/s/files/1/0174/1800/files/HT16D35A_Bv120.pdf?v=1587113912
-constexpr u_char HOLTEK_CMD_SOFT_RESET = 0xCC;
-
-class Holtek16D35A {
-    public:
-        Holtek16D35A();
-        virtual ~Holtek16D35A();
-};
-
-SPI UnicornHatMini::create_spi(std::string dev) {
-    spi_config_t spi_config;
-    spi_config.mode = 0; // https://en.wikipedia.org/wiki/Serial_Peripheral_Interface#Mode_numbers
-    spi_config.speed = 6000;
-    spi_config.delay = 0;
-    spi_config.bits_per_word = 8;
-    SPI result = SPI(dev.c_str(), &spi_config);
-    if (!result.begin()) {
-        throw OstrostrojException(fmt::format("UHATM cannot open SPI! [{}]", dev));
+gpiod_line* UnicornHatMini::open_out_line(int pin_number) {
+    gpiod_line* result = gpiod_chip_get_line(gpio, pin_number);
+    if (!result) {
+        throw OstrostrojException(fmt::format("UHATM gpiod_chip_get_line failed! [offset={},err={}]", pin_number, strerror(errno)));
+    }
+    if (gpiod_line_request_output(result, fmt::format("ostrostroj{}", pin_number).c_str(), 0) < 0) {
+        throw OstrostrojException(fmt::format("UHATM gpiod_line_request_output failed! [offset={},err={}]", pin_number, strerror(errno)));
     }
     return result;
 }
 
 UnicornHatMini::UnicornHatMini():
-    spi0(create_spi("/dev/spidev0.0")),
-    spi1(create_spi("/dev/spidev0.1")) {
-    uint8_t msg;
-
-    // Soft reset
-    if (spi0.write(&msg, sizeof(msg)) < 0) {
-        throw OstrostrojException(fmt::format("UHATM write failed! [0,errno={}]", strerror(errno)));
-    }
-    if (spi1.write(&msg, sizeof(msg)) < 0) {
-        throw OstrostrojException(fmt::format("UHATM write failed! [1,errno={}]", strerror(errno)));
-    }
-
+    gpio(open_gpio("/dev/gpiochip4")),
+    chip0("/dev/spidev0.0", open_out_line(8)),
+    chip1("/dev/spidev0.1", open_out_line(7)) {
     SPDLOG_INFO("UHATM initialized");
 }
 
 UnicornHatMini::~UnicornHatMini() {
+    if (gpio) {
+        gpiod_chip_close(gpio);
+        gpio = nullptr;
+    }
 }
