@@ -1,3 +1,5 @@
+#define SPDLOG_ACTIVE_LEVEL 1
+
 #include "common.hpp"
 #include <alsa/asoundlib.h>
 #include "alsamidi.hpp"

@@ -25,7 +25,7 @@ Track::Track(int _track_number, int _channels, snd_pcm_uframes_t _period_size, b
     channels(_channels),
     loop(_loop),
     fifo(std::make_unique<InterleavedFifo>(_period_size * 32 * _channels)), // TODO: Why 32?
-    clip_players(4), // Preallocate 4 slots
+    clip_players(),
     sample(0),
     sample_pending(false) {
 }
