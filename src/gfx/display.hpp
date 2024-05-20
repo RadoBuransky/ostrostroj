@@ -21,15 +21,25 @@ class MainScreen {
         std::chrono::seconds pattern_duration;
 
         std::array<TrackState, 6> loops;
-        std::array<TrackState, 6> one_shots;
+        std::array<TrackState, 10> one_shots;
+
+        uint song_count;
+        uint song_index;
+
+        uint pattern_count;
+        uint pattern_index;
 
         uint pattern_seq_count;
         uint pattern_seq_index;
 
-        float load;
-
+        void draw_song_and_pattern_duration(unicorn_hat_mini_canvas& canvas);
         void draw_loops(unicorn_hat_mini_canvas& canvas);
         void draw_loop(Point pos, TrackState& track_state, unicorn_hat_mini_canvas& canvas);
+        void draw_one_shots(unicorn_hat_mini_canvas& canvas);
+        RGB track_state_color(TrackState track_state);
+        void draw_songs(unicorn_hat_mini_canvas& canvas);
+        void draw_patterns(unicorn_hat_mini_canvas& canvas);
+        void draw_pattern_seq(unicorn_hat_mini_canvas& canvas);
     public:
         MainScreen();
         virtual ~MainScreen();
@@ -49,8 +59,6 @@ class MainScreen {
 
         void set_pattern_seq_count(uint _count);
         void set_pattern_seq_index(uint _index);
-
-        void set_load(float _level);
 };
 
 class Display {
