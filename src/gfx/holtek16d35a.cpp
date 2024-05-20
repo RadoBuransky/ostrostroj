@@ -24,7 +24,7 @@ void Holtek16D35A::write(size_t size) {
 SPI Holtek16D35A::create_spi(std::string name) {
     spi_config_t spi_config;
     spi_config.mode = 0; // https://en.wikipedia.org/wiki/Serial_Peripheral_Interface#Mode_numbers
-    spi_config.speed = 6000;
+    spi_config.speed = 1000000;
     spi_config.delay = 0;
     spi_config.bits_per_word = 8;
     SPI result = SPI(name.c_str(), &spi_config);

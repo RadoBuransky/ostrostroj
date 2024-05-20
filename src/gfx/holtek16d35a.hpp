@@ -3,6 +3,14 @@
 #include <gpiod.h>
 #include <spidev_lib++.h>
 
+constexpr uint8_t RGB_MAX = 0x3F;
+constexpr uint8_t RGB_75 = 0x2E;
+constexpr uint8_t RGB_50 = 0x1F;
+constexpr uint8_t RGB_25 = 0x0F;
+constexpr uint8_t RGB_10 = 0x0A;
+constexpr uint8_t RGB_05 = 0x05;
+constexpr uint8_t RGB_01 = 0x01;
+
 struct RGB {
     uint8_t r;
     uint8_t g;

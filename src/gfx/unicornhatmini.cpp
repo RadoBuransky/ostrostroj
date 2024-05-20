@@ -31,6 +31,26 @@ gpiod_line* UnicornHatMini::open_out_line(int pin_number) {
     return result;
 }
 
+UnicornHatMini::UnicornHatMini():
+    gpio(open_gpio("/dev/gpiochip4")),
+    chip0("/dev/spidev0.0", open_out_line(24), 0),
+    chip1("/dev/spidev0.1", open_out_line(26), HOLTEK_MAGIC_NUM) {
+    SPDLOG_DEBUG("UHATM initialized");
+}
+
+UnicornHatMini::~UnicornHatMini() {
+    if (gpio) {
+        chip1.shutdown();
+        chip0.shutdown();
+        gpiod_chip_close(gpio);
+        gpio = nullptr;
+    }
+}
+
+unicorn_hat_mini_canvas& UnicornHatMini::get_canvas() {
+    return canvas;
+}
+
 void UnicornHatMini::show() {
     uint8_t* chip0_buffer = chip0.get_display_data_buffer();
     uint8_t* chip1_buffer = chip1.get_display_data_buffer();
@@ -57,30 +77,4 @@ void UnicornHatMini::show() {
     }
     chip0.write_display_data();
     chip1.write_display_data();
-}
-
-UnicornHatMini::UnicornHatMini():
-    gpio(open_gpio("/dev/gpiochip4")),
-    chip0("/dev/spidev0.0", open_out_line(24), 0),
-    chip1("/dev/spidev0.1", open_out_line(26), HOLTEK_MAGIC_NUM) {
-    canvas.fill({0,0,0});
-
-    canvas[0][0].r = 0xFF;
-    canvas[UNICORN_HAT_MINI_COLS - 1][0].g = 0xFF;
-    canvas[0][UNICORN_HAT_MINI_ROWS - 1].b = 0xFF;
-    canvas[UNICORN_HAT_MINI_COLS - 1][UNICORN_HAT_MINI_ROWS - 1].r = 0xFF;
-    canvas[UNICORN_HAT_MINI_COLS - 1][UNICORN_HAT_MINI_ROWS - 1].g = 0xFF;
-    canvas[UNICORN_HAT_MINI_COLS - 1][UNICORN_HAT_MINI_ROWS - 1].b = 0xFF;
-
-    show();
-    SPDLOG_DEBUG("UHATM initialized");
-}
-
-UnicornHatMini::~UnicornHatMini() {
-    if (gpio) {
-        chip1.shutdown();
-        chip0.shutdown();
-        gpiod_chip_close(gpio);
-        gpio = nullptr;
-    }
 }

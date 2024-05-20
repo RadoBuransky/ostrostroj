@@ -10,7 +10,7 @@
 #include "profiler.hpp"
 #include "alsamidi.hpp"
 #include "alsapcm.hpp"
-#include "gfx/unicornhatmini.hpp"
+#include "display.hpp"
 
 static std::atomic_flag running_flag = ATOMIC_FLAG_INIT;
 static void sigaction_handler(int) {
@@ -20,11 +20,11 @@ static void sigaction_handler(int) {
 
 class OstrostrojApp {
     private:
-        UnicornHatMini unicorn_hat_mini;
-        AlsaPcm alsa_pcm;
-        AlsaMidi alsa_midi;
-        Project project;
-        Engine engine;
+        Display display;
+        // AlsaPcm alsa_pcm;
+        // AlsaMidi alsa_midi;
+        // Project project;
+        // Engine engine;
 
         void waitForSignal() const {
             struct sigaction sigIntHandler;
@@ -38,13 +38,16 @@ class OstrostrojApp {
         }
 
     public:
+    OstrostrojApp():
+            display(std::chrono::seconds(1)) {                
+    }
+    /*
         OstrostrojApp():
-            unicorn_hat_mini(),
+            display(std::chrono::seconds(1)) ,
             alsa_pcm(AlsaPcm()),
             alsa_midi(AlsaMidi()),
             project(Project("/home/rado/project/")),
             engine(Engine(project, alsa_midi, alsa_pcm)) {
-                /*
             try {
                 project.verify(alsa_pcm.get_sample_rate(), engine.get_loop_track_count());
                 alsa_pcm.start(
@@ -55,8 +58,8 @@ class OstrostrojApp {
                 SPDLOG_ERROR(ex.what());
                 throw;
             }
-            */
         }
+        */
 
         virtual ~OstrostrojApp() {
             /*

@@ -1,7 +1,5 @@
 target_sources(ostrostroj
     PRIVATE
-        ${CMAKE_CURRENT_LIST_DIR}/clip.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/clip.hpp
         ${CMAKE_CURRENT_LIST_DIR}/clipblock.cpp
         ${CMAKE_CURRENT_LIST_DIR}/clipblock.hpp
         ${CMAKE_CURRENT_LIST_DIR}/clipfx.cpp
