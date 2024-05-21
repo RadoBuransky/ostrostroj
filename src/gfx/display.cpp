@@ -1,22 +1,23 @@
 #include "common.hpp"
 #include "display.hpp"
 
-constexpr RGB pattern_duration_color = {0, 0, RGB_01};
-constexpr RGB song_duration_color = {0, RGB_10, 0};
+constexpr RGB palette_off = {0, 0, 0};
+constexpr RGB palette_red = {RGB_MAX, 0, 0};
+constexpr RGB palette_green = {0, RGB_10, 0};
+constexpr RGB palette_blue = {0, 0, RGB_01};
 
-constexpr Point loops_top_left = {9, 0};
-constexpr RGB loops_off_color = {0, 0, 0};
-constexpr RGB loops_muted_color = {0, 0, RGB_01};
-constexpr RGB loops_playing_color = {RGB_MAX, 0, 0};
+constexpr RGB palette_yellow = {RGB_MAX, RGB_10, 0};
+constexpr RGB palette_magenta = {RGB_MAX, 0, RGB_01};
+constexpr RGB palette_cyan = {0, RGB_05, RGB_05};
 
-constexpr RGB song_count_color = {0, RGB_10, 0};
-constexpr RGB song_index_color = {0, 0, RGB_01};
+constexpr RGB palette_playing = palette_red;
+constexpr RGB palette_muted = palette_blue;
 
 void MainScreen::draw_song_and_pattern_duration(unicorn_hat_mini_canvas& canvas) {
     uint song_width = std::min((uint)std::chrono::duration_cast<std::chrono::minutes>(song_duration).count(), (uint)9);
     uint pattern_width = std::min((uint)std::chrono::duration_cast<std::chrono::minutes>(pattern_duration).count(), (uint)song_width);
     for (uint i = 0; i < song_width; i++) {
-        canvas.at(i).at(0) = (i < pattern_width) ? pattern_duration_color : song_duration_color;
+        canvas.at(i).at(0) = (i < pattern_width) ? palette_playing : palette_yellow;
     }
 }
 
@@ -30,16 +31,19 @@ void MainScreen::draw_loops(unicorn_hat_mini_canvas& canvas) {
 }
 
 void MainScreen::draw_loop(Point pos, TrackState& track_state, unicorn_hat_mini_canvas& canvas) {
-    RGB color = track_state_color(track_state);
-    canvas.at(pos.x + loops_top_left.x).at(pos.y + loops_top_left.y) = color;
-    canvas.at(pos.x + loops_top_left.x + 1).at(pos.y + loops_top_left.y) = color;
-    canvas.at(pos.x + loops_top_left.x + 1).at(pos.y + loops_top_left.y + 1) = color;
+    if (track_state != Playing) {
+        return;
+    }
+    canvas.at(pos.x + 9).at(pos.y) = palette_playing;
+    canvas.at(pos.x + 9).at(pos.y + 1) = palette_yellow;
+    canvas.at(pos.x + 10).at(pos.y) = palette_playing;
+    canvas.at(pos.x + 10).at(pos.y + 1) = palette_playing;
 }
 
 void MainScreen::draw_songs(unicorn_hat_mini_canvas& canvas) {
     uint count = std::min(song_count, (uint)2*9);
     for (uint i = 0; i < count; i++) {
-        canvas.at(i % 9).at(1 + (i / 9)) = i < song_index ? song_index_color : song_count_color;
+        canvas.at(i % 9).at(1 + (i / 9)) = i < song_index ? palette_magenta : palette_cyan;
     }
 }
 
@@ -50,41 +54,30 @@ void MainScreen::draw_one_shots(unicorn_hat_mini_canvas& canvas) {
         RGB color;
         switch (one_shots[i]) {
             case Muted:
-                color = loops_playing_color;
+                color = palette_cyan;
                 break;
             case Playing:
-                color = loops_muted_color;
+                color = palette_playing;
                 break;
             default:
-                color = loops_off_color;
+                color = palette_off;
                 break;
         }
         canvas.at(x).at(y) = color;
     }
 }
 
-RGB MainScreen::track_state_color(TrackState track_state) {
-    switch (track_state) {
-        case Muted:
-            return loops_muted_color;
-        case Playing:
-            return loops_playing_color;
-        default:
-            return loops_off_color;
-    }
-}
-
 void MainScreen::draw_patterns(unicorn_hat_mini_canvas& canvas) {
     uint count = std::min(pattern_count, (uint)8);
     for (uint i = 0; i < count; i++) {
-        canvas.at(UNICORN_HAT_MINI_COLS - count + i).at(5) = (i == pattern_index) ? pattern_duration_color : song_duration_color;
+        canvas.at((UNICORN_HAT_MINI_COLS - count) + i).at(5) = (i == pattern_index) ? palette_playing : palette_cyan;
     }
 }
 
 void MainScreen::draw_pattern_seq(unicorn_hat_mini_canvas& canvas) {
-    uint count = std::min(pattern_seq_count - pattern_seq_index, (uint)8);
+    uint count = std::min(pattern_seq_count, (uint)8);
     for (uint i = 0; i < count; i++) {
-        canvas.at(UNICORN_HAT_MINI_COLS - count + i).at(6) = loops_playing_color;
+        canvas.at((UNICORN_HAT_MINI_COLS - count) + i).at(6) = (i <= pattern_seq_index) ? palette_playing : palette_cyan;
     }    
 }
 
@@ -114,10 +107,10 @@ MainScreen::MainScreen():
     one_shots[4] = Muted;
     song_count = 15;
     song_index = 3;
-    pattern_count = 6;
+    pattern_count = 4;
     pattern_index = 2;
-    pattern_seq_count = 3;
-    pattern_seq_index = 0;
+    pattern_seq_count = 7;
+    pattern_seq_index = 3;
 }
 
 MainScreen::~MainScreen() {    

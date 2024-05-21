@@ -36,7 +36,6 @@ class MainScreen {
         void draw_loops(unicorn_hat_mini_canvas& canvas);
         void draw_loop(Point pos, TrackState& track_state, unicorn_hat_mini_canvas& canvas);
         void draw_one_shots(unicorn_hat_mini_canvas& canvas);
-        RGB track_state_color(TrackState track_state);
         void draw_songs(unicorn_hat_mini_canvas& canvas);
         void draw_patterns(unicorn_hat_mini_canvas& canvas);
         void draw_pattern_seq(unicorn_hat_mini_canvas& canvas);
