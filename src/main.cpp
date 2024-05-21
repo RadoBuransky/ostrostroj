@@ -21,10 +21,10 @@ static void sigaction_handler(int) {
 class OstrostrojApp {
     private:
         Display display;
-        // AlsaPcm alsa_pcm;
-        // AlsaMidi alsa_midi;
-        // Project project;
-        // Engine engine;
+        AlsaPcm alsa_pcm;
+        AlsaMidi alsa_midi;
+        Project project;
+        Engine engine;
 
         void waitForSignal() const {
             struct sigaction sigIntHandler;
@@ -38,12 +38,8 @@ class OstrostrojApp {
         }
 
     public:
-    OstrostrojApp():
-            display(std::chrono::seconds(1)) {                
-    }
-    /*
         OstrostrojApp():
-            display(std::chrono::seconds(1)) ,
+            display(std::chrono::seconds(1)),
             alsa_pcm(AlsaPcm()),
             alsa_midi(AlsaMidi()),
             project(Project("/home/rado/project/")),
@@ -59,14 +55,11 @@ class OstrostrojApp {
                 throw;
             }
         }
-        */
 
         virtual ~OstrostrojApp() {
-            /*
             engine.shutdown();
             alsa_pcm.shutdown();
             alsa_midi.shutdown();
-            */
             SPDLOG_INFO("Ostrostroj finished.");
         }
 

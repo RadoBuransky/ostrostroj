@@ -1,4 +1,4 @@
-#define SPDLOG_ACTIVE_LEVEL 1
+#define SPDLOG_ACTIVE_LEVEL 2
 
 #include "common.hpp"
 #include <alsa/asoundlib.h>
@@ -17,6 +17,7 @@ void* run_thru(void* context) {
     unsigned char* decoded_current;
     bool pass;
     bool push;
+    ulong clock_counter = 0;
     SPDLOG_INFO("AMIDI started.");
     while (!self.stop) {
         decoded_current = decoded.data();
@@ -32,7 +33,10 @@ void* run_thru(void* context) {
                 if (event.type != SND_SEQ_EVENT_NONE) {
 #ifndef NDEBUG
                     if (event.type != SND_SEQ_EVENT_CLOCK) {
-                        SPDLOG_INFO("AMIDI event [type={}]", (int)event.type);
+                        SPDLOG_DEBUG("AMIDI event [type={}]", (int)event.type);
+                    } else {
+                        clock_counter++;
+                        // SPDLOG_INFO("AMIDI clock [queue={}, 0={},1={}]", event.data.queue.queue, event.data.queue.param.d32[0], event.data.queue.param.d32[1]);
                     }
 #endif
                     pass = true;
@@ -45,6 +49,16 @@ void* run_thru(void* context) {
                         case SND_SEQ_EVENT_SETPOS_TIME:
                         case SND_SEQ_EVENT_PGMCHANGE:
                             push = true;
+                            break;
+                        case SND_SEQ_EVENT_NOTEON:
+                            if (event.data.note.velocity > 0) {
+                                SPDLOG_INFO("AMIDI note on [clock={},ch={},note={},duration={},velocity={},off={}]", clock_counter,
+                                    event.data.note.channel, event.data.note.note, event.data.note.duration, event.data.note.velocity, event.data.note.off_velocity);
+                            }
+                            break;
+                        case SND_SEQ_EVENT_CONTROLLER:
+                            SPDLOG_INFO("AMIDI controller [clock={},ch={},param={},value={}]", clock_counter,
+                                event.data.control.channel, event.data.control.param, event.data.control.value);
                             break;
                     }
                     if (pass) {
