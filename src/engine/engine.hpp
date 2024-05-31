@@ -2,6 +2,7 @@
 
 #include "alsamidi.hpp"
 #include "alsapcm.hpp"
+#include "workspace.hpp"
 #include "project.hpp"
 #include "track.hpp"
 #include "engineworker.hpp"
@@ -13,6 +14,7 @@ static_assert(ENGINE_LOOP_MONO_TRACKS + (ENGINE_LOOP_TRACKS - ENGINE_LOOP_MONO_T
 
 class Engine {
     private:
+        Workspace& workspace;
         Project& project;
         AlsaMidi& alsa_midi;
         AlsaPcm& alsa_pcm;
@@ -33,7 +35,7 @@ class Engine {
         void release_worker_tracks();
         std::vector<std::unique_ptr<EngineWorker>> create_workers();
     public:
-        Engine(Project& _project, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm);
+        Engine(Workspace& _workspace, Project& _project, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm);
         virtual ~Engine();
 
         void shutdown();

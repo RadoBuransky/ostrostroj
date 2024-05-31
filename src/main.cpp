@@ -42,11 +42,11 @@ class OstrostrojApp {
     public:
         OstrostrojApp():
             display(std::chrono::seconds(1)),
-            alsa_pcm(AlsaPcm()),
-            alsa_midi(AlsaMidi()),
-            project(Project("/home/rado/project/")),
+            alsa_pcm(),
+            alsa_midi(),
+            project("/home/rado/project/"),
             workspace("/home/rado/projects/"),
-            engine(Engine(project, alsa_midi, alsa_pcm)) {
+            engine(workspace, project, alsa_midi, alsa_pcm) {
             try {
                 project.verify(alsa_pcm.get_sample_rate(), engine.get_loop_track_count());
                 alsa_pcm.start(

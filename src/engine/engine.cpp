@@ -101,7 +101,8 @@ std::vector<std::unique_ptr<EngineWorker>> Engine::create_workers() {
     return result;
 }
 
-Engine::Engine(Project& _project, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm):
+Engine::Engine(Workspace& _workspace, Project& _project, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm):
+    workspace(_workspace),
     project(_project),
     alsa_midi(_alsa_midi),
     alsa_pcm(_alsa_pcm),
