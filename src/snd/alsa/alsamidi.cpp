@@ -4,104 +4,165 @@
 #include <alsa/asoundlib.h>
 #include "alsamidi.hpp"
 
-void* run_thru(void* context) {
-    AlsaMidi& self = *(AlsaMidi*)context;
-    snd_midi_event_t* parser;
-    int res = snd_midi_event_new(256, &parser);
-    if (res < 0) {
-        SPDLOG_ERROR("AMIDI snd_midi_event_new failed = {}", res);
+static constexpr int POLL_TIMEOUT_MS = 200;
+
+bool AlsaMidi::process(snd_seq_event_t& event, ulong& clock_counter) {
+#ifndef NDEBUG
+    if (event.type != SND_SEQ_EVENT_CLOCK) {
+        SPDLOG_DEBUG("AMIDI event [type={}]", (int)event.type);
+    } else {
+        clock_counter++;
+        // SPDLOG_INFO("AMIDI clock [queue={}, 0={},1={}]", event.data.queue.queue, event.data.queue.param.d32[0], event.data.queue.param.d32[1]);
+    }
+#endif
+    bool pass = true;
+    bool push = false;
+    switch (event.type) {
+        case SND_SEQ_EVENT_START:
+        case SND_SEQ_EVENT_CONTINUE:
+        case SND_SEQ_EVENT_STOP:
+        case SND_SEQ_EVENT_SETPOS_TICK:
+        case SND_SEQ_EVENT_SETPOS_TIME:
+        case SND_SEQ_EVENT_PGMCHANGE:
+            push = true;
+            break;
+        case SND_SEQ_EVENT_NOTEON:
+            if (event.data.note.velocity > 0) {
+                SPDLOG_INFO("AMIDI note on [clock={},ch={},note={},duration={},velocity={},off={}]", clock_counter,
+                    event.data.note.channel, event.data.note.note, event.data.note.duration, event.data.note.velocity, event.data.note.off_velocity);
+            }
+            break;
+        case SND_SEQ_EVENT_CONTROLLER:
+            SPDLOG_INFO("AMIDI controller [clock={},ch={},param={},value={}]", clock_counter,
+                event.data.control.channel, event.data.control.param, event.data.control.value);
+            break;
+    }
+    if (push) {
+        if (!fifo.push(std::move(event))) {
+            SPDLOG_ERROR("AMIDI FIFO overrun!");
+        }
+        callback();
+    }
+    return pass;
+}
+
+void AlsaMidi::thru(unsigned char* raw, size_t size) {
+    ssize_t written_size = snd_rawmidi_write(handle_out, raw, size);
+    if (written_size < 0) {
+        throw OstrostrojException(fmt::format("AMIDI snd_rawmidi_write failed! [err={}]", snd_strerror(written_size)));
+    }
+    if ((size_t)written_size < size) {
+        SPDLOG_WARN("AMIDI not all data written thru! [written_size={},size={}]", written_size, size);
+    }
+    int err;
+    if ((err = snd_rawmidi_drain(handle_out)) < 0) {
+        throw OstrostrojException(fmt::format("AMIDI snd_rawmidi_drain failed! [err={}]", snd_strerror(err)));
+    }
+}
+
+void AlsaMidi::parse(unsigned char* raw, size_t read_size, ulong& clock_counter) {
+    snd_seq_event_t event;
+    while (read_size > 0) {
+        ssize_t consumed_size = snd_midi_event_encode(parser, raw, read_size, &event);
+        if (consumed_size < 0) {
+            SPDLOG_ERROR("AMIDI snd_midi_event_encode_byte failed [err={}]", snd_strerror(consumed_size));
+            snd_midi_event_reset_encode(parser);
+            return;
+        }
+        if (consumed_size > 0 && event.type != SND_SEQ_EVENT_NONE) {
+            if (process(event, clock_counter)) {
+                thru(raw, consumed_size);
+            }
+        }
+        read_size -= consumed_size;
+        raw += consumed_size;
+    }
+}
+
+size_t AlsaMidi::read(unsigned char* raw, size_t size) {
+    ssize_t read_size = snd_rawmidi_read(handle_in, raw, size);
+    if (read_size == -EAGAIN) {
         return 0;
     }
-    snd_seq_event_t event;
-    std::array<unsigned char, 64> decoded;
-    unsigned char* decoded_current;
-    bool pass;
-    bool push;
-    ulong clock_counter = 0;
-    SPDLOG_INFO("AMIDI started.");
-    while (!self.stop) {
-        decoded_current = decoded.data();
-        ssize_t read_size = snd_rawmidi_read(self.handle_in, decoded.data(), decoded.size());
-        while (read_size > 0) {
-            int event_encode_res = snd_midi_event_encode(parser, decoded_current, read_size, &event);
-            if (event_encode_res < 0) {
-                SPDLOG_ERROR("AMIDI snd_midi_event_encode_byte failed = {}", event_encode_res);
-                snd_midi_event_reset_encode(parser);
-                decoded_current = decoded.data();
-                read_size = 0;
-            } else {
-                if (event.type != SND_SEQ_EVENT_NONE) {
-#ifndef NDEBUG
-                    if (event.type != SND_SEQ_EVENT_CLOCK) {
-                        SPDLOG_DEBUG("AMIDI event [type={}]", (int)event.type);
-                    } else {
-                        clock_counter++;
-                        // SPDLOG_INFO("AMIDI clock [queue={}, 0={},1={}]", event.data.queue.queue, event.data.queue.param.d32[0], event.data.queue.param.d32[1]);
-                    }
-#endif
-                    pass = true;
-                    push = false;
-                    switch (event.type) {
-                        case SND_SEQ_EVENT_START:
-                        case SND_SEQ_EVENT_CONTINUE:
-                        case SND_SEQ_EVENT_STOP:
-                        case SND_SEQ_EVENT_SETPOS_TICK:
-                        case SND_SEQ_EVENT_SETPOS_TIME:
-                        case SND_SEQ_EVENT_PGMCHANGE:
-                            push = true;
-                            break;
-                        case SND_SEQ_EVENT_NOTEON:
-                            if (event.data.note.velocity > 0) {
-                                SPDLOG_INFO("AMIDI note on [clock={},ch={},note={},duration={},velocity={},off={}]", clock_counter,
-                                    event.data.note.channel, event.data.note.note, event.data.note.duration, event.data.note.velocity, event.data.note.off_velocity);
-                            }
-                            break;
-                        case SND_SEQ_EVENT_CONTROLLER:
-                            SPDLOG_INFO("AMIDI controller [clock={},ch={},param={},value={}]", clock_counter,
-                                event.data.control.channel, event.data.control.param, event.data.control.value);
-                            break;
-                    }
-                    if (pass) {
-                        snd_rawmidi_write(self.handle_out, decoded_current, event_encode_res);
-                        snd_rawmidi_drain(self.handle_out);
-                    }
-                    if (push) {
-                        if (!self.fifo.push(std::move(event))) {
-                            SPDLOG_ERROR("AMIDI FIFO overrun!");
-                        }
-                        self.callback();
-                    }
-                }
-                decoded_current += event_encode_res;
-                read_size -= event_encode_res;
-                if (read_size > 0 && decoded_current >= decoded.end()) {
-                    SPDLOG_ERROR("AMIDI Decoded buffer overflow!");
-                    decoded_current = decoded.data();
+    if (read_size < 0) {
+        throw OstrostrojException(fmt::format("AMIDI snd_rawmidi_read failed! [err={}]", snd_strerror(read_size)));
+    }
+    return read_size;
+}
+
+bool AlsaMidi::poll_in(std::vector<pollfd>& poll_descriptors) {
+    unsigned short revents;
+    int res = poll(poll_descriptors.data(), poll_descriptors.capacity(), POLL_TIMEOUT_MS);
+    if (res < 0) {
+        if (errno == EINTR) {
+            throw OstrostrojException("AMIDI poll interrupted.");
+        }
+        throw OstrostrojException(fmt::format("AMIDI poll failed. [err={}]", strerror(errno)));
+    }
+    if (res == 0) {
+        return false;
+    }
+    if ((res = snd_rawmidi_poll_descriptors_revents(handle_in, poll_descriptors.data(), poll_descriptors.capacity(), &revents)) < 0) {
+        throw OstrostrojException(fmt::format("AMIDI cannot get poll events [err={}]", snd_strerror(errno)));
+    }
+    if (revents & (POLLERR | POLLHUP)) {
+        throw OstrostrojException(fmt::format("AMIDI poll error [revents={}]", revents));
+    }
+    return revents & POLLIN;
+}
+
+void AlsaMidi::run() {
+    try {
+        ulong clock_counter;
+        std::array<unsigned char, 4> raw;
+        std::vector<pollfd> poll_descriptors = create_poll_descriptors(handle_in);
+        SPDLOG_INFO("AMIDI started.");
+        while (!stop) {
+            if (poll_in(poll_descriptors)) {
+                size_t read_size = read(raw.data(), raw.size());
+                if (read_size > 0) {
+                    parse(raw.data(), read_size, clock_counter);
                 }
             }
         }
+    } catch(std::exception const& e) {
+        SPDLOG_ERROR("AMIDI failed [e={}]", e.what());
     }
-    SPDLOG_INFO("AMIDI stopped.");
-    snd_midi_event_free(parser);
+}
+
+void* run_midi(void* context) {
+    ((AlsaMidi*)context)->run();
     return 0;
+}
+
+std::vector<pollfd> AlsaMidi::create_poll_descriptors(snd_rawmidi_t *handle) {
+    std::vector<pollfd> poll_descriptors = std::vector<pollfd>();
+    int count = snd_rawmidi_poll_descriptors_count(handle);
+    if (count < 1) {
+        throw OstrostrojException(fmt::format("AMIDI No poll descriptors! [count={}]", count));
+    }
+    poll_descriptors.reserve(count);
+    int filled = snd_rawmidi_poll_descriptors(handle, poll_descriptors.data(), poll_descriptors.capacity());
+    if (filled < 0) {
+        throw OstrostrojException(fmt::format("AMIDI snd_rawmidi_poll_descriptors failed! [err={}]", snd_strerror(filled)));
+    }
+    if ((size_t)filled != poll_descriptors.capacity()) {
+        throw OstrostrojException(fmt::format("AMIDI poll descriptor init failed! [filled={}]", filled));
+    }
+    return poll_descriptors;
 }
 
 snd_rawmidi_t* AlsaMidi::open_midi_in(const std::string& device_name) {
     snd_rawmidi_t* result;
     int err;
-    err = snd_rawmidi_open(&result, NULL, device_name.c_str(), 0);    
+    err = snd_rawmidi_open(&result, NULL, device_name.c_str(), SND_RAWMIDI_NONBLOCK);    
     if (err) {
-        SPDLOG_ERROR("AMIDI snd_rawmidi_open {} failed: {}", device_name, err);
+        throw OstrostrojException(fmt::format("AMIDI snd_rawmidi_open {} failed! [err={}]", device_name, snd_strerror(err)));
     }
-    snd_rawmidi_params_t *params;
-    snd_rawmidi_params_malloc(&params);
-    snd_rawmidi_params_current(result, params);
-    SPDLOG_DEBUG("AMIDI params [avail_min={}]", snd_rawmidi_params_get_avail_min(params));
-    // err = snd_rawmidi_params(result, params);  
-    // if (err) {
-    //     SPDLOG_ERROR("snd_rawmidi_params {} failed: {}", device_name, err);
-    // }
-    snd_rawmidi_params_free(params);
+    err = snd_midi_event_new(256, &parser);
+    if (err < 0) {
+        throw OstrostrojException(fmt::format("AMIDI snd_midi_event_new failed! [err={}]", snd_strerror(err)));
+    }
     SPDLOG_INFO("AMIDI input open. [{}]", device_name);
     return result;
 }
@@ -111,7 +172,7 @@ snd_rawmidi_t* AlsaMidi::open_midi_out(const std::string& device_name) {
     int err;
     err = snd_rawmidi_open(NULL, &result, device_name.c_str(), 0);    
     if (err) {
-        SPDLOG_ERROR("AMIDI snd_rawmidi_open {} failed: {}", device_name, err);
+        throw OstrostrojException(fmt::format("AMIDI snd_rawmidi_open {} failed! [err={}]", device_name, snd_strerror(err)));
     }
     SPDLOG_INFO("AMIDI output open. [{}]", device_name);
     return result;
@@ -128,13 +189,15 @@ AlsaMidi::AlsaMidi():
 
 AlsaMidi::~AlsaMidi() {
     shutdown();
+    if (parser) {
+        snd_midi_event_free(parser);
+        parser = nullptr;
+    }
     if (handle_in) {
-        snd_rawmidi_drain(handle_in);
         snd_rawmidi_close(handle_in);
         handle_in = nullptr;
     }
     if (handle_out) {
-        snd_rawmidi_drain(handle_out);
         snd_rawmidi_close(handle_out);
         handle_out = nullptr;
     }
@@ -146,11 +209,10 @@ AlsaMidiFifo& AlsaMidi::get_fifo() {
 
 void AlsaMidi::start(std::function<void(void)> _callback) {
     if (thru_thread || callback) {
-        SPDLOG_ERROR("AMIDI thread already started! [{}]", thru_thread);
-        return;
+        throw OstrostrojException(fmt::format("AMIDI thread already started! [{}]", thru_thread));
     }
     callback = _callback;
-    thru_thread = create_rt_thread("alsa_midi", 80, run_thru, this);
+    thru_thread = create_rt_thread("alsa_midi", 80, run_midi, this);
 }
 
 void AlsaMidi::shutdown() {
