@@ -120,6 +120,9 @@ Engine::Engine(Workspace& _workspace, Project& _project, AlsaMidi& _alsa_midi, A
     program(project.get_program(1)),
     worker_sleep_time(std::chrono::microseconds(_alsa_pcm.get_period_time()).count() / 2),
     workers(create_workers()) {
+    // Initialize session
+    session = std::make_unique<Session>(workspace.get_projects().at(0), alsa_pcm.get_sample_rate(), loop_tracks.size());
+
     // One-shots track is stereo interleaved
     track_fifos.at(ENGINE_LOOP_TRACKS) = &one_shots_track.get_fifo();
     track_fifos.at(ENGINE_LOOP_TRACKS + 1) = &one_shots_track.get_fifo();

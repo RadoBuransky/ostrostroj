@@ -26,6 +26,7 @@ class Engine {
         std::array<InterleavedFifo*, PCM_OUT_CHANNELS> track_fifos;
         useconds_t worker_sleep_time;
         std::vector<std::unique_ptr<EngineWorker>> workers;
+        std::unique_ptr<Session> session;
         bool handle_midi_event(snd_seq_event_t& midi_event, bool running, PcmEvent& result);
         void drop_track_fifos();
         void change_program(int program_number, bool running);
