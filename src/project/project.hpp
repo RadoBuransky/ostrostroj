@@ -3,6 +3,7 @@
 #include <vector>
 #include <map>
 #include "clip.hpp"
+#include "song.hpp"
 
 class Project;
 
@@ -38,4 +39,14 @@ class Project {
         virtual ~Project() = default;
         void verify(const int expected_sample_rate, const int loop_track_count);
         Program& get_program(int program_number);
+};
+
+class Project2 {
+    private:
+        const std::filesystem::path dir;
+        std::vector<Song> songs;
+    public:
+        Project2(const std::filesystem::path dir);
+        virtual ~Project2();
+        std::vector<Song>& get_songs();
 };

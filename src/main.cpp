@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <functional>
 #include "project.hpp"
+#include "workspace.hpp"
 #include "engine.hpp"
 #include "profiler.hpp"
 #include "alsamidi.hpp"
@@ -24,6 +25,7 @@ class OstrostrojApp {
         AlsaPcm alsa_pcm;
         AlsaMidi alsa_midi;
         Project project;
+        Workspace workspace;
         Engine engine;
 
         void waitForSignal() const {
@@ -43,6 +45,7 @@ class OstrostrojApp {
             alsa_pcm(AlsaPcm()),
             alsa_midi(AlsaMidi()),
             project(Project("/home/rado/project/")),
+            workspace("/home/rado/projects/"),
             engine(Engine(project, alsa_midi, alsa_pcm)) {
             try {
                 project.verify(alsa_pcm.get_sample_rate(), engine.get_loop_track_count());

@@ -5,6 +5,7 @@
 #include "project.hpp"
 #include "track.hpp"
 #include "engineworker.hpp"
+#include "session.hpp"
 
 static constexpr int ENGINE_LOOP_TRACKS = 6;
 static constexpr int ENGINE_LOOP_MONO_TRACKS = 4;

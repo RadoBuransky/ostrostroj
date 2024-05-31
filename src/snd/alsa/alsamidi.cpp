@@ -125,6 +125,7 @@ void AlsaMidi::run() {
                 }
             }
         }
+        SPDLOG_INFO("AMIDI stopped.");
     } catch(std::exception const& e) {
         SPDLOG_ERROR("AMIDI failed [e={}]", e.what());
     }
