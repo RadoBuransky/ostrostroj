@@ -197,7 +197,34 @@ int AlsaPcm::set_swparams(snd_pcm_t* handle, snd_pcm_sw_params_t* swparams) {
     return 0;
 }
 
+void AlsaPcm::wait_for_device(const std::string& pcm_out_name) {
+    static constexpr std::chrono::milliseconds WAIT = std::chrono::milliseconds(500);
+    SPDLOG_INFO("APCM  waiting for device...");
+    while (true) {
+        int card = -1;
+        do {
+            int err = snd_card_next(&card);
+            if (err) {
+                throw OstrostrojException(fmt::format("APCM  snd_card_next failed = {}", snd_strerror(err)));
+            }
+            if (card > -1) {
+                char* card_name;
+                err = snd_card_get_name(card, &card_name);
+                if (err) {
+                    throw OstrostrojException(fmt::format("APCM  snd_card_get_name failed = {}", snd_strerror(err)));
+                }
+                SPDLOG_INFO("APCM  card_name={}", card_name);
+                if ("hw:" + std::string(card_name) == pcm_out_name) {
+                    return;
+                }
+            }
+        } while (card > -1);
+        usleep(std::chrono::microseconds(WAIT).count());
+    }
+}
+
 snd_pcm_t* AlsaPcm::open_pcm_out(const std::string& pcm_out_name) {
+    wait_for_device(pcm_out_name);
     snd_pcm_t* result;
     int err = snd_pcm_open(&result, pcm_out_name.c_str(), SND_PCM_STREAM_PLAYBACK, 0);
     if (err) {

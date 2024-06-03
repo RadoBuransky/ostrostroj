@@ -54,6 +54,7 @@ class AlsaPcm {
         void alsa_snd_pcm_drop();
         int set_hwparams(snd_pcm_t* handle, snd_pcm_hw_params_t* params);
         int set_swparams(snd_pcm_t* handle, snd_pcm_sw_params_t* swparams);
+        void wait_for_device(const std::string& pcm_out_name);
         snd_pcm_t* open_pcm_out(const std::string& pcm_out_name);
     public:
         AlsaPcm();

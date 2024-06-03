@@ -82,7 +82,8 @@ void MainScreen::draw_pattern_seq(unicorn_hat_mini_canvas& canvas) {
 }
 
 MainScreen::MainScreen():
-    changed(false),
+    changed(true),
+    booting(true),
     song_duration(0),
     pattern_duration(0),
     loops(),
@@ -93,24 +94,24 @@ MainScreen::MainScreen():
     one_shots.fill(Off);
 
     // Test
-    song_duration = std::chrono::minutes(7);
-    pattern_duration = std::chrono::minutes(3);
-    loops[0] = Muted;
-    loops[1] = Playing;
-    loops[2] = Muted;
-    loops[3] = Muted;
-    loops[4] = Muted;
-    one_shots[0] = Muted;
-    one_shots[1] = Muted;
-    one_shots[2] = Playing;
-    one_shots[3] = Muted;
-    one_shots[4] = Muted;
-    song_count = 15;
-    song_index = 3;
-    pattern_count = 4;
-    pattern_index = 2;
-    pattern_seq_count = 7;
-    pattern_seq_index = 3;
+    // song_duration = std::chrono::minutes(7);
+    // pattern_duration = std::chrono::minutes(3);
+    // loops[0] = Muted;
+    // loops[1] = Playing;
+    // loops[2] = Muted;
+    // loops[3] = Muted;
+    // loops[4] = Muted;
+    // one_shots[0] = Muted;
+    // one_shots[1] = Muted;
+    // one_shots[2] = Playing;
+    // one_shots[3] = Muted;
+    // one_shots[4] = Muted;
+    // song_count = 15;
+    // song_index = 3;
+    // pattern_count = 4;
+    // pattern_index = 2;
+    // pattern_seq_count = 7;
+    // pattern_seq_index = 3;
 }
 
 MainScreen::~MainScreen() {    
@@ -122,12 +123,19 @@ bool MainScreen::draw(unicorn_hat_mini_canvas& canvas) {
     }
     changed = false;
     canvas.fill({0,0,0});
-    draw_song_and_pattern_duration(canvas);
-    draw_loops(canvas);
-    draw_songs(canvas);
-    draw_one_shots(canvas);
-    draw_patterns(canvas);
-    draw_pattern_seq(canvas);
+    if (booting) {
+        canvas.at(0).at(0) = palette_red;
+        canvas.at(1).at(0) = palette_red;
+        canvas.at(2).at(0) = palette_red;
+        booting = false;
+    } else {
+        draw_song_and_pattern_duration(canvas);
+        draw_loops(canvas);
+        draw_songs(canvas);
+        draw_one_shots(canvas);
+        draw_patterns(canvas);
+        draw_pattern_seq(canvas);
+    }
     return true;
 }
 

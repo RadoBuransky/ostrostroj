@@ -17,6 +17,8 @@ class MainScreen {
     private:
         std::atomic_bool changed;
 
+        bool booting;
+
         std::chrono::seconds song_duration;
         std::chrono::seconds pattern_duration;
 
