@@ -4,8 +4,8 @@
 
 class BankPattern {
     private:
-        const std::string pattern;
-        const uint8_t program;
+        std::string pattern;
+        uint8_t program;
     public:
         BankPattern(const std::string _pattern);
         BankPattern(const uint8_t _program);

@@ -3,137 +3,46 @@
 #include <ranges>
 #include "project.hpp"
 
-Program::Program(std::filesystem::path dir):
-    start_number(program_start_number(dir)),
-    loops(load_loops(dir)),
-    one_shots(load_one_shots(dir)) {
-    SPDLOG_INFO("PRJKT loaded {} [{} loops, {} one shots]", dir.string(), loops.size(), one_shots.size());
+static constexpr char DELIMITER = '_';
+
+uint8_t Project::parse_number(std::filesystem::path dir) {
+    std::string s = dir.filename().string();
+    return std::stoi(s.substr(0, s.find(DELIMITER)));
 }
 
-int Program::program_start_number(const std::filesystem::path dir) {
-    return std::stoi(dir.filename().string().substr(1, 2));
+std::string Project::parse_name(std::filesystem::path dir) {
+    std::string s = dir.filename().string();
+    return s.substr(s.find(DELIMITER) + 1);
 }
 
-std::vector<std::unique_ptr<LoopClip>> Program::load_loops(const std::filesystem::path dir) {
-    SPDLOG_DEBUG("PRJKT loading loops {} ", dir.string());
-    auto result = std::vector<std::unique_ptr<LoopClip>>();
-    result.reserve(32);
-    for (auto const& wav_file : wav_files(dir)) {
-        if (wav_file.filename().string().starts_with("L")) {
-            auto& loop_clip = result.emplace_back(std::make_unique<LoopClip>(wav_file));
-            const int expected_channels = (loop_clip->get_track() < MONO_LOOP_TRACKS) ? 1 : 2;
-            check_sample_format(wav_file, loop_clip->get_info(), expected_channels);
-        }
-    }
-    result.shrink_to_fit();
-    return result;
-}
-
-std::map<uint8_t, std::unique_ptr<OneShotClip>> Program::load_one_shots(const std::filesystem::path dir) {
-    SPDLOG_DEBUG("PRJKT loading one shots {} ", dir.string());
-    std::map<uint8_t, std::unique_ptr<OneShotClip>> result = std::map<uint8_t, std::unique_ptr<OneShotClip>>();
-    for (auto const& wav_file : wav_files(dir)) {
-        if (wav_file.filename().string().starts_with("S")) {
-            auto one_shot_sample = std::make_unique<OneShotClip>(wav_file);
-            check_sample_format(wav_file, one_shot_sample->get_info(), 2);
-            const uint8_t note = one_shot_sample->get_note();
-            result.emplace(note, std::move(one_shot_sample));
-        }
-    }
-    return result;
-}
-
-std::vector<std::filesystem::path> Program::wav_files(const std::filesystem::path dir) {
-    auto result = std::vector<std::filesystem::path>();
+std::vector<Song> Project::init_songs(std::filesystem::path dir) {
+    std::vector<Song> result;
     for (auto const& file : std::filesystem::directory_iterator(dir)) {
-        auto const& path = file.path();
-        if (file.is_regular_file() && path.string().ends_with(".wav")) {
-            result.push_back(file);
+        if (file.is_directory()) {
+            result.emplace_back(file);
         }
     }
-    return result;
-}
-
-void Program::check_sample_format(const std::filesystem::path wav_file, const SF_INFO &format, const int expected_channels) const {
-    if ((format.format & SF_FORMAT_WAV) == 0) {
-        throw OstrostrojException(fmt::format("PRJKT WAV file expected! [0x{:x}, {}]", format.format, wav_file.string()));
-    }
-    if ((format.format & SF_FORMAT_FLOAT) == 0) {
-        throw OstrostrojException(fmt::format("PRJKT 32-bit float expected! [0x{:x}, {}]", format.format, wav_file.string()));
-    }
-    if (format.channels != expected_channels) {
-        throw OstrostrojException(fmt::format("PRJKT {} channels expected! [{}, {}]", expected_channels, format.channels, wav_file.string()));
-    }
-}
-
-int Program::get_start_number() const {
-    return start_number;
-}
-
-std::vector<std::reference_wrapper<LoopClip>> Program::get_loops() {
-    auto result = std::vector<std::reference_wrapper<LoopClip>>();
-    result.reserve(loops.size());
-    for (std::unique_ptr<LoopClip>& loop : loops) {
-        result.push_back(std::ref(*loop));
-    }
-    return result;
-}
-
-std::map<uint8_t, std::reference_wrapper<OneShotClip>> Program::get_one_shots() {
-    auto result = std::map<uint8_t, std::reference_wrapper<OneShotClip>>();
-    for (auto& [note, one_shot] : one_shots) {
-        result.emplace(note, std::ref(*one_shot));
-    }
-    return result;
-}
-
-Project::Project(const std::filesystem::path dir):
-    programs(load_programs(dir)) {
-}
-
-std::vector<std::unique_ptr<Program>> Project::load_programs(const std::filesystem::path dir) {
-    SPDLOG_DEBUG("PRJKT loading project from {}", dir.string());
-    auto result = std::vector<std::unique_ptr<Program>>();
-    for (auto const& program_dir : std::filesystem::directory_iterator(dir)) {
-        if (program_dir.is_directory() && program_dir.path().filename().string().starts_with("P")) {
-            result.emplace_back(std::make_unique<Program>(program_dir.path()));
-        }
-    }
-    std::sort(result.begin(), result.end(), [](const auto& a, const auto& b) {
-        return a->get_start_number() < b->get_start_number();
+    std::sort(result.begin(), result.end(), [](Song& a, Song& b) {
+        return a.get_root_bank_pattern().get_program() < b.get_root_bank_pattern().get_program();
     });
     return result;
 }
 
-void Project::verify(const int expected_sample_rate, const int loop_track_count) {
-    for (std::unique_ptr<Program>& program : programs) {
-        for (const auto& loop : program->loops) {
-            loop->assert_sample_rate(expected_sample_rate);
-            SPDLOG_DEBUG("PRJKT loop asserted. [{}]", loop->get_path().c_str());
-            if (loop->get_track() < 0 || loop->get_track() >= loop_track_count) {
-                throw OstrostrojException(fmt::format("PRJKT invalid loop track! [{}, {}]", loop->get_track(), loop->get_path().c_str()));
-            }
-        }
-        for (const auto& [note, one_shot] : program->one_shots) {
-            one_shot->assert_sample_rate(expected_sample_rate);
-        }
-    }
-    SPDLOG_DEBUG("PRJKT verified.");
+Project::Project(std::filesystem::path dir):
+    number(parse_number(dir)),
+    name(parse_name(dir)),
+    songs(init_songs(dir)) {
+    SPDLOG_DEBUG("PRJKT project initialized [number={},name={},songs={}]", number, name, songs.size());
 }
 
-Program& Project::get_program(int program_number) {
-    for (std::unique_ptr<Program>& program : programs | std::views::reverse) {
-        if (program->get_start_number() <= program_number) {
-            return *program;
-        }
-    }
-    return *programs.at(0);
+uint8_t Project::get_number() {
+    return number;
 }
 
-Project2::Project2(const std::filesystem::path _dir):
-    dir(_dir) {
+std::string Project::get_name() {
+    return name;
 }
 
-std::vector<Song>& Project2::get_songs() {
+std::vector<Song>& Project::get_songs() {
     return songs;
 }

@@ -25,7 +25,7 @@ class FileClip: public Clip {
         virtual ~FileClip();
         const std::filesystem::path& get_path() const;
         SF_INFO& get_info();
-        void assert_sample_rate(const int expected_sample_rate) const;
+        void assert_format(const int expected_sample_rate, const int expected_channels) const;
         ClipBlock& get_head() const;
 };
 

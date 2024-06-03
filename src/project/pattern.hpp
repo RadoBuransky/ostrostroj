@@ -8,14 +8,18 @@ struct PatternLoop {
     uint8_t track; // 1 - 6
 };
 
-class Pattern2 {
+class Pattern {
     private:
-        const std::filesystem::path dir;
         BankPattern bank_pattern;
+        std::string name;
         std::vector<PatternLoop> loops;
+        size_t parse_pattern_offset(std::filesystem::path dir);
+        std::string parse_name(std::filesystem::path dir);
+        std::vector<PatternLoop> init_loops(std::filesystem::path dir);
     public:
-        Pattern2(const std::filesystem::path _dir);
-        virtual ~Pattern2() = default;
+        Pattern(BankPattern root_bank_pattern, std::filesystem::path dir);
+        virtual ~Pattern() = default;
         BankPattern get_bank_pattern();
+        std::string get_name();
         std::vector<PatternLoop>& get_loops();
 };

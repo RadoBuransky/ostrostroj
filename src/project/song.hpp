@@ -11,13 +11,19 @@ struct SongOneShot {
 
 class Song {
     private:
-        const std::filesystem::path dir;
         BankPattern root_bank_pattern;
-        std::vector<Pattern2> patterns;
+        std::string name;
+        std::vector<Pattern> patterns;
         std::vector<SongOneShot> one_shots;
+        BankPattern parse_root_bank_pattern(std::filesystem::path dir);
+        std::string parse_name(std::filesystem::path dir);
+        std::vector<Pattern> init_patterns(std::filesystem::path dir);
+        std::vector<SongOneShot> init_one_shots(std::filesystem::path dir);
     public:
-        Song(const std::filesystem::path _dir);
+        Song(std::filesystem::path dir);
         virtual ~Song() = default;
-        std::vector<Pattern2>& get_patterns();
+        BankPattern get_root_bank_pattern();
+        std::string get_name();
+        std::vector<Pattern>& get_patterns();
         std::vector<SongOneShot>& get_one_shots();
 };

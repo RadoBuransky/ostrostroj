@@ -5,10 +5,10 @@
 
 class Workspace {
     private:
-        const std::filesystem::path dir;
-        std::vector<Project2> projects;
+        std::vector<Project> projects;
+        std::vector<Project> init_projects(std::filesystem::path dir);
     public:
-        Workspace(const std::filesystem::path _dir);
+        Workspace(std::filesystem::path dir);
         virtual ~Workspace() = default;
-        std::vector<Project2>& get_projects();
+        std::vector<Project>& get_projects();
 };
