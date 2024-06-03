@@ -1,3 +1,5 @@
+#define SPDLOG_ACTIVE_LEVEL 1
+
 #include "common.hpp"
 #include "pattern.hpp"
 
@@ -13,7 +15,9 @@ std::vector<PatternLoop> Pattern::init_loops(std::filesystem::path dir) {
     std::vector<PatternLoop> result;
     for (auto const& file : std::filesystem::directory_iterator(dir)) {
         if (file.is_regular_file() && file.path().filename().string().starts_with('L')) {
-            result.emplace_back(PatternLoop(file.path(), stoi(file.path().filename().string().substr(1, 1))));
+            uint8_t track = stoi(file.path().filename().string().substr(1, 1));
+            PatternLoop& inserted = result.emplace_back(PatternLoop(file.path(), track));
+            SPDLOG_DEBUG("PRJKT loop initialized [name={},track={}]", inserted.loop.filename().string(), inserted.track);
         }
     }
     return result;   

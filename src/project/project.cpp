@@ -1,3 +1,5 @@
+#define SPDLOG_ACTIVE_LEVEL 1
+
 #include "common.hpp"
 #include <algorithm>
 #include <ranges>
@@ -32,7 +34,7 @@ Project::Project(std::filesystem::path dir):
     number(parse_number(dir)),
     name(parse_name(dir)),
     songs(init_songs(dir)) {
-    SPDLOG_DEBUG("PRJKT project initialized [number={},name={},songs={}]", number, name, songs.size());
+    SPDLOG_INFO("PRJKT project initialized [number={},name={},songs={}]", number, name, songs.size());
 }
 
 uint8_t Project::get_number() {

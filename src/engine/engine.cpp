@@ -44,18 +44,21 @@ void Engine::change_program(int program_number, bool running) {
 void Engine::update_tracks() {
     track_fifos.fill(nullptr);
     for (PatternLoop& pattern_loop : session->get_pattern().get_loops()) {
-        assert(pattern_loop.track < ENGINE_LOOP_TRACKS);
-        Track& loop_track = *loop_tracks.at(pattern_loop.track);
+        size_t track_index = pattern_loop.track - 1;
+        if (track_index >= ENGINE_LOOP_TRACKS) {
+            throw OstrostrojException(fmt::format("Invalid track index! [track_index={},loop={}]", track_index, pattern_loop.loop.filename().string()));
+        }
+        Track& loop_track = *loop_tracks.at(track_index);
         InterleavedFifo& loop_track_fifo = loop_track.get_fifo();
         loop_track.add_clip(session->get_clip(pattern_loop.loop));
-        if (pattern_loop.track < ENGINE_LOOP_MONO_TRACKS) {
+        if (track_index < ENGINE_LOOP_MONO_TRACKS) {
             assert(loop_track.get_channels() == 1);
-            track_fifos.at(pattern_loop.track) = &loop_track_fifo;
+            track_fifos.at(track_index) = &loop_track_fifo;
         } else {
             // Stereo tracks are interleaved
             assert(loop_track.get_channels() == 2);
-            track_fifos.at(ENGINE_LOOP_MONO_TRACKS + (pattern_loop.track - ENGINE_LOOP_MONO_TRACKS) * 2) = &loop_track_fifo;
-            track_fifos.at(ENGINE_LOOP_MONO_TRACKS + (pattern_loop.track - ENGINE_LOOP_MONO_TRACKS) * 2 + 1) = &loop_track_fifo;
+            track_fifos.at(ENGINE_LOOP_MONO_TRACKS + (track_index - ENGINE_LOOP_MONO_TRACKS) * 2) = &loop_track_fifo;
+            track_fifos.at(ENGINE_LOOP_MONO_TRACKS + (track_index - ENGINE_LOOP_MONO_TRACKS) * 2 + 1) = &loop_track_fifo;
         }
     }
 }
@@ -69,7 +72,7 @@ void Engine::reset_program(bool running) {
 void Engine::assign_worker_tracks() {
     std::vector<std::reference_wrapper<Track>> all_tracks;
     for (PatternLoop& pattern_loop : session->get_pattern().get_loops()) {
-        all_tracks.push_back(std::ref(*loop_tracks.at(pattern_loop.track)));
+        all_tracks.push_back(std::ref(*loop_tracks.at(pattern_loop.track - 1)));
     }
     all_tracks.push_back(std::ref(one_shots_track));
 

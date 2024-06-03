@@ -23,7 +23,7 @@ void Session::load_all_clips(int expected_sample_rate, int loop_track_count) {
         }
         for (Pattern& pattern: song.get_patterns()) {
             for (PatternLoop& pattern_loop: pattern.get_loops()) {    
-                if (pattern_loop.track >= loop_track_count) {
+                if (pattern_loop.track > loop_track_count) {
                     throw OstrostrojException(fmt::format("PRJKT invalid loop track! [{}, {}]", pattern_loop.track, pattern_loop.loop.c_str()));
                 }            
                 load_clip(pattern_loop.loop, expected_sample_rate, pattern_loop.track < MONO_LOOP_TRACKS ? 1 : 2);
@@ -44,10 +44,10 @@ void Session::change_program(BankPattern target_pattern) {
     for (Song& song : project.get_songs() | std::views::reverse) {
         if (song.get_root_bank_pattern().get_program() <= target_pattern.get_program()) {
             active_song = song;
-            for (Pattern pattern : song.get_patterns() | std::views::reverse) {
+            for (Pattern& pattern : song.get_patterns() | std::views::reverse) {
                 if (pattern.get_bank_pattern().get_program() <= target_pattern.get_program()) {
                     active_pattern = pattern;
-                    SPDLOG_INFO("SESSN Program changed. [song={},pattern={}]", active_song.get().get_name(), active_pattern.get().get_name());
+                    SPDLOG_INFO("SESSN program changed [song={},pattern={}]", active_song.get().get_name(), active_pattern.get().get_name());
                     return;
                 }
             }

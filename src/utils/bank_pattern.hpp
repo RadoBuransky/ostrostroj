@@ -2,6 +2,15 @@
 
 #include <string>
 
+/**
+ * A01 pattern = program 1
+ * A02 pattern = program 2
+ * ...
+ * A16 pattern = program 16
+ * B01 pattern = program 17
+ * ...
+ * H16 pattern = program 128
+*/
 class BankPattern {
     private:
         std::string pattern;

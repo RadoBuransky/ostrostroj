@@ -1,3 +1,5 @@
+#define SPDLOG_ACTIVE_LEVEL 1
+
 #include "common.hpp"
 #include "song.hpp"
 
@@ -41,7 +43,7 @@ Song::Song(std::filesystem::path dir):
     name(parse_name(dir)),
     patterns(init_patterns(dir)),
     one_shots(init_one_shots(dir)) {
-    SPDLOG_DEBUG("PRJKT song initialized [root_bank_pattern={},name={},patterns={},one_shots={}]", root_bank_pattern.get_pattern(),
+    SPDLOG_INFO("PRJKT song initialized [root_bank_pattern={},name={},patterns={},one_shots={}]", root_bank_pattern.get_pattern(),
         name, patterns.size(), one_shots.size());
 }
 
