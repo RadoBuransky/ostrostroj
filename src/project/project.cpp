@@ -129,3 +129,11 @@ Program& Project::get_program(int program_number) {
     }
     return *programs.at(0);
 }
+
+Project2::Project2(const std::filesystem::path _dir):
+    dir(_dir) {
+}
+
+std::vector<Song>& Project2::get_songs() {
+    return songs;
+}

@@ -4,15 +4,20 @@
 #include "pattern.hpp"
 #include "clip.hpp"
 
+struct SongOneShot {
+    std::filesystem::path one_shot;
+    uint8_t number;
+};
+
 class Song {
     private:
         const std::filesystem::path dir;
         BankPattern root_bank_pattern;
         std::vector<Pattern2> patterns;
-        std::vector<OneShotClip2> one_shots;
+        std::vector<SongOneShot> one_shots;
     public:
-        Song(const std::filesystem::path dir);
-        virtual ~Song();
+        Song(const std::filesystem::path _dir);
+        virtual ~Song() = default;
         std::vector<Pattern2>& get_patterns();
-        std::vector<OneShotClip2>& get_one_shots();
+        std::vector<SongOneShot>& get_one_shots();
 };

@@ -5,7 +5,7 @@
 class Session {
     private:
         Project2& project;
-        std::map<std::filesystem::path, std::unique_ptr<FileClipBlock>> clips;
+        std::map<std::filesystem::path, std::unique_ptr<FileClip>> clips;
         uint8_t active_song;
         uint8_t active_pattern;
         std::vector<uint8_t> pattern_play_counters;
@@ -16,7 +16,9 @@ class Session {
     public:
         Session(Project2& _project, int expected_sample_rate, int loop_track_count);
         virtual ~Session() = default;
+        void change_program(BankPattern pattern);
         Project2& get_project();
-        // TODO: Load project clips (is "path" ok as a map key?)
-        // TODO: Setters, getters, start/stop duration counters
+        Song& get_song();
+        Pattern2& get_pattern();
+        FileClip& get_clip(std::filesystem::path clip_path);
 };

@@ -46,7 +46,7 @@ class Project2 {
         const std::filesystem::path dir;
         std::vector<Song> songs;
     public:
-        Project2(const std::filesystem::path dir);
-        virtual ~Project2();
+        Project2(const std::filesystem::path _dir);
+        virtual ~Project2() = default;
         std::vector<Song>& get_songs();
 };

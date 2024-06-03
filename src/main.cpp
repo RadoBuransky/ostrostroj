@@ -5,7 +5,6 @@
 #include <signal.h>
 #include <cstdlib>
 #include <functional>
-#include "project.hpp"
 #include "workspace.hpp"
 #include "engine.hpp"
 #include "profiler.hpp"
@@ -24,7 +23,6 @@ class OstrostrojApp {
         Display display;
         AlsaPcm alsa_pcm;
         AlsaMidi alsa_midi;
-        Project project;
         Workspace workspace;
         Engine engine;
 
@@ -44,11 +42,9 @@ class OstrostrojApp {
             display(std::chrono::seconds(1)),
             alsa_pcm(),
             alsa_midi(),
-            project("/home/rado/project/"),
             workspace("/home/rado/projects/"),
-            engine(workspace, project, alsa_midi, alsa_pcm) {
+            engine(workspace, alsa_midi, alsa_pcm) {
             try {
-                project.verify(alsa_pcm.get_sample_rate(), engine.get_loop_track_count());
                 alsa_pcm.start(
                     std::bind(&Engine::pcm_event_callback, &engine, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
                     std::bind(&Engine::pcm_callback, &engine, std::placeholders::_1));

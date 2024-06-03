@@ -9,7 +9,7 @@ class BankPattern {
     public:
         BankPattern(const std::string _pattern);
         BankPattern(const uint8_t _program);
-        ~BankPattern();
-        std::string& get_pattern() const;
-        uint8_t& get_program() const;
+        virtual ~BankPattern() = default;
+        std::string get_pattern() const;
+        uint8_t get_program() const;
 };

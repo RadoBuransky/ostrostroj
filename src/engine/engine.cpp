@@ -33,31 +33,29 @@ bool Engine::handle_midi_event(snd_seq_event_t& midi_event, bool running, PcmEve
 }
 
 void Engine::change_program(int program_number, bool running) {
-    program = project.get_program(program_number);
+    session->change_program(BankPattern(program_number));
     release_worker_tracks();
     reset_program(running);
     update_tracks();
     assign_worker_tracks();
-    SPDLOG_INFO("ENGIN program set={}", program.get().get_start_number());
+    SPDLOG_INFO("ENGIN program set={}", session->get_pattern().get_bank_pattern().get_pattern());
 }
 
 void Engine::update_tracks() {
     track_fifos.fill(nullptr);
-    for (LoopClip& loop_clip : program.get().get_loops()) {
-        int track = loop_clip.get_track();
-        assert(track < ENGINE_LOOP_TRACKS);
-        Track& loop_track = *loop_tracks.at(track);
+    for (PatternLoop& pattern_loop : session->get_pattern().get_loops()) {
+        assert(pattern_loop.track < ENGINE_LOOP_TRACKS);
+        Track& loop_track = *loop_tracks.at(pattern_loop.track);
         InterleavedFifo& loop_track_fifo = loop_track.get_fifo();
-        //loop_track.set_node(std::make_unique<ClipNode>(loop_clip, true));
-        loop_track.add_clip(loop_clip);
-        if (track < ENGINE_LOOP_MONO_TRACKS) {
+        loop_track.add_clip(session->get_clip(pattern_loop.loop));
+        if (pattern_loop.track < ENGINE_LOOP_MONO_TRACKS) {
             assert(loop_track.get_channels() == 1);
-            track_fifos.at(track) = &loop_track_fifo;
+            track_fifos.at(pattern_loop.track) = &loop_track_fifo;
         } else {
             // Stereo tracks are interleaved
             assert(loop_track.get_channels() == 2);
-            track_fifos.at(ENGINE_LOOP_MONO_TRACKS + (track - ENGINE_LOOP_MONO_TRACKS) * 2) = &loop_track_fifo;
-            track_fifos.at(ENGINE_LOOP_MONO_TRACKS + (track - ENGINE_LOOP_MONO_TRACKS) * 2 + 1) = &loop_track_fifo;
+            track_fifos.at(ENGINE_LOOP_MONO_TRACKS + (pattern_loop.track - ENGINE_LOOP_MONO_TRACKS) * 2) = &loop_track_fifo;
+            track_fifos.at(ENGINE_LOOP_MONO_TRACKS + (pattern_loop.track - ENGINE_LOOP_MONO_TRACKS) * 2 + 1) = &loop_track_fifo;
         }
     }
 }
@@ -70,8 +68,8 @@ void Engine::reset_program(bool running) {
 
 void Engine::assign_worker_tracks() {
     std::vector<std::reference_wrapper<Track>> all_tracks;
-    for (LoopClip& loop_clip : program.get().get_loops()) {
-        all_tracks.push_back(std::ref(*loop_tracks.at(loop_clip.get_track())));
+    for (PatternLoop& pattern_loop : session->get_pattern().get_loops()) {
+        all_tracks.push_back(std::ref(*loop_tracks.at(pattern_loop.track)));
     }
     all_tracks.push_back(std::ref(one_shots_track));
 
@@ -101,9 +99,8 @@ std::vector<std::unique_ptr<EngineWorker>> Engine::create_workers() {
     return result;
 }
 
-Engine::Engine(Workspace& _workspace, Project& _project, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm):
+Engine::Engine(Workspace& _workspace, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm):
     workspace(_workspace),
-    project(_project),
     alsa_midi(_alsa_midi),
     alsa_pcm(_alsa_pcm),
     midi_flag(ATOMIC_FLAG_INIT),
@@ -117,7 +114,6 @@ Engine::Engine(Workspace& _workspace, Project& _project, AlsaMidi& _alsa_midi, A
         std::make_unique<Track>(6, 2, _alsa_pcm.get_period_size(), true),
     },
     one_shots_track(Track(7, 2, _alsa_pcm.get_period_size(), false)),
-    program(project.get_program(1)),
     worker_sleep_time(std::chrono::microseconds(_alsa_pcm.get_period_time()).count() / 2),
     workers(create_workers()) {
     // Initialize session

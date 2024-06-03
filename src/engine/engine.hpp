@@ -15,14 +15,13 @@ static_assert(ENGINE_LOOP_MONO_TRACKS + (ENGINE_LOOP_TRACKS - ENGINE_LOOP_MONO_T
 class Engine {
     private:
         Workspace& workspace;
-        Project& project;
         AlsaMidi& alsa_midi;
         AlsaPcm& alsa_pcm;
         std::atomic_flag midi_flag;
         std::atomic_bool stop;
         std::array<std::unique_ptr<Track>, ENGINE_LOOP_TRACKS> loop_tracks; // 0-3 mono, 4-5 stereo
         Track one_shots_track;
-        std::reference_wrapper<Program> program;
+        // std::reference_wrapper<Program> program;
         std::array<InterleavedFifo*, PCM_OUT_CHANNELS> track_fifos;
         useconds_t worker_sleep_time;
         std::vector<std::unique_ptr<EngineWorker>> workers;
@@ -36,7 +35,7 @@ class Engine {
         void release_worker_tracks();
         std::vector<std::unique_ptr<EngineWorker>> create_workers();
     public:
-        Engine(Workspace& _workspace, Project& _project, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm);
+        Engine(Workspace& _workspace, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm);
         virtual ~Engine();
 
         void shutdown();

@@ -50,30 +50,3 @@ class OneShotClip: public FileClip {
         virtual ~OneShotClip() = default;
         uint8_t get_note() const;
 };
-
-class FileClip2 {
-    protected:
-        std::filesystem::path path;
-    public:
-        FileClip2(const std::filesystem::path _path);
-        virtual ~FileClip2();
-        const std::filesystem::path& get_path() const;
-};
-
-class LoopClip2: public FileClip2 {
-    private:
-        uint8_t number;
-    public:
-        LoopClip2(const std::filesystem::path _path);
-        virtual ~LoopClip2();
-        uint8_t get_number() const;
-};
-
-class OneShotClip2: public FileClip2 {
-    private:
-        uint8_t number;
-    public:
-        OneShotClip2(const std::filesystem::path _path);
-        virtual ~OneShotClip2();
-        uint8_t get_number() const;
-};
