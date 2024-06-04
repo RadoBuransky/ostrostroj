@@ -1,4 +1,4 @@
-#define SPDLOG_ACTIVE_LEVEL 1
+#define SPDLOG_ACTIVE_LEVEL 2
 
 #include "common.hpp"
 #include <algorithm>
@@ -82,6 +82,7 @@ bool Session::change_program(BankPattern target_pattern) {
                         SPDLOG_INFO("SESSN program changed [song={},pattern={}]", active_song.get().get_name(), active_pattern.get().get_name());
                         return true;
                     }
+                    SPDLOG_DEBUG("SESSN same program [song={},pattern={}]", song.get_number(), pattern.get_number());
                     return false;
                 }
             }

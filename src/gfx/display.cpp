@@ -16,8 +16,6 @@ constexpr RGB palette_playing = palette_red;
 constexpr RGB palette_muted = palette_blue;
 
 void MainScreen::draw_song_and_pattern_duration(unicorn_hat_mini_canvas& canvas) {
-    SPDLOG_DEBUG("DSPLY [song_duration={}s]", std::chrono::duration_cast<std::chrono::seconds>(song_duration).count());
-
     size_t song_width = std::min((size_t)std::chrono::duration_cast<std::chrono::minutes>(song_duration).count(), (size_t)9);
     for (size_t i = 0; i < song_width; i++) {
         canvas.at(i).at(0) = palette_playing;
