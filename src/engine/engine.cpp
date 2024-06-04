@@ -30,6 +30,12 @@ bool Engine::handle_midi_event(snd_seq_event_t& midi_event, bool running, PcmEve
             }
             result = ALSA_PCM_PROGRAM_CHANGE;
             return true;
+        case SND_SEQ_EVENT_NOTEON:
+            pattern_learn->note(midi_event.data.note.note, midi_event.data.note.velocity > 0, midi_event.time.tick);
+            return true;
+        case SND_SEQ_EVENT_CONTROLLER:
+            pattern_learn->controller(midi_event.data.control.param, midi_event.data.control.value, midi_event.time.tick);
+            return true;
         default:
             SPDLOG_WARN("ENGIN ignored engine MIDI event. [{}]", (int)midi_event.type);
             return false;
@@ -37,6 +43,7 @@ bool Engine::handle_midi_event(snd_seq_event_t& midi_event, bool running, PcmEve
 }
 
 void Engine::program_changed(bool running) {
+    pattern_learn = std::make_unique<PatternLearn>(session->get_pattern());
     release_worker_tracks();
     reset_program(running);
     update_tracks();

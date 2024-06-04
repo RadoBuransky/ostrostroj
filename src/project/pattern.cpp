@@ -16,7 +16,7 @@ std::vector<PatternLoop> Pattern::init_loops(std::filesystem::path dir) {
     for (auto const& file : std::filesystem::directory_iterator(dir)) {
         if (file.is_regular_file() && file.path().filename().string().starts_with('L')) {
             uint8_t track = stoi(file.path().filename().string().substr(1, 1));
-            PatternLoop& inserted = result.emplace_back(PatternLoop(file.path(), track));
+            PatternLoop& inserted = result.emplace_back(PatternLoop(file.path(), track, {}));
             SPDLOG_DEBUG("PRJKT loop initialized [name={},track={}]", inserted.loop.filename().string(), inserted.track);
         }
     }
@@ -27,7 +27,8 @@ Pattern::Pattern(BankPattern root_bank_pattern, std::filesystem::path dir):
     bank_pattern(root_bank_pattern.get_program() + parse_pattern_offset(dir)),
     name(parse_name(dir)),
     number(0),
-    loops(init_loops(dir)) { 
+    loops(init_loops(dir)),
+    mutes() { 
     SPDLOG_DEBUG("PRJKT pattern initialized [bank_pattern={},name={},loops={}]", bank_pattern.get_pattern(), name, loops.size());
 }
 

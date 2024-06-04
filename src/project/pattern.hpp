@@ -3,9 +3,17 @@
 #include "bank_pattern.hpp"
 #include "clip.hpp"
 
+static constexpr size_t PATTERN_MUTES = 4;
+
+struct PatternLoopSeq {
+    bool muted;
+    float saturation; // 0.0 - 1.0
+};
+
 struct PatternLoop {
     std::filesystem::path loop;
     uint8_t track; // 1 - 6
+    std::vector<PatternLoopSeq> seq;
 };
 
 class Pattern {
@@ -14,6 +22,7 @@ class Pattern {
         std::string name;
         size_t number;
         std::vector<PatternLoop> loops;
+        std::array<std::vector<bool>, PATTERN_MUTES> mutes;
         size_t parse_pattern_offset(std::filesystem::path dir);
         std::string parse_name(std::filesystem::path dir);
         std::vector<PatternLoop> init_loops(std::filesystem::path dir);
@@ -25,4 +34,5 @@ class Pattern {
         void set_number(size_t _number);
         size_t get_number();
         std::vector<PatternLoop>& get_loops();
+        std::array<std::vector<bool>, PATTERN_MUTES>& get_mutes();
 };

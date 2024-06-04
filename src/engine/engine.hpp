@@ -8,6 +8,7 @@
 #include "engineworker.hpp"
 #include "session.hpp"
 #include "display.hpp"
+#include "pattern_learn.hpp"
 
 static constexpr int ENGINE_LOOP_TRACKS = 6;
 static constexpr int ENGINE_LOOP_MONO_TRACKS = 4;
@@ -27,6 +28,7 @@ class Engine {
         useconds_t worker_sleep_time;
         std::vector<std::unique_ptr<EngineWorker>> workers;
         std::unique_ptr<Session> session;
+        std::unique_ptr<PatternLearn> pattern_learn;
         bool handle_midi_event(snd_seq_event_t& midi_event, bool running, PcmEvent& result);
         void drop_track_fifos();
         void program_changed(bool running);

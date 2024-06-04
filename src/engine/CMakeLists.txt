@@ -4,6 +4,8 @@ target_sources(ostrostroj
         ${CMAKE_CURRENT_LIST_DIR}/engine.hpp
         ${CMAKE_CURRENT_LIST_DIR}/engineworker.cpp
         ${CMAKE_CURRENT_LIST_DIR}/engineworker.hpp
+        ${CMAKE_CURRENT_LIST_DIR}/pattern_learn.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/pattern_learn.hpp
         ${CMAKE_CURRENT_LIST_DIR}/session.cpp
         ${CMAKE_CURRENT_LIST_DIR}/session.hpp
         ${CMAKE_CURRENT_LIST_DIR}/track.cpp

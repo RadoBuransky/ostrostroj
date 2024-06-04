@@ -18,9 +18,9 @@ class AlsaMidi {
         AlsaMidiFifo fifo;
         pthread_t thru_thread;
         std::function<void(void)> callback;
-        bool process(snd_seq_event_t& event, ulong& clock_counter);
+        bool process(snd_seq_event_t& event, snd_seq_tick_time_t& clock_counter);
         void thru(unsigned char* raw, size_t size);
-        void parse(unsigned char* raw, size_t read_size, ulong& clock_counter);
+        void parse(unsigned char* raw, size_t read_size, snd_seq_tick_time_t& clock_counter);
         size_t read(unsigned char* raw, size_t size);
         bool poll_in(std::vector<pollfd>& poll_descriptors);
         void run();

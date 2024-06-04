@@ -6,13 +6,17 @@
 
 static constexpr int POLL_TIMEOUT_MS = 200;
 
-bool AlsaMidi::process(snd_seq_event_t& event, ulong& clock_counter) {
+bool AlsaMidi::process(snd_seq_event_t& event, snd_seq_tick_time_t& clock_counter) {
+    if (event.type == SND_SEQ_EVENT_CLOCK) {
+        clock_counter++;
+    }
+    event.time.tick = clock_counter;
+
 #ifndef NDEBUG
     if (event.type != SND_SEQ_EVENT_CLOCK) {
         SPDLOG_DEBUG("AMIDI event [type={}]", (int)event.type);
     } else {
-        clock_counter++;
-        // SPDLOG_INFO("AMIDI clock [queue={}, 0={},1={}]", event.data.queue.queue, event.data.queue.param.d32[0], event.data.queue.param.d32[1]);
+        SPDLOG_TRACE("AMIDI clock [queue={}, 0={},1={}]", event.data.queue.queue, event.data.queue.param.d32[0], event.data.queue.param.d32[1]);
     }
 #endif
     bool pass = true;
@@ -24,17 +28,9 @@ bool AlsaMidi::process(snd_seq_event_t& event, ulong& clock_counter) {
         case SND_SEQ_EVENT_SETPOS_TICK:
         case SND_SEQ_EVENT_SETPOS_TIME:
         case SND_SEQ_EVENT_PGMCHANGE:
-            push = true;
-            break;
         case SND_SEQ_EVENT_NOTEON:
-            if (event.data.note.velocity > 0) {
-                SPDLOG_INFO("AMIDI note on [clock={},ch={},note={},duration={},velocity={},off={}]", clock_counter,
-                    event.data.note.channel, event.data.note.note, event.data.note.duration, event.data.note.velocity, event.data.note.off_velocity);
-            }
-            break;
         case SND_SEQ_EVENT_CONTROLLER:
-            SPDLOG_INFO("AMIDI controller [clock={},ch={},param={},value={}]", clock_counter,
-                event.data.control.channel, event.data.control.param, event.data.control.value);
+            push = true;
             break;
     }
     if (push) {
@@ -60,7 +56,7 @@ void AlsaMidi::thru(unsigned char* raw, size_t size) {
     }
 }
 
-void AlsaMidi::parse(unsigned char* raw, size_t read_size, ulong& clock_counter) {
+void AlsaMidi::parse(unsigned char* raw, size_t read_size, snd_seq_tick_time_t& clock_counter) {
     snd_seq_event_t event;
     while (read_size > 0) {
         ssize_t consumed_size = snd_midi_event_encode(parser, raw, read_size, &event);
@@ -113,7 +109,7 @@ bool AlsaMidi::poll_in(std::vector<pollfd>& poll_descriptors) {
 
 void AlsaMidi::run() {
     try {
-        ulong clock_counter;
+        snd_seq_tick_time_t clock_counter;
         std::array<unsigned char, 4> raw;
         std::vector<pollfd> poll_descriptors = create_poll_descriptors(handle_in);
         SPDLOG_INFO("AMIDI started.");
