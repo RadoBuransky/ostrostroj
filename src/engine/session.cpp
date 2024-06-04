@@ -1,3 +1,5 @@
+#define SPDLOG_ACTIVE_LEVEL 1
+
 #include "common.hpp"
 #include <algorithm>
 #include <ranges>
@@ -8,9 +10,17 @@ static constexpr int MONO_LOOP_TRACKS = 4;
 
 void Session::update_durations() {
     if (started_timestamp != std::chrono::steady_clock::time_point::min()) {
-        auto d = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - started_timestamp);
-        song_duration += d;
-        pattern_duration += d;
+        std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+        std::chrono::steady_clock::duration d = now - started_timestamp;
+        if (d > std::chrono::seconds(1)) {
+            song_duration += d;
+            pattern_duration += d;
+            started_timestamp = now;
+
+            MainScreen& main_screen = display.get_main_screen();
+            main_screen.set_song_duration(song_duration);
+            main_screen.set_pattern_duration(pattern_duration);
+        }
     }
 }
 
@@ -32,7 +42,7 @@ void Session::load_all_clips(int expected_sample_rate, int loop_track_count) {
         for (Pattern& pattern: song.get_patterns()) {
             for (PatternLoop& pattern_loop: pattern.get_loops()) {    
                 if (pattern_loop.track > loop_track_count) {
-                    throw OstrostrojException(fmt::format("PRJKT invalid loop track! [{}, {}]", pattern_loop.track, pattern_loop.loop.c_str()));
+                    throw OstrostrojException(fmt::format("SESSN invalid loop track! [{}, {}]", pattern_loop.track, pattern_loop.loop.c_str()));
                 }            
                 load_clip(pattern_loop.loop, expected_sample_rate, pattern_loop.track < MONO_LOOP_TRACKS ? 1 : 2);
             }
@@ -109,10 +119,5 @@ void Session::pause() {
 
 void Session::draw() {
     update_durations();
-
-    MainScreen& main_screen = display.get_main_screen();
-    main_screen.set_song_duration(song_duration);
-    main_screen.set_pattern_duration(pattern_duration);
-
     display.tick(false);
 }

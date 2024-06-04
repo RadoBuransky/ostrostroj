@@ -1,3 +1,5 @@
+#define SPDLOG_ACTIVE_LEVEL 1
+
 #include "common.hpp"
 #include "display.hpp"
 
@@ -14,6 +16,8 @@ constexpr RGB palette_playing = palette_red;
 constexpr RGB palette_muted = palette_blue;
 
 void MainScreen::draw_song_and_pattern_duration(unicorn_hat_mini_canvas& canvas) {
+    SPDLOG_DEBUG("DSPLY [song_duration={}s]", std::chrono::duration_cast<std::chrono::seconds>(song_duration).count());
+
     size_t song_width = std::min((size_t)std::chrono::duration_cast<std::chrono::minutes>(song_duration).count(), (size_t)9);
     for (size_t i = 0; i < song_width; i++) {
         canvas.at(i).at(0) = palette_playing;
@@ -120,12 +124,12 @@ bool MainScreen::draw(unicorn_hat_mini_canvas& canvas) {
     return true;
 }
 
-void MainScreen::set_song_duration(std::chrono::seconds _song_duration) {
+void MainScreen::set_song_duration(std::chrono::steady_clock::duration _song_duration) {
     song_duration = _song_duration;
     changed = true;
 }
 
-void MainScreen::set_pattern_duration(std::chrono::seconds _pattern_duration) {
+void MainScreen::set_pattern_duration(std::chrono::steady_clock::duration _pattern_duration) {
     pattern_duration = _pattern_duration;
     changed = true;
 }

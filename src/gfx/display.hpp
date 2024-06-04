@@ -18,8 +18,8 @@ class MainScreen {
         std::atomic_bool changed;
         std::atomic_bool booting;
 
-        std::chrono::seconds song_duration;
-        std::chrono::seconds pattern_duration;
+        std::chrono::steady_clock::duration song_duration;
+        std::chrono::steady_clock::duration pattern_duration;
 
         std::array<TrackState, 6> loops;
         std::array<TrackState, 10> one_shots;
@@ -46,8 +46,8 @@ class MainScreen {
 
         bool draw(unicorn_hat_mini_canvas& canvas);
 
-        void set_song_duration(std::chrono::seconds _song_duration);
-        void set_pattern_duration(std::chrono::seconds _pattern_duration);
+        void set_song_duration(std::chrono::steady_clock::duration _song_duration);
+        void set_pattern_duration(std::chrono::steady_clock::duration _pattern_duration);
 
         void set_loop_playing(uint _number);
         void set_loop_muted(uint _number);
