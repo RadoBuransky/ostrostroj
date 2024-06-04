@@ -16,8 +16,7 @@ struct Point {
 class MainScreen {
     private:
         std::atomic_bool changed;
-
-        bool booting;
+        std::atomic_bool booting;
 
         std::chrono::seconds song_duration;
         std::chrono::seconds pattern_duration;
@@ -43,7 +42,7 @@ class MainScreen {
         void draw_pattern_seq(unicorn_hat_mini_canvas& canvas);
     public:
         MainScreen();
-        virtual ~MainScreen();
+        virtual ~MainScreen() = default;
 
         bool draw(unicorn_hat_mini_canvas& canvas);
 
@@ -58,6 +57,12 @@ class MainScreen {
         void set_one_shot_muted(uint _number);
         void set_one_shot_off(uint _number);
 
+        void set_song_count(uint _song_count);
+        void set_song_index(uint _song_index);
+
+        void set_pattern_count(uint _pattern_count);
+        void set_pattern_index(uint _pattern_index);
+
         void set_pattern_seq_count(uint _count);
         void set_pattern_seq_index(uint _index);
 };
@@ -71,11 +76,11 @@ class Display {
 
     public:
         Display(std::chrono::milliseconds _refresh);
-        virtual ~Display();
+        virtual ~Display() = default;
 
         /**
          * Call this as often as you want, it won't refresh the screen faster than "refresh" period.
         */
-        void tick();
+        void tick(bool force);
         MainScreen& get_main_screen();
 };

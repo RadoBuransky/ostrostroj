@@ -1,4 +1,4 @@
-#define SPDLOG_ACTIVE_LEVEL 1
+#define SPDLOG_ACTIVE_LEVEL 2
 
 #include "common.hpp"
 #include "pattern.hpp"
@@ -26,12 +26,21 @@ std::vector<PatternLoop> Pattern::init_loops(std::filesystem::path dir) {
 Pattern::Pattern(BankPattern root_bank_pattern, std::filesystem::path dir):
     bank_pattern(root_bank_pattern.get_program() + parse_pattern_offset(dir)),
     name(parse_name(dir)),
+    number(0),
     loops(init_loops(dir)) { 
     SPDLOG_DEBUG("PRJKT pattern initialized [bank_pattern={},name={},loops={}]", bank_pattern.get_pattern(), name, loops.size());
 }
 
 BankPattern Pattern::get_bank_pattern() {
     return bank_pattern;
+}
+
+void Pattern::set_number(size_t _number) {
+    number = _number;
+}
+
+size_t Pattern::get_number() {
+    return number;
 }
 
 std::string Pattern::get_name() {

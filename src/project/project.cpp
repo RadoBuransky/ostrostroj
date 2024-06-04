@@ -1,4 +1,4 @@
-#define SPDLOG_ACTIVE_LEVEL 1
+#define SPDLOG_ACTIVE_LEVEL 2
 
 #include "common.hpp"
 #include <algorithm>
@@ -27,6 +27,9 @@ std::vector<Song> Project::init_songs(std::filesystem::path dir) {
     std::sort(result.begin(), result.end(), [](Song& a, Song& b) {
         return a.get_root_bank_pattern().get_program() < b.get_root_bank_pattern().get_program();
     });
+    for (size_t i = 0; i < result.size(); i++) {
+        result.at(i).set_number(i + 1);
+    }
     return result;
 }
 

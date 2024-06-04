@@ -12,6 +12,7 @@ class Pattern {
     private:
         BankPattern bank_pattern;
         std::string name;
+        size_t number;
         std::vector<PatternLoop> loops;
         size_t parse_pattern_offset(std::filesystem::path dir);
         std::string parse_name(std::filesystem::path dir);
@@ -21,5 +22,7 @@ class Pattern {
         virtual ~Pattern() = default;
         BankPattern get_bank_pattern();
         std::string get_name();
+        void set_number(size_t _number);
+        size_t get_number();
         std::vector<PatternLoop>& get_loops();
 };

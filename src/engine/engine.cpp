@@ -9,21 +9,25 @@ bool Engine::handle_midi_event(snd_seq_event_t& midi_event, bool running, PcmEve
             SPDLOG_INFO("ENGIN MIDI START [d0={},d1={},queue={}]", midi_event.data.queue.param.d32[0], midi_event.data.queue.param.d32[1],
                 midi_event.data.queue.queue);
             result = ALSA_PCM_START;
+            session->start();
             return true;
         case SND_SEQ_EVENT_STOP: 
             SPDLOG_INFO("ENGIN MIDI STOP [d0={},d1={},queue={}]", midi_event.data.queue.param.d32[0], midi_event.data.queue.param.d32[1],
                 midi_event.data.queue.queue);
             result = ALSA_PCM_PAUSE;
+            session->pause();
             return true;
         case SND_SEQ_EVENT_CONTINUE: 
             SPDLOG_INFO("ENGIN MIDI CONTINUE [d0={},d1={},queue={}]", midi_event.data.queue.param.d32[0], midi_event.data.queue.param.d32[1],
                 midi_event.data.queue.queue);
             result = ALSA_PCM_RESUME;
+            session->start();
             return true;
         case SND_SEQ_EVENT_PGMCHANGE: 
             SPDLOG_INFO("ENGIN MIDI PROGRAM CHANGE [param={},value={}]", midi_event.data.control.param, midi_event.data.control.value);
-            // TODO: xfade tracks
-            change_program(midi_event.data.control.value + 1, running);
+            if (session->change_program(BankPattern(midi_event.data.control.value + 1))) {
+                program_changed(running);
+            }
             result = ALSA_PCM_PROGRAM_CHANGE;
             return true;
         default:
@@ -32,8 +36,7 @@ bool Engine::handle_midi_event(snd_seq_event_t& midi_event, bool running, PcmEve
     }   
 }
 
-void Engine::change_program(int program_number, bool running) {
-    session->change_program(BankPattern(program_number));
+void Engine::program_changed(bool running) {
     release_worker_tracks();
     reset_program(running);
     update_tracks();
@@ -102,10 +105,11 @@ std::vector<std::unique_ptr<EngineWorker>> Engine::create_workers() {
     return result;
 }
 
-Engine::Engine(Workspace& _workspace, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm):
+Engine::Engine(Workspace& _workspace, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm, Display& _display):
     workspace(_workspace),
     alsa_midi(_alsa_midi),
     alsa_pcm(_alsa_pcm),
+    display(_display),
     midi_flag(ATOMIC_FLAG_INIT),
     stop(false),
     loop_tracks {
@@ -120,14 +124,15 @@ Engine::Engine(Workspace& _workspace, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm):
     worker_sleep_time(std::chrono::microseconds(_alsa_pcm.get_period_time()).count() / 2),
     workers(create_workers()) {
     // Initialize session
-    session = std::make_unique<Session>(workspace.get_projects().at(0), alsa_pcm.get_sample_rate(), loop_tracks.size());
+    session = std::make_unique<Session>(workspace.get_projects().at(0), display, alsa_pcm.get_sample_rate(), loop_tracks.size());
 
     // One-shots track is stereo interleaved
     track_fifos.at(ENGINE_LOOP_TRACKS) = &one_shots_track.get_fifo();
     track_fifos.at(ENGINE_LOOP_TRACKS + 1) = &one_shots_track.get_fifo();
 
     // Initialize
-    change_program(1, false);
+    program_changed(false);
+    display.tick(true);
 }
 
 Engine::~Engine() {
@@ -184,6 +189,7 @@ void Engine::pcm_callback(PcmFrame_s24_3le& frame) {
         sample++;
         track_fifo++;
     }
+    session->draw();
 }
 
 void Engine::midi_callback() {

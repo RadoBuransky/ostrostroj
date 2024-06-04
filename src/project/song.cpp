@@ -1,4 +1,4 @@
-#define SPDLOG_ACTIVE_LEVEL 1
+#define SPDLOG_ACTIVE_LEVEL 2
 
 #include "common.hpp"
 #include "song.hpp"
@@ -25,6 +25,9 @@ std::vector<Pattern> Song::init_patterns(std::filesystem::path dir) {
     std::sort(result.begin(), result.end(), [](Pattern& a, Pattern& b) {
         return a.get_bank_pattern().get_program() < b.get_bank_pattern().get_program();
     });
+    for (size_t i = 0; i < result.size(); i++) {
+        result.at(i).set_number(i + 1);
+    }
     return result; 
 }
 
@@ -41,6 +44,7 @@ std::vector<SongOneShot> Song::init_one_shots(std::filesystem::path dir) {
 Song::Song(std::filesystem::path dir):
     root_bank_pattern(parse_root_bank_pattern(dir)),
     name(parse_name(dir)),
+    number(0),
     patterns(init_patterns(dir)),
     one_shots(init_one_shots(dir)) {
     SPDLOG_INFO("PRJKT song initialized [root_bank_pattern={},name={},patterns={},one_shots={}]", root_bank_pattern.get_pattern(),
@@ -53,6 +57,14 @@ BankPattern Song::get_root_bank_pattern() {
 
 std::string Song::get_name() {
     return name;
+}
+
+void Song::set_number(size_t _number) {
+    number = _number;
+}
+
+size_t Song::get_number() {
+    return number;
 }
 
 std::vector<Pattern>& Song::get_patterns() {

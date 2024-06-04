@@ -14,10 +14,13 @@ constexpr RGB palette_playing = palette_red;
 constexpr RGB palette_muted = palette_blue;
 
 void MainScreen::draw_song_and_pattern_duration(unicorn_hat_mini_canvas& canvas) {
-    uint song_width = std::min((uint)std::chrono::duration_cast<std::chrono::minutes>(song_duration).count(), (uint)9);
-    uint pattern_width = std::min((uint)std::chrono::duration_cast<std::chrono::minutes>(pattern_duration).count(), (uint)song_width);
-    for (uint i = 0; i < song_width; i++) {
-        canvas.at(i).at(0) = (i < pattern_width) ? palette_playing : palette_yellow;
+    size_t song_width = std::min((size_t)std::chrono::duration_cast<std::chrono::minutes>(song_duration).count(), (size_t)9);
+    for (size_t i = 0; i < song_width; i++) {
+        canvas.at(i).at(0) = palette_playing;
+    }
+    size_t pattern_width = std::min((size_t)std::chrono::duration_cast<std::chrono::minutes>(pattern_duration).count(), (size_t)8);
+    for (size_t i = 0; i < pattern_width; i++) {
+        canvas.at((UNICORN_HAT_MINI_COLS - 1) - i).at(4) = palette_playing;
     }
 }
 
@@ -43,7 +46,7 @@ void MainScreen::draw_loop(Point pos, TrackState& track_state, unicorn_hat_mini_
 void MainScreen::draw_songs(unicorn_hat_mini_canvas& canvas) {
     uint count = std::min(song_count, (uint)2*9);
     for (uint i = 0; i < count; i++) {
-        canvas.at(i % 9).at(1 + (i / 9)) = i < song_index ? palette_magenta : palette_cyan;
+        canvas.at(i % 9).at(1 + (i / 9)) = i <= song_index ? palette_magenta : palette_cyan;
     }
 }
 
@@ -92,29 +95,6 @@ MainScreen::MainScreen():
     pattern_seq_index(0) {
     loops.fill(Off);
     one_shots.fill(Off);
-
-    // Test
-    // song_duration = std::chrono::minutes(7);
-    // pattern_duration = std::chrono::minutes(3);
-    // loops[0] = Muted;
-    // loops[1] = Playing;
-    // loops[2] = Muted;
-    // loops[3] = Muted;
-    // loops[4] = Muted;
-    // one_shots[0] = Muted;
-    // one_shots[1] = Muted;
-    // one_shots[2] = Playing;
-    // one_shots[3] = Muted;
-    // one_shots[4] = Muted;
-    // song_count = 15;
-    // song_index = 3;
-    // pattern_count = 4;
-    // pattern_index = 2;
-    // pattern_seq_count = 7;
-    // pattern_seq_index = 3;
-}
-
-MainScreen::~MainScreen() {    
 }
 
 bool MainScreen::draw(unicorn_hat_mini_canvas& canvas) {
@@ -128,6 +108,7 @@ bool MainScreen::draw(unicorn_hat_mini_canvas& canvas) {
         canvas.at(1).at(0) = palette_red;
         canvas.at(2).at(0) = palette_red;
         booting = false;
+        changed = true;
     } else {
         draw_song_and_pattern_duration(canvas);
         draw_loops(canvas);
@@ -191,6 +172,26 @@ void MainScreen::set_one_shot_off(uint _number) {
     }
 }
 
+void MainScreen::set_song_count(uint _song_count) {
+    song_count = _song_count;
+    changed = true;
+}
+
+void MainScreen::set_song_index(uint _song_index) {
+    song_index = _song_index;
+    changed = true;
+}
+
+void MainScreen::set_pattern_count(uint _pattern_count) {
+    pattern_count = _pattern_count;
+    changed = true;
+}
+
+void MainScreen::set_pattern_index(uint _pattern_index) {
+    pattern_index = _pattern_index;
+    changed = true;
+}
+
 void MainScreen::set_pattern_seq_count(uint _count) {    
     pattern_seq_count = _count;
     changed = true;
@@ -206,30 +207,11 @@ Display::Display(std::chrono::milliseconds _refresh):
     unicorn_hat_mini(),
     main_screen(),
     next_refresh() {
-
-    // Test
-    main_screen.set_loop_playing(0);
-    main_screen.set_loop_muted(1);
-    main_screen.set_loop_off(2);
-    main_screen.set_loop_playing(3);
-    main_screen.set_loop_muted(4);
-    main_screen.set_loop_playing(5);
-
-    main_screen.set_one_shot_muted(0);
-    main_screen.set_one_shot_playing(1);
-    main_screen.set_one_shot_muted(2);
-
-    main_screen.set_song_duration(std::chrono::minutes(8));
-    main_screen.set_pattern_duration(std::chrono::minutes(4));
-
-    tick();    
+    tick(true);
 }
 
-Display::~Display() {    
-}
-
-void Display::tick() {
-    if (std::chrono::steady_clock::now() < next_refresh) {
+void Display::tick(bool force) {
+    if (!force && std::chrono::steady_clock::now() < next_refresh) {
         return;
     }
     next_refresh = std::chrono::steady_clock::now() + refresh;

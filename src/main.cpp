@@ -43,7 +43,7 @@ class OstrostrojApp {
             alsa_pcm(),
             alsa_midi(),
             workspace("/home/rado/projects/"),
-            engine(workspace, alsa_midi, alsa_pcm) {
+            engine(workspace, alsa_midi, alsa_pcm, display) {
             try {
                 alsa_pcm.start(
                     std::bind(&Engine::pcm_event_callback, &engine, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),

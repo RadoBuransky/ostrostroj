@@ -13,6 +13,7 @@ class Song {
     private:
         BankPattern root_bank_pattern;
         std::string name;
+        size_t number;
         std::vector<Pattern> patterns;
         std::vector<SongOneShot> one_shots;
         BankPattern parse_root_bank_pattern(std::filesystem::path dir);
@@ -24,6 +25,8 @@ class Song {
         virtual ~Song() = default;
         BankPattern get_root_bank_pattern();
         std::string get_name();
+        void set_number(size_t number);
+        size_t get_number();
         std::vector<Pattern>& get_patterns();
         std::vector<SongOneShot>& get_one_shots();
 };

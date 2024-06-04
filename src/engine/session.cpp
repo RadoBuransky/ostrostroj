@@ -6,6 +6,14 @@
         
 static constexpr int MONO_LOOP_TRACKS = 4;
 
+void Session::update_durations() {
+    if (started_timestamp != std::chrono::steady_clock::time_point::min()) {
+        auto d = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - started_timestamp);
+        song_duration += d;
+        pattern_duration += d;
+    }
+}
+
 void Session::load_clip(std::filesystem::path path, int expected_sample_rate, int expected_channels) {
     if (clips.contains(path)) {
         return;
@@ -32,29 +40,46 @@ void Session::load_all_clips(int expected_sample_rate, int loop_track_count) {
     }
 }
 
-Session::Session(Project& _project, int expected_sample_rate, int loop_track_count):
+Session::Session(Project& _project, Display& _display, int expected_sample_rate, int loop_track_count):
     project(_project),
+    display(_display),
     clips(),
     active_song(_project.get_songs().at(0)),
-    active_pattern(_project.get_songs().at(0).get_patterns().at(0)) {
+    active_pattern(_project.get_songs().at(0).get_patterns().at(0)),
+    pattern_play_counters(),
+    song_duration(0),
+    pattern_duration(0),
+    started_timestamp(std::chrono::steady_clock::time_point::min()) {
     load_all_clips(expected_sample_rate, loop_track_count);
+
+    MainScreen& main_screen = display.get_main_screen();
+    main_screen.set_song_count(project.get_songs().size());
+    main_screen.set_song_index(0);
+    main_screen.set_pattern_count(active_song.get().get_patterns().size());
+    main_screen.set_pattern_index(0);
 }
 
-void Session::change_program(BankPattern target_pattern) {
+bool Session::change_program(BankPattern target_pattern) {
     for (Song& song : project.get_songs() | std::views::reverse) {
         if (song.get_root_bank_pattern().get_program() <= target_pattern.get_program()) {
-            active_song = song;
             for (Pattern& pattern : song.get_patterns() | std::views::reverse) {
                 if (pattern.get_bank_pattern().get_program() <= target_pattern.get_program()) {
-                    active_pattern = pattern;
-                    SPDLOG_INFO("SESSN program changed [song={},pattern={}]", active_song.get().get_name(), active_pattern.get().get_name());
-                    return;
+                    if ((song.get_number() != active_song.get().get_number()) || (pattern.get_number() != active_pattern.get().get_number())) {
+                        active_song = song;
+                        active_pattern = pattern;
+                        display.get_main_screen().set_song_index(active_song.get().get_number() - 1);
+                        display.get_main_screen().set_pattern_index(active_pattern.get().get_number() - 1);
+                        SPDLOG_INFO("SESSN program changed [song={},pattern={}]", active_song.get().get_name(), active_pattern.get().get_name());
+                        return true;
+                    }
+                    return false;
                 }
             }
             SPDLOG_ERROR("SESSN No pattern found! [song={},program={}]", song.get_name(), target_pattern.get_program());
         }
     }
     SPDLOG_ERROR("SESSN No song found! [program={}]", target_pattern.get_program());
+    return false;
 }
 
 Project& Session::get_project() {
@@ -71,4 +96,23 @@ Pattern& Session::get_pattern() {
 
 FileClip& Session::get_clip(std::filesystem::path clip_path) {
     return *clips.at(clip_path).get();
+}
+
+void Session::start() {    
+    started_timestamp = std::chrono::steady_clock::now();
+}
+
+void Session::pause() {
+    update_durations();
+    started_timestamp = std::chrono::steady_clock::time_point::min();
+}
+
+void Session::draw() {
+    update_durations();
+
+    MainScreen& main_screen = display.get_main_screen();
+    main_screen.set_song_duration(song_duration);
+    main_screen.set_pattern_duration(pattern_duration);
+
+    display.tick(false);
 }
