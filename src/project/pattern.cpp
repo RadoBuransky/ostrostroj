@@ -28,7 +28,8 @@ Pattern::Pattern(BankPattern root_bank_pattern, std::filesystem::path dir):
     name(parse_name(dir)),
     number(0),
     loops(init_loops(dir)),
-    mutes() { 
+    mutes(),
+    learned(false) { 
     SPDLOG_DEBUG("PRJKT pattern initialized [bank_pattern={},name={},loops={}]", bank_pattern.get_pattern(), name, loops.size());
 }
 
@@ -50,4 +51,16 @@ std::string Pattern::get_name() {
 
 std::vector<PatternLoop>& Pattern::get_loops() {
     return loops;
+}
+
+std::array<std::vector<bool>, PATTERN_MUTES>& Pattern::get_mutes() {
+    return mutes;
+}
+
+void Pattern::set_learned() {
+    learned = true;
+}
+
+bool Pattern::get_learned() {
+    return learned;
 }

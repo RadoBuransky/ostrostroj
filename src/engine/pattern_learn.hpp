@@ -5,6 +5,7 @@
 class PatternLearn {
     private:
         Pattern& pattern;
+        uint8_t first_clock;
     public:
         PatternLearn(Pattern& _pattern);
         virtual ~PatternLearn() = default;

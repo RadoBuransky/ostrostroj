@@ -3,7 +3,7 @@
 #include "bank_pattern.hpp"
 #include "clip.hpp"
 
-static constexpr size_t PATTERN_MUTES = 4;
+static constexpr size_t PATTERN_MUTES = 6;
 
 struct PatternLoopSeq {
     bool muted;
@@ -23,6 +23,7 @@ class Pattern {
         size_t number;
         std::vector<PatternLoop> loops;
         std::array<std::vector<bool>, PATTERN_MUTES> mutes;
+        bool learned;
         size_t parse_pattern_offset(std::filesystem::path dir);
         std::string parse_name(std::filesystem::path dir);
         std::vector<PatternLoop> init_loops(std::filesystem::path dir);
@@ -35,4 +36,6 @@ class Pattern {
         size_t get_number();
         std::vector<PatternLoop>& get_loops();
         std::array<std::vector<bool>, PATTERN_MUTES>& get_mutes();
+        void set_learned();
+        bool get_learned();
 };
