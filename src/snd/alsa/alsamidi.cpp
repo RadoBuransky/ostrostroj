@@ -109,7 +109,7 @@ bool AlsaMidi::poll_in(std::vector<pollfd>& poll_descriptors) {
 
 void AlsaMidi::run() {
     try {
-        snd_seq_tick_time_t clock_counter;
+        snd_seq_tick_time_t clock_counter = 0;
         std::array<unsigned char, 4> raw;
         std::vector<pollfd> poll_descriptors = create_poll_descriptors(handle_in);
         SPDLOG_INFO("AMIDI started.");

@@ -28,10 +28,10 @@ class ClipPlayer {
                 if (!loop) {
                     return false;
                 }
-                SPDLOG_DEBUG("Lopp restart. [path={}, this=0x{:x}, clip=0x{:x}, current_frame=0x{:x}, end_frame=0x{:x}, block=0x{:x}]",
-                    clip.get_path().c_str(), reinterpret_cast<intptr_t>(this), reinterpret_cast<intptr_t>(&clip),
-                    reinterpret_cast<intptr_t>(current_frame.load()), reinterpret_cast<intptr_t>(end_frame.load()),
-                    reinterpret_cast<intptr_t>(&block.get()));
+                // SPDLOG_DEBUG("Lopp restart. [path={}, this=0x{:x}, clip=0x{:x}, current_frame=0x{:x}, end_frame=0x{:x}, block=0x{:x}]",
+                //     clip.get_path().c_str(), reinterpret_cast<intptr_t>(this), reinterpret_cast<intptr_t>(&clip),
+                //     reinterpret_cast<intptr_t>(current_frame.load()), reinterpret_cast<intptr_t>(end_frame.load()),
+                //     reinterpret_cast<intptr_t>(&block.get()));
                 block = std::ref(clip.get_head());
                 position = 0;
             }
