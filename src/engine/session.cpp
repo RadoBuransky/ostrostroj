@@ -73,16 +73,12 @@ bool Session::change_program(BankPattern target_pattern) {
         if (song.get_root_bank_pattern().get_program() <= target_pattern.get_program()) {
             for (Pattern& pattern : song.get_patterns() | std::views::reverse) {
                 if (pattern.get_bank_pattern().get_program() <= target_pattern.get_program()) {
-                    if ((song.get_number() != active_song.get().get_number()) || (pattern.get_number() != active_pattern.get().get_number())) {
-                        active_song = song;
-                        active_pattern = pattern;
-                        display.get_main_screen().set_song_index(active_song.get().get_number() - 1);
-                        display.get_main_screen().set_pattern_index(active_pattern.get().get_number() - 1);
-                        SPDLOG_INFO("SESSN program changed [song={},pattern={}]", active_song.get().get_name(), active_pattern.get().get_name());
-                        return true;
-                    }
-                    SPDLOG_DEBUG("SESSN same program [song={},pattern={}]", song.get_number(), pattern.get_number());
-                    return false;
+                    active_song = song;
+                    active_pattern = pattern;
+                    display.get_main_screen().set_song_index(active_song.get().get_number() - 1);
+                    display.get_main_screen().set_pattern_index(active_pattern.get().get_number() - 1);
+                    SPDLOG_INFO("SESSN program changed [song={},pattern={}]", active_song.get().get_name(), active_pattern.get().get_name());
+                    return true;
                 }
             }
             SPDLOG_ERROR("SESSN No pattern found! [song={},program={}]", song.get_name(), target_pattern.get_program());

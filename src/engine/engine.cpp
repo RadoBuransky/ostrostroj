@@ -56,7 +56,7 @@ void Engine::program_changed(bool running, snd_pcm_uframes_t predelay) {
     pattern_learn = std::make_unique<PatternLearn>(session->get_pattern());
     lock_worker_tracks();
     clear_loop_clips(running);
-    add_loop_clips(predelay);
+    add_loop_clips(running ? predelay : 0);
     unlock_worker_tracks();
     SPDLOG_INFO("ENGIN program set={}", session->get_pattern().get_bank_pattern().get_pattern());
 }

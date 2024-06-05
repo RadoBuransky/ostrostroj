@@ -30,7 +30,7 @@ Track::Track(int _track_number, int _channels, snd_pcm_uframes_t _period_size, u
     period_size(_period_size),
     periods(_periods),
     loop(_loop),
-    fifo(std::make_unique<InterleavedFifo>(_period_size * _channels)),
+    fifo(std::make_unique<InterleavedFifo>(_period_size * _channels * 2)),
     clip_players(),
     sample(0),
     sample_pending(false) {
@@ -81,7 +81,7 @@ void Track::add_clip(Clip& clip, snd_pcm_uframes_t predelay) {
         clear(false);
     }
     // In average track buffer is 50% full:
-    snd_pcm_uframes_t compensated_predelay = std::max(((float)predelay - (((float)periods + 1.5) * (float)period_size)), 0.0);
+    snd_pcm_uframes_t compensated_predelay = std::max(((float)predelay - (((float)periods + 2.5) * (float)period_size)), 0.0);
     clip_players.push_back(std::make_unique<ClipPlayer>(clip, loop, compensated_predelay));
     SPDLOG_DEBUG("TRAK{} clip added [compensated_predelay={}]", track_number, compensated_predelay);
 }
