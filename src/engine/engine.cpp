@@ -58,6 +58,7 @@ void Engine::add_loop_clips() {
             throw OstrostrojException(fmt::format("Invalid track index! [track_index={},loop={}]", track_index, pattern_loop.loop.filename().string()));
         }
         loop_tracks.at(track_index)->add_clip(session->get_clip(pattern_loop.loop));
+        SPDLOG_DEBUG("ENGIN clip added [track_index={},loop={}]", track_index, pattern_loop.loop.c_str());
     }
 }
 
@@ -107,13 +108,13 @@ std::vector<std::unique_ptr<EngineWorker>> Engine::create_workers() {
         add_worker_track(worker_tracks, *loop_tracks.at(stereo_loop_track));
     }
 
-    // Assign one-shots track (stereo)
-    add_worker_track(worker_tracks, one_shots_track);
-
     // Assign mono tracks
     for (size_t mono_loop_track = 0; mono_loop_track < ENGINE_LOOP_MONO_TRACKS; mono_loop_track++) {
         add_worker_track(worker_tracks, *loop_tracks.at(mono_loop_track));
-    }    
+    }
+
+    // Assign one-shots track (stereo)
+    add_worker_track(worker_tracks, one_shots_track);
 
     std::vector<std::unique_ptr<EngineWorker>> result;
     for (size_t i = 0; i < std::thread::hardware_concurrency(); i++) {
@@ -127,23 +128,24 @@ std::array<InterleavedFifo*, PCM_OUT_CHANNELS> Engine::init_track_fifos() {
     result.fill(nullptr);
 
     // Loop tracks
+    size_t fifo_index = 0;
     for (size_t track_index = 0; track_index < loop_tracks.size(); track_index++) {
         Track& loop_track = *loop_tracks.at(track_index);
         InterleavedFifo& loop_track_fifo = loop_track.get_fifo();
         if (track_index < ENGINE_LOOP_MONO_TRACKS) {
             assert(loop_track.get_channels() == 1);
-            result.at(track_index) = &loop_track_fifo;
+            result.at(fifo_index++) = &loop_track_fifo;
         } else {
             // Stereo tracks are interleaved
             assert(loop_track.get_channels() == 2);
-            result.at(ENGINE_LOOP_MONO_TRACKS + (track_index - ENGINE_LOOP_MONO_TRACKS) * 2) = &loop_track_fifo;
-            result.at(ENGINE_LOOP_MONO_TRACKS + (track_index - ENGINE_LOOP_MONO_TRACKS) * 2 + 1) = &loop_track_fifo;
+            result.at(fifo_index++) = &loop_track_fifo;
+            result.at(fifo_index++) = &loop_track_fifo;
         }
     }
 
     // One-shots track is stereo interleaved
-    result.at(ENGINE_LOOP_TRACKS) = &one_shots_track.get_fifo();
-    result.at(ENGINE_LOOP_TRACKS + 1) = &one_shots_track.get_fifo();
+    result.at(fifo_index++) = &one_shots_track.get_fifo();
+    result.at(fifo_index++) = &one_shots_track.get_fifo();
 
     return result;
 }
