@@ -1,4 +1,4 @@
-#define SPDLOG_ACTIVE_LEVEL 2
+#define SPDLOG_ACTIVE_LEVEL 1
 
 #include "common.hpp"
 #include "track.hpp"
@@ -48,7 +48,7 @@ void Track::run() {
         if (sample_pending) {
             SPDLOG_TRACE("TRAK{} FIFO filled up", track_number);
         } else {
-            SPDLOG_DEBUG("TRAK{} done", track_number);
+            SPDLOG_TRACE("TRAK{} done", track_number);
         }
     } catch(std::exception const& e) {
         SPDLOG_ERROR("TRAK{} failed {}", track_number, e.what());
@@ -67,6 +67,9 @@ int Track::get_channels() const {
     return channels;
 }
 
+/**
+ * Not thread safe!
+*/
 void Track::add_clip(Clip& clip) {
     if (loop) {
         clear(false);
@@ -75,6 +78,9 @@ void Track::add_clip(Clip& clip) {
     SPDLOG_DEBUG("TRAK{} clip added", track_number);
 }
 
+/**
+ * Not thread safe!
+*/
 void Track::clear(bool drop) {
     if (drop) {
         PcmSample_s24_3le dropped;

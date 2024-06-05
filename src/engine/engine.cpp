@@ -79,10 +79,14 @@ void Engine::reset_program(bool running) {
     }
 }
 
+/**
+ * This is stupid, for historical reasons. It always does the same thing. Feel free to rewrite it.
+*/
 void Engine::assign_worker_tracks() {
     std::vector<std::reference_wrapper<Track>> all_tracks;
-    for (PatternLoop& pattern_loop : session->get_pattern().get_loops()) {
-        all_tracks.push_back(std::ref(*loop_tracks.at(pattern_loop.track - 1)));
+    all_tracks.reserve(loop_tracks.size() + 1);
+    for (auto& loop_track : loop_tracks) {
+        all_tracks.push_back(std::ref(*loop_track));
     }
     all_tracks.push_back(std::ref(one_shots_track));
 
@@ -97,7 +101,7 @@ void Engine::assign_worker_tracks() {
     }
 }
 
-// Call these before touching Tracks and Nodes, they are not thread safe
+// Call this before modifying any Track, it is not thread safe
 void Engine::release_worker_tracks() {
     for (std::unique_ptr<EngineWorker>& worker: workers) {
         worker->release_tracks();

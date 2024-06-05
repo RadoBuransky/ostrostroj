@@ -9,10 +9,14 @@ void ClipPlayer::update_pointers(ClipBlock& _block) {
 ClipPlayer::ClipPlayer(Clip& _clip, bool _loop):
     clip(_clip),
     loop(_loop),
-    block(_clip.get_head()) {
+    block(_clip.get_head()),
+    current_frame(nullptr),
+    end_frame(nullptr),
+    position(0),
+    draining(false) {
     update_pointers(block.get());
 }
 
 void ClipPlayer::drain() {
-    // TODO: Fade out loops and stop
+    draining = true;
 }

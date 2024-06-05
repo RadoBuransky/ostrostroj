@@ -10,12 +10,14 @@ class ClipPlayer {
         const float* current_frame;
         const float* end_frame;
         long position;
+        bool draining;
         void update_pointers(ClipBlock& _block);
     public:
         ClipPlayer(Clip& _clip, bool _loop);
         virtual ~ClipPlayer() = default;
         inline bool pop(float& sample) {
-            // TODO: Fade-in if loop
+            // TODO: Fade-in and out if loop
+            // TODO: Drain loop immediately
             if (current_frame < end_frame) {
                 sample = *current_frame;
                 current_frame++;
@@ -25,7 +27,7 @@ class ClipPlayer {
             if (block.get().has_next()) {
                 block = std::ref(block.get().get_next());
             } else {
-                if (!loop) {
+                if (!loop || draining) {
                     return false;
                 }
                 // SPDLOG_DEBUG("Lopp restart. [path={}, this=0x{:x}, clip=0x{:x}, current_frame=0x{:x}, end_frame=0x{:x}, block=0x{:x}]",
