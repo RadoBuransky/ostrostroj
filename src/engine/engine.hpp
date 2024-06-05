@@ -32,9 +32,9 @@ class Engine {
         bool handle_midi_event(snd_seq_event_t& midi_event, bool running, PcmEvent& result);
         void drop_track_fifos();
         void program_changed(bool running);
-        void update_tracks();
-        void reset_program(bool running);
-        void assign_worker_tracks();
+        void add_loop_clips();
+        void clear_loop_clips(bool running);
+        void lock_worker_tracks();
         void release_worker_tracks();
         std::vector<std::unique_ptr<EngineWorker>> create_workers();
     public:

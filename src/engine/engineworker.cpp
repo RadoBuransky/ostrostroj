@@ -5,9 +5,8 @@ void EngineWorker::run() {
     try {
         SPDLOG_INFO("EW{}   started [sleep_time={}us]", worker_index, sleep_time);
         while (!stop) {
-            if (run_tracks()) {
-                usleep(sleep_time);
-            }
+            run_tracks();
+            usleep(sleep_time);
         }
         SPDLOG_INFO("EW{}   stopped", worker_index);
     } catch(std::exception const& e) {
@@ -15,45 +14,37 @@ void EngineWorker::run() {
     }
 }
 
-bool EngineWorker::run_tracks() {
+void EngineWorker::run_tracks() {
     std::unique_lock lock(mutex);
-    if (tracks.empty()) {
-        SPDLOG_DEBUG("EW{}   waiting for tracks...", worker_index);
-        cv.wait(lock, [&]{ return stop || !tracks.empty(); });
-        SPDLOG_DEBUG("EW{}   waiting done. [tracks={}]", worker_index, tracks.size());
-        return false;
-    }
     for (std::reference_wrapper<Track> track: tracks) {
         track.get().run();
     }
-    return true;
 }
 
-EngineWorker::EngineWorker(int _worker_index, useconds_t _sleep_time):
+EngineWorker::EngineWorker(std::vector<std::reference_wrapper<Track>> _tracks, int _worker_index, useconds_t _sleep_time):
     worker_index(_worker_index),
     sleep_time(_sleep_time),
     stop(false),
     mutex(),
-    cv(),
-    tracks(),
-    thread(std::bind(&EngineWorker::run, this)) {    
+    tracks_lock(mutex, std::defer_lock),
+    tracks(_tracks),
+    thread(std::bind(&EngineWorker::run, this)) {
+    if (tracks.empty()) {
+        throw OstrostrojException(fmt::format("EW{}   no tracks!", _worker_index));
+    }
     pthread_setname_np(thread.native_handle(), fmt::format("worker{}", _worker_index).c_str());
 }
 
 EngineWorker::~EngineWorker() {
     stop = true;
-    cv.notify_one();
+    tracks_lock.release();
     thread.join();
 }
 
-void EngineWorker::assign_tracks(std::vector<std::reference_wrapper<Track>> _tracks) {
-    std::lock_guard lock(mutex);
-    tracks = _tracks;
-    cv.notify_one();
-    SPDLOG_INFO("EW{}   tracks set. [size={}]", worker_index, tracks.size());
+void EngineWorker::lock_tracks() {
+    tracks_lock.lock();
 }
 
 void EngineWorker::release_tracks() {
-    std::lock_guard lock(mutex);
-    tracks.clear();
+    tracks_lock.release();
 }

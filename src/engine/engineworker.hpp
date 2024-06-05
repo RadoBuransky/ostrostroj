@@ -8,14 +8,14 @@ class EngineWorker {
         useconds_t sleep_time;
         std::atomic_bool stop;
         std::mutex mutex;
-        std::condition_variable cv;
+        std::unique_lock<std::mutex> tracks_lock;
         std::vector<std::reference_wrapper<Track>> tracks;
         std::thread thread;
         void run();
-        bool run_tracks();
+        void run_tracks();
     public:
-        EngineWorker(int _worker_index, useconds_t _sleep_time);
+        EngineWorker(std::vector<std::reference_wrapper<Track>> _tracks, int _worker_index, useconds_t _sleep_time);
         virtual ~EngineWorker();
-        void assign_tracks(std::vector<std::reference_wrapper<Track>> _tracks);
+        void lock_tracks();
         void release_tracks();
 };

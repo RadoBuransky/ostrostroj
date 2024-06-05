@@ -4,8 +4,12 @@
 #include "track.hpp"
 
 bool Track::pop(float& _sample) {
-    float clip_sample;
     _sample = 0.0;
+    if (clip_players.empty()) {
+        return true;
+    }
+    
+    float clip_sample;
     std::vector<std::unique_ptr<ClipPlayer>>::iterator it = clip_players.begin();
     while (it != clip_players.end()) {
         if ((*it)->pop(clip_sample)) {
@@ -17,7 +21,7 @@ bool Track::pop(float& _sample) {
         }
     }
     _sample = (_sample > 1.0) ? 1.0 : (_sample < -1.0 ? -1.0 :_sample);
-    return !clip_players.empty();
+    return true;
 }
 
 Track::Track(int _track_number, int _channels, snd_pcm_uframes_t _period_size, bool _loop):

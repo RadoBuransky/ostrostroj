@@ -44,64 +44,52 @@ bool Engine::handle_midi_event(snd_seq_event_t& midi_event, bool running, PcmEve
 
 void Engine::program_changed(bool running) {
     pattern_learn = std::make_unique<PatternLearn>(session->get_pattern());
+    lock_worker_tracks();
+    clear_loop_clips(running);
+    add_loop_clips();
     release_worker_tracks();
-    reset_program(running);
-    update_tracks();
-    assign_worker_tracks();
     SPDLOG_INFO("ENGIN program set={}", session->get_pattern().get_bank_pattern().get_pattern());
 }
 
-void Engine::update_tracks() {
-    track_fifos.fill(nullptr);
+void Engine::add_loop_clips() {
+    // TODO: This removes one-shots track
+    // track_fifos.fill(nullptr);
+
+
     for (PatternLoop& pattern_loop : session->get_pattern().get_loops()) {
         size_t track_index = pattern_loop.track - 1;
         if (track_index >= ENGINE_LOOP_TRACKS) {
             throw OstrostrojException(fmt::format("Invalid track index! [track_index={},loop={}]", track_index, pattern_loop.loop.filename().string()));
         }
         Track& loop_track = *loop_tracks.at(track_index);
-        InterleavedFifo& loop_track_fifo = loop_track.get_fifo();
+        // InterleavedFifo& loop_track_fifo = loop_track.get_fifo();
         loop_track.add_clip(session->get_clip(pattern_loop.loop));
-        if (track_index < ENGINE_LOOP_MONO_TRACKS) {
-            assert(loop_track.get_channels() == 1);
-            track_fifos.at(track_index) = &loop_track_fifo;
-        } else {
-            // Stereo tracks are interleaved
-            assert(loop_track.get_channels() == 2);
-            track_fifos.at(ENGINE_LOOP_MONO_TRACKS + (track_index - ENGINE_LOOP_MONO_TRACKS) * 2) = &loop_track_fifo;
-            track_fifos.at(ENGINE_LOOP_MONO_TRACKS + (track_index - ENGINE_LOOP_MONO_TRACKS) * 2 + 1) = &loop_track_fifo;
-        }
+
+
+        // if (track_index < ENGINE_LOOP_MONO_TRACKS) {
+        //     assert(loop_track.get_channels() == 1);
+        //     track_fifos.at(track_index) = &loop_track_fifo;
+        // } else {
+        //     // Stereo tracks are interleaved
+        //     assert(loop_track.get_channels() == 2);
+        //     track_fifos.at(ENGINE_LOOP_MONO_TRACKS + (track_index - ENGINE_LOOP_MONO_TRACKS) * 2) = &loop_track_fifo;
+        //     track_fifos.at(ENGINE_LOOP_MONO_TRACKS + (track_index - ENGINE_LOOP_MONO_TRACKS) * 2 + 1) = &loop_track_fifo;
+        // }
     }
 }
 
-void Engine::reset_program(bool running) {
+void Engine::clear_loop_clips(bool running) {
     for (size_t i = 0; i < loop_tracks.size(); i++) {
         loop_tracks.at(i)->clear(!running);
     }
 }
 
-/**
- * This is stupid, for historical reasons. It always does the same thing. Feel free to rewrite it.
-*/
-void Engine::assign_worker_tracks() {
-    std::vector<std::reference_wrapper<Track>> all_tracks;
-    all_tracks.reserve(loop_tracks.size() + 1);
-    for (auto& loop_track : loop_tracks) {
-        all_tracks.push_back(std::ref(*loop_track));
-    }
-    all_tracks.push_back(std::ref(one_shots_track));
-
-    for (size_t worker_index = 0; worker_index < workers.size(); worker_index++) {
-        std::vector<std::reference_wrapper<Track>> worker_tracks;
-        size_t track_index = worker_index;
-        while (track_index < all_tracks.size()) {
-            worker_tracks.push_back(std::ref(all_tracks.at(track_index)));
-            track_index += workers.size();
-        }
-        workers.at(worker_index)->assign_tracks(worker_tracks);
+void Engine::lock_worker_tracks() {
+    for (std::unique_ptr<EngineWorker>& worker: workers) {
+        worker->lock_tracks();
     }
 }
 
-// Call this before modifying any Track, it is not thread safe
 void Engine::release_worker_tracks() {
     for (std::unique_ptr<EngineWorker>& worker: workers) {
         worker->release_tracks();
@@ -109,10 +97,20 @@ void Engine::release_worker_tracks() {
 }
 
 std::vector<std::unique_ptr<EngineWorker>> Engine::create_workers() {
+    std::map<size_t, std::vector<std::reference_wrapper<Track>>> worker_tracks;
+    for (size_t i = 0; i < std::thread::hardware_concurrency(); i++) {
+        worker_tracks.emplace(i, std::vector<std::reference_wrapper<Track>>());
+    }
+    
+
     std::vector<std::unique_ptr<EngineWorker>> result;
     for (size_t i = 0; i < std::thread::hardware_concurrency(); i++) {
-        result.emplace_back(std::make_unique<EngineWorker>(i, worker_sleep_time));
+        result.emplace_back(std::make_unique<EngineWorker>(worker_tracks.at(i), i, worker_sleep_time));
     }
+
+    // 1. Assign stereo tracks
+    // 2. Assign one-shots track
+    // 3. Assign mono tracks
     return result;
 }
 
