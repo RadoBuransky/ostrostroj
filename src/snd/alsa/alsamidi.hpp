@@ -16,11 +16,14 @@ class AlsaMidi {
         snd_midi_event_t* parser;
         std::atomic_bool stop;
         AlsaMidiFifo fifo;
+        snd_seq_tick_time_t clock_counter;
+        std::chrono::steady_clock::time_point last_clock;
+        std::chrono::steady_clock::duration clock_interval;
         pthread_t thru_thread;
         std::function<void(void)> callback;
-        bool process(snd_seq_event_t& event, snd_seq_tick_time_t& clock_counter);
+        bool process(snd_seq_event_t& event);
         void thru(unsigned char* raw, size_t size);
-        void parse(unsigned char* raw, size_t read_size, snd_seq_tick_time_t& clock_counter);
+        void parse(unsigned char* raw, size_t read_size);
         size_t read(unsigned char* raw, size_t size);
         bool poll_in(std::vector<pollfd>& poll_descriptors);
         void run();

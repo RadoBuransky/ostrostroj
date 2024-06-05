@@ -4,6 +4,9 @@
 #include "engine.hpp"
 
 bool Engine::handle_midi_event(snd_seq_event_t& midi_event, bool running, PcmEvent& result) {
+    uint8_t mul;
+    uint8_t clock_interval_ms;
+
     switch(midi_event.type) {
         case SND_SEQ_EVENT_START: 
             SPDLOG_INFO("ENGIN MIDI START [d0={},d1={},queue={}]", midi_event.data.queue.param.d32[0], midi_event.data.queue.param.d32[1],
@@ -23,8 +26,11 @@ bool Engine::handle_midi_event(snd_seq_event_t& midi_event, bool running, PcmEve
             result = ALSA_PCM_RESUME;
             session->start();
             return true;
-        case SND_SEQ_EVENT_PGMCHANGE: 
-            SPDLOG_INFO("ENGIN MIDI PROGRAM CHANGE [param={},value={}]", midi_event.data.control.param, midi_event.data.control.value);
+        case SND_SEQ_EVENT_PGMCHANGE:
+            mul = midi_event.data.control.unused[0];
+            clock_interval_ms = midi_event.data.control.unused[1];
+            SPDLOG_INFO("ENGIN MIDI PROGRAM CHANGE [param={},value={},mul={},clock_interval_ms={}]", midi_event.data.control.param,
+                midi_event.data.control.value, mul, clock_interval_ms);
             if (session->change_program(BankPattern(midi_event.data.control.value + 1))) {
                 program_changed(running);
             }

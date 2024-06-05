@@ -5,16 +5,21 @@
 #include "alsamidi.hpp"
 
 static constexpr int POLL_TIMEOUT_MS = 200;
+static constexpr uint8_t PGMCHANGE_ADVANCE_CLOCKS = 11; // Number of SND_SEQ_EVENT_CLOCK messages before actual program change happens
 
-bool AlsaMidi::process(snd_seq_event_t& event, snd_seq_tick_time_t& clock_counter) {
+bool AlsaMidi::process(snd_seq_event_t& event) {
     if (event.type == SND_SEQ_EVENT_CLOCK) {
         clock_counter++;
+        std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+        clock_interval = now - last_clock;
+        last_clock = now;
     }
     event.time.tick = clock_counter;
 
 #ifndef NDEBUG
     if (event.type != SND_SEQ_EVENT_CLOCK) {
-        SPDLOG_DEBUG("AMIDI event [type={}]", (int)event.type);
+        std::chrono::milliseconds clock_interval_ms = std::chrono::duration_cast<std::chrono::milliseconds>(clock_interval);
+        SPDLOG_DEBUG("AMIDI event [type={},clock_counter={},clock_interval={}ms]", (int)event.type, clock_counter, clock_interval_ms.count());
     } else {
         SPDLOG_TRACE("AMIDI clock [queue={}, 0={},1={}]", event.data.queue.queue, event.data.queue.param.d32[0], event.data.queue.param.d32[1]);
     }
@@ -22,12 +27,16 @@ bool AlsaMidi::process(snd_seq_event_t& event, snd_seq_tick_time_t& clock_counte
     bool pass = true;
     bool push = false;
     switch (event.type) {
+        case SND_SEQ_EVENT_PGMCHANGE:
+            push = true;
+            event.data.control.unused[0] = PGMCHANGE_ADVANCE_CLOCKS;
+            event.data.control.unused[1] = (uint8_t)std::chrono::duration_cast<std::chrono::milliseconds>(clock_interval).count();
+            break;
         case SND_SEQ_EVENT_START:
         case SND_SEQ_EVENT_CONTINUE:
         case SND_SEQ_EVENT_STOP:
         case SND_SEQ_EVENT_SETPOS_TICK:
         case SND_SEQ_EVENT_SETPOS_TIME:
-        case SND_SEQ_EVENT_PGMCHANGE:
         case SND_SEQ_EVENT_NOTEON:
         case SND_SEQ_EVENT_CONTROLLER:
             push = true;
@@ -56,7 +65,7 @@ void AlsaMidi::thru(unsigned char* raw, size_t size) {
     }
 }
 
-void AlsaMidi::parse(unsigned char* raw, size_t read_size, snd_seq_tick_time_t& clock_counter) {
+void AlsaMidi::parse(unsigned char* raw, size_t read_size) {
     snd_seq_event_t event;
     while (read_size > 0) {
         ssize_t consumed_size = snd_midi_event_encode(parser, raw, read_size, &event);
@@ -66,7 +75,7 @@ void AlsaMidi::parse(unsigned char* raw, size_t read_size, snd_seq_tick_time_t& 
             return;
         }
         if (consumed_size > 0 && event.type != SND_SEQ_EVENT_NONE) {
-            if (process(event, clock_counter)) {
+            if (process(event)) {
                 thru(raw, consumed_size);
             }
         }
@@ -109,7 +118,6 @@ bool AlsaMidi::poll_in(std::vector<pollfd>& poll_descriptors) {
 
 void AlsaMidi::run() {
     try {
-        snd_seq_tick_time_t clock_counter = 0;
         std::array<unsigned char, 4> raw;
         std::vector<pollfd> poll_descriptors = create_poll_descriptors(handle_in);
         SPDLOG_INFO("AMIDI started.");
@@ -117,7 +125,7 @@ void AlsaMidi::run() {
             if (poll_in(poll_descriptors)) {
                 size_t read_size = read(raw.data(), raw.size());
                 if (read_size > 0) {
-                    parse(raw.data(), read_size, clock_counter);
+                    parse(raw.data(), read_size);
                 }
             }
         }
@@ -180,6 +188,9 @@ AlsaMidi::AlsaMidi():
     handle_out(open_midi_out(MIDI_DEVICE_NAME)),
     stop(false),
     fifo(AlsaMidiFifo(256)),
+    clock_counter(0),
+    last_clock(std::chrono::steady_clock::now()),
+    clock_interval(std::chrono::steady_clock::duration::min()),
     thru_thread(0),
     callback(0) {
 }
