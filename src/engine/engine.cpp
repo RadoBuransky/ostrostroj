@@ -52,29 +52,12 @@ void Engine::program_changed(bool running) {
 }
 
 void Engine::add_loop_clips() {
-    // TODO: This removes one-shots track
-    // track_fifos.fill(nullptr);
-
-
     for (PatternLoop& pattern_loop : session->get_pattern().get_loops()) {
         size_t track_index = pattern_loop.track - 1;
         if (track_index >= ENGINE_LOOP_TRACKS) {
             throw OstrostrojException(fmt::format("Invalid track index! [track_index={},loop={}]", track_index, pattern_loop.loop.filename().string()));
         }
-        Track& loop_track = *loop_tracks.at(track_index);
-        // InterleavedFifo& loop_track_fifo = loop_track.get_fifo();
-        loop_track.add_clip(session->get_clip(pattern_loop.loop));
-
-
-        // if (track_index < ENGINE_LOOP_MONO_TRACKS) {
-        //     assert(loop_track.get_channels() == 1);
-        //     track_fifos.at(track_index) = &loop_track_fifo;
-        // } else {
-        //     // Stereo tracks are interleaved
-        //     assert(loop_track.get_channels() == 2);
-        //     track_fifos.at(ENGINE_LOOP_MONO_TRACKS + (track_index - ENGINE_LOOP_MONO_TRACKS) * 2) = &loop_track_fifo;
-        //     track_fifos.at(ENGINE_LOOP_MONO_TRACKS + (track_index - ENGINE_LOOP_MONO_TRACKS) * 2 + 1) = &loop_track_fifo;
-        // }
+        loop_tracks.at(track_index)->add_clip(session->get_clip(pattern_loop.loop));
     }
 }
 
@@ -96,21 +79,72 @@ void Engine::release_worker_tracks() {
     }
 }
 
+void Engine::add_worker_track(std::map<size_t, std::vector<std::reference_wrapper<Track>>>& worker_tracks, Track& track) {
+    size_t min = ULONG_MAX;
+    size_t worker = 0;
+    for (size_t i = 0; i < worker_tracks.size(); i++) {
+        size_t worker_size = 0;
+        std::vector<std::reference_wrapper<Track>> tracks = worker_tracks.at(i);
+        for (std::reference_wrapper<Track>& t: tracks) {
+            worker_size += t.get().get_channels();
+        }
+        if (worker_size < min) {
+            min = worker_size;
+            worker = i;
+        }
+    }
+    worker_tracks.at(worker).emplace_back(std::ref(track));
+}
+
 std::vector<std::unique_ptr<EngineWorker>> Engine::create_workers() {
     std::map<size_t, std::vector<std::reference_wrapper<Track>>> worker_tracks;
     for (size_t i = 0; i < std::thread::hardware_concurrency(); i++) {
         worker_tracks.emplace(i, std::vector<std::reference_wrapper<Track>>());
     }
-    
+
+    // Assign stereo tracks
+    for (size_t stereo_loop_track = ENGINE_LOOP_MONO_TRACKS; stereo_loop_track < loop_tracks.size(); stereo_loop_track++) {
+        add_worker_track(worker_tracks, *loop_tracks.at(stereo_loop_track));
+    }
+
+    // Assign one-shots track (stereo)
+    add_worker_track(worker_tracks, one_shots_track);
+
+    // Assign mono tracks
+    for (size_t mono_loop_track = 0; mono_loop_track < ENGINE_LOOP_MONO_TRACKS; mono_loop_track++) {
+        add_worker_track(worker_tracks, *loop_tracks.at(mono_loop_track));
+    }    
 
     std::vector<std::unique_ptr<EngineWorker>> result;
     for (size_t i = 0; i < std::thread::hardware_concurrency(); i++) {
         result.emplace_back(std::make_unique<EngineWorker>(worker_tracks.at(i), i, worker_sleep_time));
     }
+    return result;
+}
 
-    // 1. Assign stereo tracks
-    // 2. Assign one-shots track
-    // 3. Assign mono tracks
+std::array<InterleavedFifo*, PCM_OUT_CHANNELS> Engine::init_track_fifos() {    
+    std::array<InterleavedFifo*, PCM_OUT_CHANNELS> result;
+    result.fill(nullptr);
+
+    // Loop tracks
+    for (size_t track_index = 0; track_index < loop_tracks.size(); track_index++) {
+        Track& loop_track = *loop_tracks.at(track_index);
+        InterleavedFifo& loop_track_fifo = loop_track.get_fifo();
+        if (track_index < ENGINE_LOOP_MONO_TRACKS) {
+            assert(loop_track.get_channels() == 1);
+            result.at(track_index) = &loop_track_fifo;
+        } else {
+            // Stereo tracks are interleaved
+            assert(loop_track.get_channels() == 2);
+            result.at(ENGINE_LOOP_MONO_TRACKS + (track_index - ENGINE_LOOP_MONO_TRACKS) * 2) = &loop_track_fifo;
+            result.at(ENGINE_LOOP_MONO_TRACKS + (track_index - ENGINE_LOOP_MONO_TRACKS) * 2 + 1) = &loop_track_fifo;
+        }
+    }
+
+    // One-shots track is stereo interleaved
+    result.at(ENGINE_LOOP_TRACKS) = &one_shots_track.get_fifo();
+    result.at(ENGINE_LOOP_TRACKS + 1) = &one_shots_track.get_fifo();
+
     return result;
 }
 
@@ -130,14 +164,11 @@ Engine::Engine(Workspace& _workspace, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm, 
         std::make_unique<Track>(6, 2, _alsa_pcm.get_period_size(), true),
     },
     one_shots_track(Track(7, 2, _alsa_pcm.get_period_size(), false)),
+    track_fifos(init_track_fifos()),
     worker_sleep_time(std::chrono::microseconds(_alsa_pcm.get_period_time()).count() / 2),
     workers(create_workers()) {
     // Initialize session
     session = std::make_unique<Session>(workspace.get_projects().at(0), display, alsa_pcm.get_sample_rate(), loop_tracks.size());
-
-    // One-shots track is stereo interleaved
-    track_fifos.at(ENGINE_LOOP_TRACKS) = &one_shots_track.get_fifo();
-    track_fifos.at(ENGINE_LOOP_TRACKS + 1) = &one_shots_track.get_fifo();
 
     // Initialize
     program_changed(false);

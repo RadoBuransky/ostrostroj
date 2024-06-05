@@ -1,3 +1,5 @@
+#define SPDLOG_ACTIVE_LEVEL 1
+
 #include "common.hpp"
 #include "engineworker.hpp"
 
@@ -33,6 +35,15 @@ EngineWorker::EngineWorker(std::vector<std::reference_wrapper<Track>> _tracks, i
         throw OstrostrojException(fmt::format("EW{}   no tracks!", _worker_index));
     }
     pthread_setname_np(thread.native_handle(), fmt::format("worker{}", _worker_index).c_str());
+
+#if (SPDLOG_ACTIVE_LEVEL < 2)
+    std::string s = "";
+    for (std::reference_wrapper<Track> track : tracks) {
+        s.append(std::to_string(track.get().get_track_number()));
+        s.append(" ");
+    }
+        SPDLOG_DEBUG("EW{}   created [tracks={}]", worker_index, s);
+#endif
 }
 
 EngineWorker::~EngineWorker() {
