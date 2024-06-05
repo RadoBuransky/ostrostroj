@@ -1,11 +1,13 @@
 #pragma once
 
+#include <alsa/asoundlib.h>
 #include "clip.hpp"
 
 class ClipPlayer {
     private:
         const Clip& clip;
         const bool loop;
+        uint32_t predelay_samples;
         std::reference_wrapper<ClipBlock> block;
         const float* current_frame;
         const float* end_frame;
@@ -13,11 +15,16 @@ class ClipPlayer {
         bool draining;
         void update_pointers(ClipBlock& _block);
     public:
-        ClipPlayer(Clip& _clip, bool _loop);
+        ClipPlayer(Clip& _clip, bool _loop, snd_pcm_uframes_t _predelay);
         virtual ~ClipPlayer() = default;
         inline bool pop(float& sample) {
             // TODO: Fade-in and out if loop
             // TODO: Drain loop immediately
+            if (predelay_samples > 0) {
+                predelay_samples--;
+                sample = 0.0;
+                return true;
+            }
             if (current_frame < end_frame) {
                 sample = *current_frame;
                 current_frame++;

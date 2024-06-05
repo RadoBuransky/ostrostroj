@@ -34,6 +34,7 @@ class AlsaPcm {
         snd_pcm_t* pcm_out;
         snd_pcm_uframes_t buffer_size;
         snd_pcm_uframes_t period_size;
+        uint periods;
         std::atomic_bool stop;
         std::function<bool(PcmEvent&, bool, bool)> pcm_event_callback;
         std::function<void(PcmFrame_s24_3le&)> pcm_callback;
@@ -65,4 +66,5 @@ class AlsaPcm {
         int get_channels() const;
         std::chrono::milliseconds get_period_time();
         snd_pcm_uframes_t get_period_size();
+        uint get_periods();
 };

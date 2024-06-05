@@ -6,9 +6,10 @@ void ClipPlayer::update_pointers(ClipBlock& _block) {
     end_frame = current_frame + (_block.get_buffer_frames() * _block.get_channels());
 }
 
-ClipPlayer::ClipPlayer(Clip& _clip, bool _loop):
+ClipPlayer::ClipPlayer(Clip& _clip, bool _loop, snd_pcm_uframes_t _predelay):
     clip(_clip),
     loop(_loop),
+    predelay_samples(_predelay * _clip.get_head().get_channels()),
     block(_clip.get_head()),
     current_frame(nullptr),
     end_frame(nullptr),

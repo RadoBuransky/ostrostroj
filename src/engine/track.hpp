@@ -16,6 +16,8 @@ class Track {
     private:
         const int track_number;
         const int channels;
+        snd_pcm_uframes_t period_size;
+        uint8_t periods;
         const bool loop;
         std::unique_ptr<InterleavedFifo> fifo;
         std::vector<std::unique_ptr<ClipPlayer>> clip_players;
@@ -23,12 +25,12 @@ class Track {
         bool sample_pending;
         bool pop(float& _sample);
     public:
-        Track(int _track_number, int _channels, snd_pcm_uframes_t _period_size, bool _loop);
+        Track(int _track_number, int _channels, snd_pcm_uframes_t _period_size, uint8_t _periods, bool _loop);
         virtual ~Track();        
         void run();
         InterleavedFifo& get_fifo() const;
         int get_track_number() const;
         int get_channels() const;
-        void add_clip(Clip& clip);
+        void add_clip(Clip& clip, snd_pcm_uframes_t predelay);
         void clear(bool drop);
 };

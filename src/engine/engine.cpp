@@ -32,7 +32,7 @@ bool Engine::handle_midi_event(snd_seq_event_t& midi_event, bool running, PcmEve
             SPDLOG_INFO("ENGIN MIDI PROGRAM CHANGE [param={},value={},mul={},clock_interval_ms={}]", midi_event.data.control.param,
                 midi_event.data.control.value, mul, clock_interval_ms);
             if (session->change_program(BankPattern(midi_event.data.control.value + 1))) {
-                program_changed(running);
+                program_changed(running, compute_predelay(mul, clock_interval_ms));
             }
             result = ALSA_PCM_PROGRAM_CHANGE;
             return true;
@@ -48,22 +48,26 @@ bool Engine::handle_midi_event(snd_seq_event_t& midi_event, bool running, PcmEve
     }   
 }
 
-void Engine::program_changed(bool running) {
+snd_pcm_uframes_t Engine::compute_predelay(uint8_t mul, uint8_t clock_interval) {
+    return ((snd_pcm_uframes_t)mul * (snd_pcm_uframes_t)clock_interval * alsa_pcm.get_sample_rate()) / 1000;
+}
+
+void Engine::program_changed(bool running, snd_pcm_uframes_t predelay) {
     pattern_learn = std::make_unique<PatternLearn>(session->get_pattern());
     lock_worker_tracks();
     clear_loop_clips(running);
-    add_loop_clips();
+    add_loop_clips(predelay);
     unlock_worker_tracks();
     SPDLOG_INFO("ENGIN program set={}", session->get_pattern().get_bank_pattern().get_pattern());
 }
 
-void Engine::add_loop_clips() {
+void Engine::add_loop_clips(snd_pcm_uframes_t predelay) {
     for (PatternLoop& pattern_loop : session->get_pattern().get_loops()) {
         size_t track_index = pattern_loop.track - 1;
         if (track_index >= ENGINE_LOOP_TRACKS) {
             throw OstrostrojException(fmt::format("Invalid track index! [track_index={},loop={}]", track_index, pattern_loop.loop.filename().string()));
         }
-        loop_tracks.at(track_index)->add_clip(session->get_clip(pattern_loop.loop));
+        loop_tracks.at(track_index)->add_clip(session->get_clip(pattern_loop.loop), predelay);
         SPDLOG_DEBUG("ENGIN clip added [track_index={},loop={}]", track_index, pattern_loop.loop.c_str());
     }
 }
@@ -164,14 +168,14 @@ Engine::Engine(Workspace& _workspace, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm, 
     midi_flag(ATOMIC_FLAG_INIT),
     stop(false),
     loop_tracks {
-        std::make_unique<Track>(1, 1, _alsa_pcm.get_period_size(), true),
-        std::make_unique<Track>(2, 1, _alsa_pcm.get_period_size(), true),
-        std::make_unique<Track>(3, 1, _alsa_pcm.get_period_size(), true),
-        std::make_unique<Track>(4, 1, _alsa_pcm.get_period_size(), true),
-        std::make_unique<Track>(5, 2, _alsa_pcm.get_period_size(), true),
-        std::make_unique<Track>(6, 2, _alsa_pcm.get_period_size(), true),
+        std::make_unique<Track>(1, 1, _alsa_pcm.get_period_size(), _alsa_pcm.get_periods(), true),
+        std::make_unique<Track>(2, 1, _alsa_pcm.get_period_size(), _alsa_pcm.get_periods(), true),
+        std::make_unique<Track>(3, 1, _alsa_pcm.get_period_size(), _alsa_pcm.get_periods(), true),
+        std::make_unique<Track>(4, 1, _alsa_pcm.get_period_size(), _alsa_pcm.get_periods(), true),
+        std::make_unique<Track>(5, 2, _alsa_pcm.get_period_size(), _alsa_pcm.get_periods(), true),
+        std::make_unique<Track>(6, 2, _alsa_pcm.get_period_size(), _alsa_pcm.get_periods(), true),
     },
-    one_shots_track(Track(7, 2, _alsa_pcm.get_period_size(), false)),
+    one_shots_track(Track(7, 2, _alsa_pcm.get_period_size(), _alsa_pcm.get_periods(), false)),
     track_fifos(init_track_fifos()),
     worker_sleep_time(std::chrono::microseconds(_alsa_pcm.get_period_time()).count() / 2),
     workers(create_workers()) {
@@ -179,7 +183,7 @@ Engine::Engine(Workspace& _workspace, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm, 
     session = std::make_unique<Session>(workspace.get_projects().at(0), display, alsa_pcm.get_sample_rate(), loop_tracks.size());
 
     // Initialize
-    program_changed(false);
+    program_changed(false, 0);
     display.tick(true);
 }
 

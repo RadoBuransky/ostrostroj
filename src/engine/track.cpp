@@ -24,11 +24,13 @@ bool Track::pop(float& _sample) {
     return true;
 }
 
-Track::Track(int _track_number, int _channels, snd_pcm_uframes_t _period_size, bool _loop):
+Track::Track(int _track_number, int _channels, snd_pcm_uframes_t _period_size, uint8_t _periods, bool _loop):
     track_number(_track_number),
     channels(_channels),
+    period_size(_period_size),
+    periods(_periods),
     loop(_loop),
-    fifo(std::make_unique<InterleavedFifo>(_period_size * 32 * _channels)), // TODO: Why 32?
+    fifo(std::make_unique<InterleavedFifo>(_period_size * _channels)),
     clip_players(),
     sample(0),
     sample_pending(false) {
@@ -74,12 +76,14 @@ int Track::get_channels() const {
 /**
  * Not thread safe!
 */
-void Track::add_clip(Clip& clip) {
+void Track::add_clip(Clip& clip, snd_pcm_uframes_t predelay) {
     if (loop) {
         clear(false);
     }
-    clip_players.push_back(std::make_unique<ClipPlayer>(clip, loop));
-    SPDLOG_DEBUG("TRAK{} clip added", track_number);
+    // In average track buffer is 50% full:
+    snd_pcm_uframes_t compensated_predelay = std::max(((float)predelay - (((float)periods + 1.5) * (float)period_size)), 0.0);
+    clip_players.push_back(std::make_unique<ClipPlayer>(clip, loop, compensated_predelay));
+    SPDLOG_DEBUG("TRAK{} clip added [compensated_predelay={}]", track_number, compensated_predelay);
 }
 
 /**

@@ -4,7 +4,7 @@
 
 static constexpr snd_pcm_access_t PCM_OUT_ACCESS = SND_PCM_ACCESS_MMAP_INTERLEAVED;
 static constexpr snd_pcm_format_t PCM_OUT_FORMAT = SND_PCM_FORMAT_S24_3LE;
-static constexpr int PCM_OUT_BUFFER_PERIODS = 10;
+static constexpr int PCM_OUT_BUFFER_PERIODS = 4;
 
 void AlsaPcm::alsa_snd_pcm_mmap_begin(const snd_pcm_channel_area_t **areas, snd_pcm_uframes_t *offset, snd_pcm_uframes_t *frames) {
     int err = snd_pcm_mmap_begin(pcm_out, areas, offset, frames);
@@ -149,6 +149,10 @@ int AlsaPcm::set_hwparams(snd_pcm_t* handle, snd_pcm_hw_params_t* params) {
     if (err < 0) {
         throw OstrostrojException(fmt::format("APCM  snd_pcm_hw_params_get_buffer_size failed = {}", snd_strerror(err)));
     }
+    err = snd_pcm_hw_params_get_periods(params, &periods, &dir);
+    if (err < 0) {
+        throw OstrostrojException(fmt::format("APCM  snd_pcm_hw_params_get_periods failed = {}", snd_strerror(err)));
+    }
     err = snd_pcm_hw_params_can_pause(params);
     if (err < 0) {
         throw OstrostrojException(fmt::format("APCM  snd_pcm_hw_params_can_pause failed = {}", snd_strerror(err)));
@@ -250,7 +254,7 @@ snd_pcm_t* AlsaPcm::open_pcm_out(const std::string& pcm_out_name) {
     snd_pcm_sw_params_get_start_threshold(swparams, &start_threshold);
     snd_pcm_uframes_t avail_min;
     snd_pcm_sw_params_get_avail_min(swparams, &avail_min);
-    SPDLOG_INFO("APCM  open. [name={},buffer_size={},period_size={},type={},delay={},start_threshold={},avail_min={},sample={}bytes]",
-        pcm_name, buffer_size, period_size, (int)pcm_type, delay, start_threshold, avail_min, sizeof(PcmSample_s24_3le));
+    SPDLOG_INFO("APCM  open. [name={},buffer_size={},period_size={},periods={},type={},delay={},start_threshold={},avail_min={},sample={}bytes]",
+        pcm_name, buffer_size, period_size, periods, (int)pcm_type, delay, start_threshold, avail_min, sizeof(PcmSample_s24_3le));
     return result;
 }
