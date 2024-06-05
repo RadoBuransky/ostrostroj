@@ -13,6 +13,13 @@ bool AlsaMidi::process(snd_seq_event_t& event) {
         std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
         clock_interval = now - last_clock;
         last_clock = now;
+
+        if (clock_counter == 2) {
+            // We need latency to initialize engine correctly
+            event.type = SND_SEQ_EVENT_PGMCHANGE;
+            event.data.control.param = 0;
+            event.data.control.value = 0;
+        }
     }
     event.time.tick = clock_counter;
 

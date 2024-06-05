@@ -1,4 +1,4 @@
-#define SPDLOG_ACTIVE_LEVEL 2
+#define SPDLOG_ACTIVE_LEVEL 1
 
 #include "common.hpp"
 #include "track.hpp"
@@ -76,14 +76,14 @@ int Track::get_channels() const {
 /**
  * Not thread safe!
 */
-void Track::add_clip(Clip& clip, snd_pcm_uframes_t predelay) {
+void Track::add_clip(Clip& clip, snd_pcm_uframes_t latency, bool predelay) {
     if (loop) {
         clear(false);
     }
     // In average track buffer is 50% full:
-    snd_pcm_uframes_t compensated_predelay = std::max(((float)predelay - (((float)periods + 2.5) * (float)period_size)), 0.0);
-    clip_players.push_back(std::make_unique<ClipPlayer>(clip, loop, compensated_predelay));
-    SPDLOG_DEBUG("TRAK{} clip added [compensated_predelay={}]", track_number, compensated_predelay);
+    snd_pcm_uframes_t compensated_latency = std::max(((float)latency - (((float)periods + 2.5) * (float)period_size)), 0.0);
+    clip_players.push_back(std::make_unique<ClipPlayer>(clip, loop, compensated_latency, predelay));
+    SPDLOG_DEBUG("TRAK{} clip added [compensated_latency={},predelay={}]", track_number, compensated_latency, predelay);
 }
 
 /**

@@ -1,4 +1,4 @@
-#define SPDLOG_ACTIVE_LEVEL 1
+#define SPDLOG_ACTIVE_LEVEL 2
 
 #include "common.hpp"
 #include "engine.hpp"
@@ -34,7 +34,7 @@ bool Engine::handle_midi_event(snd_seq_event_t& midi_event, bool running, PcmEve
             SPDLOG_INFO("ENGIN MIDI PROGRAM CHANGE [param={},value={},mul={},clock_interval_ms={}]", midi_event.data.control.param,
                 midi_event.data.control.value, mul, clock_interval_ms);
             if (session->change_program(BankPattern(midi_event.data.control.value + 1))) {
-                program_changed(running, compute_predelay(mul, clock_interval_ms));
+                program_changed(running, compute_latency(mul, clock_interval_ms));
             }
             result = ALSA_PCM_PROGRAM_CHANGE;
             return true;
@@ -56,19 +56,25 @@ void Engine::note(uint8_t channel, uint8_t note, bool on, unsigned int clock, bo
     }
     if (pattern_learn->valid_note(note)) {
         pattern_learn->note(note, on, clock);
-    } else {
-        size_t octave = note / 12;
-        if (octave == 4 && on) {
-            size_t one_shot_number = 1 + note - (4 * 12);
-            for (SongOneShot& one_shot : session->get_song().get_one_shots()) {
-                if (one_shot.number == one_shot_number) {
-                    one_shots_track.add_clip(session->get_clip(one_shot.one_shot), 0);
-                    SPDLOG_DEBUG("ENGIN one shot added [one_shot_number={}]", one_shot_number);
-                    return;
-                }
+        return;
+    } 
+    size_t octave = note / 12;
+    if (octave == 4 && on) {
+        size_t one_shot_number = 1 + note - (4 * 12);
+        for (SongOneShot& one_shot : session->get_song().get_one_shots()) {
+            if (one_shot.number == one_shot_number) {
+                lock_worker_tracks();
+                one_shots_track.add_clip(session->get_clip(one_shot.one_shot), 0, false);
+                unlock_worker_tracks();
+                SPDLOG_DEBUG("ENGIN one shot added [one_shot_number={}]", one_shot_number);
+                return;
             }
-            SPDLOG_DEBUG("ENGIN one shot not found [one_shot_number={}]", one_shot_number);
         }
+        lock_worker_tracks();
+        one_shots_track.clear(false);
+        unlock_worker_tracks();
+        SPDLOG_DEBUG("ENGIN one shot not found [one_shot_number={}]", one_shot_number);
+        return;
     }
 }
 
@@ -81,26 +87,26 @@ void Engine::controller(uint8_t channel, unsigned int param, signed int value, u
     }
 }
 
-snd_pcm_uframes_t Engine::compute_predelay(uint8_t mul, uint8_t clock_interval) {
+snd_pcm_uframes_t Engine::compute_latency(uint8_t mul, uint8_t clock_interval) {
     return ((snd_pcm_uframes_t)mul * (snd_pcm_uframes_t)clock_interval * alsa_pcm.get_sample_rate()) / 1000;
 }
 
-void Engine::program_changed(bool running, snd_pcm_uframes_t predelay) {
+void Engine::program_changed(bool running, snd_pcm_uframes_t latency) {
     pattern_learn = std::make_unique<PatternLearn>(session->get_pattern());
     lock_worker_tracks();
     clear_loop_clips(running);
-    add_loop_clips(running ? predelay : 0);
+    add_loop_clips(running, latency);
     unlock_worker_tracks();
     SPDLOG_INFO("ENGIN program set={}", session->get_pattern().get_bank_pattern().get_pattern());
 }
 
-void Engine::add_loop_clips(snd_pcm_uframes_t predelay) {
+void Engine::add_loop_clips(bool running, snd_pcm_uframes_t latency) {
     for (PatternLoop& pattern_loop : session->get_pattern().get_loops()) {
         size_t track_index = pattern_loop.track - 1;
         if (track_index >= ENGINE_LOOP_TRACKS) {
             throw OstrostrojException(fmt::format("Invalid track index! [track_index={},loop={}]", track_index, pattern_loop.loop.filename().string()));
         }
-        loop_tracks.at(track_index)->add_clip(session->get_clip(pattern_loop.loop), predelay);
+        loop_tracks.at(track_index)->add_clip(session->get_clip(pattern_loop.loop), latency, running);
         SPDLOG_DEBUG("ENGIN clip added [track_index={},loop={}]", track_index, pattern_loop.loop.c_str());
     }
 }
@@ -213,11 +219,7 @@ Engine::Engine(Workspace& _workspace, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm, 
     track_fifos(init_track_fifos()),
     worker_sleep_time(std::chrono::microseconds(_alsa_pcm.get_period_time()).count() / 2),
     workers(create_workers()) {
-    // Initialize session
     session = std::make_unique<Session>(workspace.get_projects().at(0), display, alsa_pcm.get_sample_rate(), loop_tracks.size());
-
-    // Initialize
-    program_changed(false, 0);
     display.tick(true);
 }
 

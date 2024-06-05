@@ -7,26 +7,40 @@ class ClipPlayer {
     private:
         const Clip& clip;
         const bool loop;
-        uint32_t predelay_samples;
+        const uint32_t latency_samples;
+        const int32_t fade_samples;
+        int32_t fade;
         std::reference_wrapper<ClipBlock> block;
         const float* current_frame;
         const float* end_frame;
         long position;
-        bool draining;
         void update_pointers(ClipBlock& _block);
     public:
-        ClipPlayer(Clip& _clip, bool _loop, snd_pcm_uframes_t _predelay);
+        ClipPlayer(Clip& _clip, bool _loop, snd_pcm_uframes_t _latency_frames, bool predelay);
         virtual ~ClipPlayer() = default;
         inline bool pop(float& sample) {
-            // TODO: Fade-in and out if loop
-            // TODO: Drain loop immediately
-            if (predelay_samples > 0) {
-                predelay_samples--;
+            if (fade > fade_samples) {
+                fade--;
                 sample = 0.0;
                 return true;
             }
             if (current_frame < end_frame) {
                 sample = *current_frame;
+                if (fade != 0) {
+                    if (fade > 0) {
+                        sample *= (float)(fade_samples - fade) / (float)fade_samples;
+                        fade--;
+                    } else {
+                        if (fade > -fade_samples) {
+                            sample *= -1.0 * (float)fade / (float)fade_samples;
+                        }
+                        fade++;
+                        if (fade == 0) {
+                            // Draining done
+                            return false;
+                        }
+                    }                    
+                }
                 current_frame++;
                 position++;
                 return true;        
@@ -34,7 +48,7 @@ class ClipPlayer {
             if (block.get().has_next()) {
                 block = std::ref(block.get().get_next());
             } else {
-                if (!loop || draining) {
+                if (!loop) {
                     return false;
                 }
                 // SPDLOG_DEBUG("Lopp restart. [path={}, this=0x{:x}, clip=0x{:x}, current_frame=0x{:x}, end_frame=0x{:x}, block=0x{:x}]",
