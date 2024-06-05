@@ -43,7 +43,7 @@ void Session::load_all_clips(int expected_sample_rate, int loop_track_count) {
                 if (pattern_loop.track > loop_track_count) {
                     throw OstrostrojException(fmt::format("SESSN invalid loop track! [{}, {}]", pattern_loop.track, pattern_loop.loop.c_str()));
                 }            
-                load_clip(pattern_loop.loop, expected_sample_rate, pattern_loop.track < ENGINE_LOOP_MONO_TRACKS ? 1 : 2);
+                load_clip(pattern_loop.loop, expected_sample_rate, pattern_loop.track <= ENGINE_LOOP_MONO_TRACKS ? 1 : 2);
             }
         }
     }

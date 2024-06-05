@@ -4,7 +4,7 @@
 
 static constexpr snd_pcm_access_t PCM_OUT_ACCESS = SND_PCM_ACCESS_MMAP_INTERLEAVED;
 static constexpr snd_pcm_format_t PCM_OUT_FORMAT = SND_PCM_FORMAT_S24_3LE;
-static constexpr int PCM_OUT_BUFFER_PERIODS = 100;
+static constexpr int PCM_OUT_BUFFER_PERIODS = 10;
 
 void AlsaPcm::alsa_snd_pcm_mmap_begin(const snd_pcm_channel_area_t **areas, snd_pcm_uframes_t *offset, snd_pcm_uframes_t *frames) {
     int err = snd_pcm_mmap_begin(pcm_out, areas, offset, frames);

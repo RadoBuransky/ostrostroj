@@ -8,7 +8,7 @@
 
 static constexpr std::string PCM_OUT_NAME = "hw:UMC1820";
 static constexpr snd_pcm_uframes_t PCM_OUT_RATE = 96000;
-static constexpr std::chrono::duration<long, std::milli> PCM_OUT_PERIOD_TIME = std::chrono::milliseconds(10);
+static constexpr std::chrono::duration<long, std::milli> PCM_OUT_PERIOD_TIME = std::chrono::milliseconds(5);
 static constexpr int THREAD_PRIORITY = 80;
 
 PcmSample_s24_3le::PcmSample_s24_3le(float sample) {
