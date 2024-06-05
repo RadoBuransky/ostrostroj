@@ -1,7 +1,9 @@
-#define SPDLOG_ACTIVE_LEVEL 2
+#define SPDLOG_ACTIVE_LEVEL 1
 
 #include "common.hpp"
 #include "engine.hpp"
+
+static constexpr uint8_t SOURCE_MIDI_CHANNEL = 7;
 
 bool Engine::handle_midi_event(snd_seq_event_t& midi_event, bool running, PcmEvent& result) {
     uint8_t mul;
@@ -37,15 +39,46 @@ bool Engine::handle_midi_event(snd_seq_event_t& midi_event, bool running, PcmEve
             result = ALSA_PCM_PROGRAM_CHANGE;
             return true;
         case SND_SEQ_EVENT_NOTEON:
-            pattern_learn->note(midi_event.data.note.note, midi_event.data.note.velocity > 0, midi_event.time.tick);
+            note(midi_event.data.note.channel, midi_event.data.note.note, midi_event.data.note.velocity > 0, midi_event.time.tick, running);
             return false;
         case SND_SEQ_EVENT_CONTROLLER:
-            pattern_learn->controller(midi_event.data.control.param, midi_event.data.control.value, midi_event.time.tick);
+            controller(midi_event.data.control.channel, midi_event.data.control.param, midi_event.data.control.value, midi_event.time.tick, running);
             return false;
         default:
             SPDLOG_WARN("ENGIN ignored engine MIDI event. [{}]", (int)midi_event.type);
             return false;
     }   
+}
+
+void Engine::note(uint8_t channel, uint8_t note, bool on, unsigned int clock, bool running) {
+    if (channel != SOURCE_MIDI_CHANNEL || !running) {
+        return;
+    }
+    if (pattern_learn->valid_note(note)) {
+        pattern_learn->note(note, on, clock);
+    } else {
+        size_t octave = note / 12;
+        if (octave == 4 && on) {
+            size_t one_shot_number = 1 + note - (4 * 12);
+            for (SongOneShot& one_shot : session->get_song().get_one_shots()) {
+                if (one_shot.number == one_shot_number) {
+                    one_shots_track.add_clip(session->get_clip(one_shot.one_shot), 0);
+                    SPDLOG_DEBUG("ENGIN one shot added [one_shot_number={}]", one_shot_number);
+                    return;
+                }
+            }
+            SPDLOG_DEBUG("ENGIN one shot not found [one_shot_number={}]", one_shot_number);
+        }
+    }
+}
+
+void Engine::controller(uint8_t channel, unsigned int param, signed int value, unsigned int clock, bool running) {
+    if (channel != SOURCE_MIDI_CHANNEL || !running) {
+        return;
+    }
+    if (pattern_learn->valid_controller(param)) {
+        pattern_learn->controller(param, value, clock);
+    }
 }
 
 snd_pcm_uframes_t Engine::compute_predelay(uint8_t mul, uint8_t clock_interval) {
@@ -76,6 +109,7 @@ void Engine::clear_loop_clips(bool running) {
     for (size_t i = 0; i < loop_tracks.size(); i++) {
         loop_tracks.at(i)->clear(!running);
     }
+    one_shots_track.clear(!running);
 }
 
 void Engine::lock_worker_tracks() {

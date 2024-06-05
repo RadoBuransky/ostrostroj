@@ -11,6 +11,8 @@ class PatternLearn {
     public:
         PatternLearn(Pattern& _pattern);
         virtual ~PatternLearn() = default;
+        bool valid_note(uint8_t note);
         void note(uint8_t note, bool on, unsigned int clock);
+        bool valid_controller(unsigned int param);
         void controller(unsigned int param, signed int value, unsigned int clock);
 };

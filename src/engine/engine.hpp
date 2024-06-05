@@ -30,6 +30,8 @@ class Engine {
         std::unique_ptr<Session> session;
         std::unique_ptr<PatternLearn> pattern_learn;
         bool handle_midi_event(snd_seq_event_t& midi_event, bool running, PcmEvent& result);
+        void note(uint8_t channel, uint8_t note, bool on, unsigned int clock, bool running);
+        void controller(uint8_t channel, unsigned int param, signed int value, unsigned int clock, bool running);
         snd_pcm_uframes_t compute_predelay(uint8_t mul, uint8_t clock_interval);
         void program_changed(bool running, snd_pcm_uframes_t predelay);
         void add_loop_clips(snd_pcm_uframes_t predelay);

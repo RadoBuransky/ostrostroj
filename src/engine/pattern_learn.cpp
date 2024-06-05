@@ -4,7 +4,7 @@
 #include "pattern_learn.hpp"
 #include "engine.hpp"
 
-static constexpr uint8_t T1_NOTE = 36; // TODO: Should be C3 note
+static constexpr uint8_t T1_NOTE = 36; // C3
 static constexpr uint8_t L1_PARAM = 111; // CC #111
 static constexpr uint8_t STEP_SIZE = 6; // 1/8th note (https://en.wikipedia.org/wiki/MIDI_beat_clock)
 static constexpr uint8_t MAX_STEPS = 16;
@@ -34,11 +34,12 @@ PatternLearn::PatternLearn(Pattern& _pattern):
     first_clock(0) {
 }
 
+bool PatternLearn::valid_note(uint8_t note) {
+    return (note >= T1_NOTE) && (note < (T1_NOTE + PATTERN_MUTES));
+}
+
 void PatternLearn::note(uint8_t note, bool on, unsigned int clock) {
-    if (!check(clock)) {
-        return;
-    }
-    if (!on || note < T1_NOTE || note >= T1_NOTE + PATTERN_MUTES) {
+    if (!on || !valid_note(note) || !check(clock)) {
         return;
     }
     std::vector<bool>& mutes = pattern.get_mutes().at(note - T1_NOTE);
@@ -54,11 +55,12 @@ void PatternLearn::note(uint8_t note, bool on, unsigned int clock) {
     SPDLOG_DEBUG("PRJKT note learned [note={},on={},clock={},step={}]", note, on, clock, step);
 }
 
+bool PatternLearn::valid_controller(unsigned int param) {
+    return (param >= L1_PARAM) && (param < (L1_PARAM + ENGINE_LOOP_TRACKS));
+}
+
 void PatternLearn::controller(unsigned int param, signed int value, unsigned int clock) {
-    if (!check(clock)) {
-        return;
-    }
-    if (param < L1_PARAM || param >= L1_PARAM + ENGINE_LOOP_TRACKS) {
+    if (!valid_controller(param) || !check(clock)) {
         return;
     }
     uint8_t track = (param - L1_PARAM) + 1;

@@ -32,12 +32,16 @@ bool AlsaMidi::process(snd_seq_event_t& event) {
             event.data.control.unused[0] = PGMCHANGE_ADVANCE_CLOCKS;
             event.data.control.unused[1] = (uint8_t)std::chrono::duration_cast<std::chrono::milliseconds>(clock_interval).count();
             break;
+        case SND_SEQ_EVENT_NOTEON:
+            push = true;
+            SPDLOG_DEBUG("AMIDI NOTEON [ch={},note={},velocity={},off_velocity={}]", event.data.note.channel, event.data.note.note,
+                event.data.note.velocity, event.data.note.off_velocity);
+            break;
         case SND_SEQ_EVENT_START:
         case SND_SEQ_EVENT_CONTINUE:
         case SND_SEQ_EVENT_STOP:
         case SND_SEQ_EVENT_SETPOS_TICK:
-        case SND_SEQ_EVENT_SETPOS_TIME:
-        case SND_SEQ_EVENT_NOTEON:
+        case SND_SEQ_EVENT_SETPOS_TIME:        
         case SND_SEQ_EVENT_CONTROLLER:
             push = true;
             break;
