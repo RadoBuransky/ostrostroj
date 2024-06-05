@@ -47,7 +47,7 @@ void Engine::program_changed(bool running) {
     lock_worker_tracks();
     clear_loop_clips(running);
     add_loop_clips();
-    release_worker_tracks();
+    unlock_worker_tracks();
     SPDLOG_INFO("ENGIN program set={}", session->get_pattern().get_bank_pattern().get_pattern());
 }
 
@@ -73,9 +73,9 @@ void Engine::lock_worker_tracks() {
     }
 }
 
-void Engine::release_worker_tracks() {
+void Engine::unlock_worker_tracks() {
     for (std::unique_ptr<EngineWorker>& worker: workers) {
-        worker->release_tracks();
+        worker->unlock_tracks();
     }
 }
 

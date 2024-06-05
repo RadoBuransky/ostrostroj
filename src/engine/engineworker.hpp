@@ -13,9 +13,10 @@ class EngineWorker {
         std::thread thread;
         void run();
         void run_tracks();
+        std::string tracks_mkstring();
     public:
         EngineWorker(std::vector<std::reference_wrapper<Track>> _tracks, int _worker_index, useconds_t _sleep_time);
         virtual ~EngineWorker();
         void lock_tracks();
-        void release_tracks();
+        void unlock_tracks();
 };

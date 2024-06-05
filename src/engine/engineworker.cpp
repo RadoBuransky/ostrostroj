@@ -1,11 +1,11 @@
-#define SPDLOG_ACTIVE_LEVEL 1
+#define SPDLOG_ACTIVE_LEVEL 2
 
 #include "common.hpp"
 #include "engineworker.hpp"
 
 void EngineWorker::run() {
     try {
-        SPDLOG_INFO("EW{}   started [sleep_time={}us]", worker_index, sleep_time);
+        SPDLOG_INFO("EW{}   started [tracks={},sleep_time={}us]", worker_index, tracks_mkstring(), sleep_time);
         while (!stop) {
             run_tracks();
             usleep(sleep_time);
@@ -17,10 +17,22 @@ void EngineWorker::run() {
 }
 
 void EngineWorker::run_tracks() {
+    SPDLOG_TRACE("EW{}   run_tracks acquiring lock...", worker_index);
     std::unique_lock lock(mutex);
+    SPDLOG_TRACE("EW{}   run_tracks lock acquired", worker_index);
     for (std::reference_wrapper<Track> track: tracks) {
         track.get().run();
     }
+    SPDLOG_TRACE("EW{}   run_tracks done", worker_index);
+}
+
+std::string EngineWorker::tracks_mkstring() {
+    std::string s = "";
+    for (std::reference_wrapper<Track> track : tracks) {
+        s.append(std::to_string(track.get().get_track_number()));
+        s.append(" ");
+    }
+    return s;
 }
 
 EngineWorker::EngineWorker(std::vector<std::reference_wrapper<Track>> _tracks, int _worker_index, useconds_t _sleep_time):
@@ -35,18 +47,10 @@ EngineWorker::EngineWorker(std::vector<std::reference_wrapper<Track>> _tracks, i
         throw OstrostrojException(fmt::format("EW{}   no tracks!", _worker_index));
     }
     pthread_setname_np(thread.native_handle(), fmt::format("worker{}", _worker_index).c_str());
-
-#if (SPDLOG_ACTIVE_LEVEL < 2)
-    std::string s = "";
-    for (std::reference_wrapper<Track> track : tracks) {
-        s.append(std::to_string(track.get().get_track_number()));
-        s.append(" ");
-    }
-        SPDLOG_DEBUG("EW{}   created [tracks={}]", worker_index, s);
-#endif
 }
 
 EngineWorker::~EngineWorker() {
+    SPDLOG_TRACE("EW{}   stopping...", worker_index);
     stop = true;
     tracks_lock.release();
     thread.join();
@@ -54,8 +58,10 @@ EngineWorker::~EngineWorker() {
 
 void EngineWorker::lock_tracks() {
     tracks_lock.lock();
+    SPDLOG_TRACE("EW{}   lock_tracks", worker_index);
 }
 
-void EngineWorker::release_tracks() {
-    tracks_lock.release();
+void EngineWorker::unlock_tracks() {
+    tracks_lock.unlock();
+    SPDLOG_TRACE("EW{}   unlock_tracks", worker_index);
 }
