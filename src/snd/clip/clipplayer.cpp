@@ -1,8 +1,8 @@
 #include "common.hpp"
 #include "clipplayer.hpp"
 
-// 10ms @ 96kHz
-static constexpr snd_pcm_uframes_t FADE_FRAMES = 10 * 96;
+// 30ms @ 96kHz
+static constexpr snd_pcm_uframes_t FADE_FRAMES = 30 * 96;
 
 void ClipPlayer::update_pointers(ClipBlock& _block) {
     current_frame = _block.get_buffer().data();
@@ -20,8 +20,12 @@ ClipPlayer::ClipPlayer(Clip& _clip, bool _loop, snd_pcm_uframes_t _latency_frame
     end_frame(nullptr),
     position(0) {
     update_pointers(block.get());
+    if (fade_samples > latency_samples) {
+        throw OstrostrojException(fmt::format("CLIP  fade is too long! [fade_samples={},latency_samples={}]", fade_samples, latency_samples));
+    }
 }
 
 void ClipPlayer::drain() {
-    fade = -fade_samples - latency_samples;
+    // Magic number so that fade-in and fade-out somewhat overlap
+    fade = -(fade_samples / 2) -latency_samples;
 }

@@ -80,8 +80,8 @@ void Track::add_clip(Clip& clip, snd_pcm_uframes_t latency, bool predelay) {
     if (loop) {
         clear(false);
     }
-    // In average track buffer is 50% full:
-    snd_pcm_uframes_t compensated_latency = std::max(((float)latency - (((float)periods + 2.5) * (float)period_size)), 0.0);
+    // Magic number measured experimentally. Needs to be updated whenever we change period, period size, ...
+    snd_pcm_uframes_t compensated_latency = std::max(((float)latency - (((float)periods + 2.9) * (float)period_size)), 0.0);
     clip_players.push_back(std::make_unique<ClipPlayer>(clip, loop, compensated_latency, predelay));
     SPDLOG_DEBUG("TRAK{} clip added [compensated_latency={},predelay={}]", track_number, compensated_latency, predelay);
 }

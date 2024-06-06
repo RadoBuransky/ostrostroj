@@ -16,7 +16,7 @@ void Session::set_pattern(Song& song, Pattern& pattern) {
 
     auto it = pattern_play_counters.find(pattern.get_number());
     size_t active_seq_index = 0;
-    if (it == pattern_play_counters.end()) {
+    if (it != pattern_play_counters.end()) {
         active_seq_index = pattern_play_counters.at(it->first)++;
     } else {
         active_seq_index = 0;

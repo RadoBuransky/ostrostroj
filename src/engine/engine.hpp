@@ -29,7 +29,7 @@ class Engine {
         std::vector<std::unique_ptr<EngineWorker>> workers;
         std::unique_ptr<Session> session;
         std::unique_ptr<PatternLearn> pattern_learn;
-        bool handle_midi_event(snd_seq_event_t& midi_event, bool running, PcmEvent& result);
+        bool handle_midi_event(snd_seq_event_t& midi_event, snd_pcm_state_t state, PcmEvent& result);
         void note(uint8_t channel, uint8_t note, bool on, unsigned int clock, bool running);
         void one_shot_note(uint8_t note, bool on);
         void controller(uint8_t channel, unsigned int param, signed int value, unsigned int clock, bool running);
@@ -49,7 +49,7 @@ class Engine {
         void shutdown();
 
         // pcm_* callbacks are called from ALSA PCM thread (never called concerruntly!)
-        bool pcm_event_callback(PcmEvent& event, bool running, bool sync);
+        bool pcm_event_callback(PcmEvent& event, snd_pcm_state_t state, bool sync);
         void pcm_callback(PcmFrame_s24_3le& frame);
 
         // Called from ALSA MIDI thread

@@ -7,7 +7,7 @@ class ClipPlayer {
     private:
         const Clip& clip;
         const bool loop;
-        const uint32_t latency_samples;
+        const int32_t latency_samples;
         const int32_t fade_samples;
         int32_t fade;
         std::reference_wrapper<ClipBlock> block;
@@ -20,6 +20,7 @@ class ClipPlayer {
         virtual ~ClipPlayer() = default;
         inline bool pop(float& sample) {
             if (fade > fade_samples) {
+                // Predelay
                 fade--;
                 sample = 0.0;
                 return true;
@@ -28,10 +29,12 @@ class ClipPlayer {
                 sample = *current_frame;
                 if (fade != 0) {
                     if (fade > 0) {
+                        // Fade in
                         sample *= (float)(fade_samples - fade) / (float)fade_samples;
                         fade--;
                     } else {
                         if (fade > -fade_samples) {
+                            // Fade out
                             sample *= -1.0 * (float)fade / (float)fade_samples;
                         }
                         fade++;

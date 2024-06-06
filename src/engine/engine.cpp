@@ -5,7 +5,7 @@
 
 static constexpr uint8_t SOURCE_MIDI_CHANNEL = 7;
 
-bool Engine::handle_midi_event(snd_seq_event_t& midi_event, bool running, PcmEvent& result) {
+bool Engine::handle_midi_event(snd_seq_event_t& midi_event, snd_pcm_state_t state, PcmEvent& result) {
     uint8_t mul;
     uint8_t clock_interval_ms;
 
@@ -13,9 +13,12 @@ bool Engine::handle_midi_event(snd_seq_event_t& midi_event, bool running, PcmEve
         case SND_SEQ_EVENT_START: 
             SPDLOG_INFO("ENGIN MIDI START [d0={},d1={},queue={}]", midi_event.data.queue.param.d32[0], midi_event.data.queue.param.d32[1],
                 midi_event.data.queue.queue);
-            result = ALSA_PCM_START;
-            session->start();
-            return true;
+            if (state == SND_PCM_STATE_PREPARED) {
+                session->start();
+                result = ALSA_PCM_START;
+                return true;
+            }
+            return false;
         case SND_SEQ_EVENT_STOP: 
             SPDLOG_INFO("ENGIN MIDI STOP [d0={},d1={},queue={}]", midi_event.data.queue.param.d32[0], midi_event.data.queue.param.d32[1],
                 midi_event.data.queue.queue);
@@ -25,24 +28,29 @@ bool Engine::handle_midi_event(snd_seq_event_t& midi_event, bool running, PcmEve
         case SND_SEQ_EVENT_CONTINUE: 
             SPDLOG_INFO("ENGIN MIDI CONTINUE [d0={},d1={},queue={}]", midi_event.data.queue.param.d32[0], midi_event.data.queue.param.d32[1],
                 midi_event.data.queue.queue);
-            result = ALSA_PCM_RESUME;
-            session->start();
-            return true;
+            if (state == SND_PCM_STATE_PAUSED) {
+                result = ALSA_PCM_RESUME;
+                session->start();
+                return true;
+            }
+            return false;
         case SND_SEQ_EVENT_PGMCHANGE:
             mul = midi_event.data.control.unused[0];
             clock_interval_ms = midi_event.data.control.unused[1];
             SPDLOG_INFO("ENGIN MIDI PROGRAM CHANGE [param={},value={},mul={},clock_interval_ms={}]", midi_event.data.control.param,
                 midi_event.data.control.value, mul, clock_interval_ms);
             if (session->change_program(BankPattern(midi_event.data.control.value + 1))) {
-                program_changed(running, compute_latency(mul, clock_interval_ms));
+                program_changed(state == SND_PCM_STATE_RUNNING, compute_latency(mul, clock_interval_ms));
             }
             result = ALSA_PCM_PROGRAM_CHANGE;
             return true;
         case SND_SEQ_EVENT_NOTEON:
-            note(midi_event.data.note.channel, midi_event.data.note.note, midi_event.data.note.velocity > 0, midi_event.time.tick, running);
+            note(midi_event.data.note.channel, midi_event.data.note.note, midi_event.data.note.velocity > 0,
+                midi_event.time.tick, state == SND_PCM_STATE_RUNNING);
             return false;
         case SND_SEQ_EVENT_CONTROLLER:
-            controller(midi_event.data.control.channel, midi_event.data.control.param, midi_event.data.control.value, midi_event.time.tick, running);
+            controller(midi_event.data.control.channel, midi_event.data.control.param, midi_event.data.control.value,
+                midi_event.time.tick, state == SND_PCM_STATE_RUNNING);
             return false;
         default:
             SPDLOG_WARN("ENGIN ignored engine MIDI event. [{}]", (int)midi_event.type);
@@ -101,6 +109,7 @@ void Engine::program_changed(bool running, snd_pcm_uframes_t latency) {
     clear_loop_clips(running);
     add_loop_clips(running, latency);
     unlock_worker_tracks();
+    // TODO: Un/mute M:C tracks
     SPDLOG_INFO("ENGIN program set={}", session->get_pattern().get_bank_pattern().get_pattern());
 }
 
@@ -236,13 +245,13 @@ void Engine::shutdown() {
     midi_callback();
 }
 
-bool Engine::pcm_event_callback(PcmEvent& event, bool running, bool sync) {
+bool Engine::pcm_event_callback(PcmEvent& event, snd_pcm_state_t state, bool sync) {
     if (stop) {
         return false;
     }
     snd_seq_event_t midi_event;
     if (alsa_midi.get_fifo().pop(midi_event)) {
-        return handle_midi_event(midi_event, running, event);
+        return handle_midi_event(midi_event, state, event);
     } else {
         if (sync) {
             midi_flag.test_and_set();
@@ -255,7 +264,7 @@ bool Engine::pcm_event_callback(PcmEvent& event, bool running, bool sync) {
                 throw OstrostrojException("ENGIN MIDI FIFO empty!");
             }
             SPDLOG_TRACE("ENGIN waiting for MIDI flag done.");
-            return handle_midi_event(midi_event, running, event);
+            return handle_midi_event(midi_event, state, event);
         }
         return false;
     }

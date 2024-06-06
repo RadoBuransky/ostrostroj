@@ -1,4 +1,4 @@
-#define SPDLOG_ACTIVE_LEVEL 2
+#define SPDLOG_ACTIVE_LEVEL 1
 
 #include "common.hpp"
 #include <alsa/asoundlib.h>
@@ -15,7 +15,7 @@ bool AlsaMidi::process(snd_seq_event_t& event) {
         last_clock = now;
 
         if (clock_counter == 2) {
-            // We need latency to initialize engine correctly
+            // This is an ugly hack. We need latency to initialize engine correctly but I am lazy to do it properly.
             event.type = SND_SEQ_EVENT_PGMCHANGE;
             event.data.control.param = 0;
             event.data.control.value = 0;
@@ -26,7 +26,7 @@ bool AlsaMidi::process(snd_seq_event_t& event) {
 #ifndef NDEBUG
     if (event.type != SND_SEQ_EVENT_CLOCK) {
         std::chrono::milliseconds clock_interval_ms = std::chrono::duration_cast<std::chrono::milliseconds>(clock_interval);
-        SPDLOG_DEBUG("AMIDI event [type={},clock_counter={},clock_interval={}ms]", (int)event.type, clock_counter, clock_interval_ms.count());
+        SPDLOG_TRACE("AMIDI event [type={},clock_counter={},clock_interval={}ms]", (int)event.type, clock_counter, clock_interval_ms.count());
     } else {
         SPDLOG_TRACE("AMIDI clock [queue={}, 0={},1={}]", event.data.queue.queue, event.data.queue.param.d32[0], event.data.queue.param.d32[1]);
     }
@@ -34,6 +34,13 @@ bool AlsaMidi::process(snd_seq_event_t& event) {
     bool pass = true;
     bool push = false;
     switch (event.type) {
+        case SND_SEQ_EVENT_START:
+            push = true;
+            event.data.control.param = 0;
+            event.data.control.value = 0;
+            event.data.control.unused[0] = PGMCHANGE_ADVANCE_CLOCKS;
+            event.data.control.unused[1] = (uint8_t)std::chrono::duration_cast<std::chrono::milliseconds>(clock_interval).count();
+            break;
         case SND_SEQ_EVENT_PGMCHANGE:
             push = true;
             event.data.control.unused[0] = PGMCHANGE_ADVANCE_CLOCKS;
@@ -41,10 +48,9 @@ bool AlsaMidi::process(snd_seq_event_t& event) {
             break;
         case SND_SEQ_EVENT_NOTEON:
             push = true;
-            SPDLOG_DEBUG("AMIDI NOTEON [ch={},note={},velocity={},off_velocity={}]", event.data.note.channel, event.data.note.note,
+            SPDLOG_TRACE("AMIDI NOTEON [ch={},note={},velocity={},off_velocity={}]", event.data.note.channel, event.data.note.note,
                 event.data.note.velocity, event.data.note.off_velocity);
             break;
-        case SND_SEQ_EVENT_START:
         case SND_SEQ_EVENT_CONTINUE:
         case SND_SEQ_EVENT_STOP:
         case SND_SEQ_EVENT_SETPOS_TICK:

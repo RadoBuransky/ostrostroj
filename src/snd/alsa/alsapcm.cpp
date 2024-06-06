@@ -1,14 +1,15 @@
-#define SPDLOG_ACTIVE_LEVEL 2
+#define SPDLOG_ACTIVE_LEVEL 1
 
 #include "common.hpp"
 #include <alsa/asoundlib.h>
 #include "alsapcm.hpp"
 
+#define SPDLOG_ACTIVE_LEVEL 1
+
 // #define TEST_PARAMS
 
 static constexpr std::string PCM_OUT_NAME = "hw:UMC1820";
 static constexpr snd_pcm_uframes_t PCM_OUT_RATE = 96000;
-static constexpr std::chrono::duration<long, std::milli> PCM_OUT_PERIOD_TIME = std::chrono::milliseconds(10);
 static constexpr int THREAD_PRIORITY = 80;
 
 PcmSample_s24_3le::PcmSample_s24_3le(float sample) {
@@ -50,16 +51,15 @@ void AlsaPcm::run() {
 void AlsaPcm::process_events(bool wait_for_event) {
     PcmEvent event;
     snd_pcm_state_t state = alsa_snd_pcm_state();
-    while (pcm_event_callback(event, state == SND_PCM_STATE_RUNNING, wait_for_event)) {
+    while (pcm_event_callback(event, state, wait_for_event)) {
         wait_for_event = false;
-        SPDLOG_DEBUG("APCM  event = {}", (int)event);
+        SPDLOG_TRACE("APCM  event = {}", (int)event);
         switch(event) {
             case ALSA_PCM_START:
-                if (state == SND_PCM_STATE_PREPARED) {
-                    alsa_snd_pcm_start();
-                } else {
-                    SPDLOG_WARN("APCM  invalid ALSA_PCM_START. [state={}]", (int)state);
+                if (state != SND_PCM_STATE_PREPARED) {
+                    alsa_snd_pcm_drop();
                 }
+                alsa_snd_pcm_start();
                 break;
             case ALSA_PCM_PAUSE:
                 if (state == SND_PCM_STATE_RUNNING) {
@@ -106,7 +106,7 @@ bool AlsaPcm::wait_until_avail(bool& wait_for_event) {
             wait_for_event = true;
         } else {
             SPDLOG_TRACE("APCM  busy loop. [state={}]", (int)state);
-            usleep(std::chrono::microseconds(PCM_OUT_PERIOD_TIME).count());
+            usleep(std::chrono::microseconds(period_time).count());
         }
         return false;
     }
@@ -161,7 +161,7 @@ int AlsaPcm::get_channels() const {
 }
 
 std::chrono::milliseconds AlsaPcm::get_period_time() {
-    return PCM_OUT_PERIOD_TIME;
+    return period_time;
 }
 
 snd_pcm_uframes_t AlsaPcm::get_period_size() {
@@ -172,7 +172,7 @@ uint AlsaPcm::get_periods() {
     return periods;
 }
 
-void AlsaPcm::start(std::function<bool(PcmEvent&, bool, bool)> _pcm_event_callback, std::function<void(PcmFrame_s24_3le&)> _pcm_callback) {
+void AlsaPcm::start(std::function<bool(PcmEvent&, snd_pcm_state_t, bool)> _pcm_event_callback, std::function<void(PcmFrame_s24_3le&)> _pcm_callback) {
     if (pcm_thread || pcm_callback) {
         SPDLOG_ERROR("APCM  thread already started! [{}]", pcm_thread);
         return;

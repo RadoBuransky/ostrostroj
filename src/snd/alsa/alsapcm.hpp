@@ -33,10 +33,11 @@ class AlsaPcm {
     private:
         snd_pcm_t* pcm_out;
         snd_pcm_uframes_t buffer_size;
+        std::chrono::milliseconds period_time;
         snd_pcm_uframes_t period_size;
         uint periods;
         std::atomic_bool stop;
-        std::function<bool(PcmEvent&, bool, bool)> pcm_event_callback;
+        std::function<bool(PcmEvent&, snd_pcm_state_t, bool)> pcm_event_callback;
         std::function<void(PcmFrame_s24_3le&)> pcm_callback;
         pthread_t pcm_thread;
         snd_pcm_sframes_t current_delay;
@@ -60,7 +61,7 @@ class AlsaPcm {
     public:
         AlsaPcm();
         virtual ~AlsaPcm();
-        void start(std::function<bool(PcmEvent&, bool, bool)> _pcm_event_callback, std::function<void(PcmFrame_s24_3le&)> _pcm_callback);
+        void start(std::function<bool(PcmEvent&, snd_pcm_state_t, bool)> _pcm_event_callback, std::function<void(PcmFrame_s24_3le&)> _pcm_callback);
         void shutdown();
         snd_pcm_uframes_t get_sample_rate() const;
         int get_channels() const;

@@ -1,10 +1,13 @@
+#define SPDLOG_ACTIVE_LEVEL 1
+
 #include "common.hpp"
 #include "alsa/asoundlib.h"
 #include "alsapcm.hpp"
 
 static constexpr snd_pcm_access_t PCM_OUT_ACCESS = SND_PCM_ACCESS_MMAP_INTERLEAVED;
 static constexpr snd_pcm_format_t PCM_OUT_FORMAT = SND_PCM_FORMAT_S24_3LE;
-static constexpr int PCM_OUT_BUFFER_PERIODS = 4;
+static constexpr std::chrono::duration<long, std::milli> PCM_OUT_PERIOD_TIME = std::chrono::milliseconds(5);
+static constexpr int PCM_OUT_BUFFER_PERIODS = 8;
 
 void AlsaPcm::alsa_snd_pcm_mmap_begin(const snd_pcm_channel_area_t **areas, snd_pcm_uframes_t *offset, snd_pcm_uframes_t *frames) {
     int err = snd_pcm_mmap_begin(pcm_out, areas, offset, frames);
@@ -123,7 +126,7 @@ int AlsaPcm::set_hwparams(snd_pcm_t* handle, snd_pcm_hw_params_t* params) {
     if (rrate != get_sample_rate()) {
         throw OstrostrojException(fmt::format("APCM  rate doesn't match (requested {}Hz, get {}Hz)", get_sample_rate(), err));
     }
-    size = get_period_time().count() * get_sample_rate() / 1000;
+    size = PCM_OUT_PERIOD_TIME.count() * get_sample_rate() / 1000;
     period_size = 1;
     while (period_size < size) {
         period_size *= 2;
@@ -140,6 +143,7 @@ int AlsaPcm::set_hwparams(snd_pcm_t* handle, snd_pcm_hw_params_t* params) {
     if (err < 0) {
         throw OstrostrojException(fmt::format("APCM  snd_pcm_hw_params_get_period_size failed = {}", snd_strerror(err)));
     }
+    period_time = std::chrono::milliseconds((1000 * period_size) / get_sample_rate());
 
     err = snd_pcm_hw_params_set_buffer_size(handle, params, period_size * PCM_OUT_BUFFER_PERIODS);
     if (err < 0) {
@@ -181,7 +185,7 @@ int AlsaPcm::set_swparams(snd_pcm_t* handle, snd_pcm_sw_params_t* swparams) {
     // allow the transfer when at least period_size samples can be processed
     // or disable this mechanism when period event is enabled (aka interrupt like style processing)
     // int period_event = 0;
-    err = snd_pcm_sw_params_set_avail_min(handle, swparams, 1);
+    err = snd_pcm_sw_params_set_avail_min(handle, swparams, 512);
     if (err < 0) {
         throw OstrostrojException(fmt::format("APCM  snd_pcm_sw_params_set_avail_min failed = {}", snd_strerror(err)));
     }
@@ -254,7 +258,7 @@ snd_pcm_t* AlsaPcm::open_pcm_out(const std::string& pcm_out_name) {
     snd_pcm_sw_params_get_start_threshold(swparams, &start_threshold);
     snd_pcm_uframes_t avail_min;
     snd_pcm_sw_params_get_avail_min(swparams, &avail_min);
-    SPDLOG_INFO("APCM  open. [name={},buffer_size={},period_size={},periods={},type={},delay={},start_threshold={},avail_min={},sample={}bytes]",
-        pcm_name, buffer_size, period_size, periods, (int)pcm_type, delay, start_threshold, avail_min, sizeof(PcmSample_s24_3le));
+    SPDLOG_INFO("APCM  open. [name={},buffer_size={},period_size={},period_time={}ms,periods={},type={},delay={},start_threshold={},avail_min={},sample={}bytes]",
+        pcm_name, buffer_size, period_size, period_time.count(), periods, (int)pcm_type, delay, start_threshold, avail_min, sizeof(PcmSample_s24_3le));
     return result;
 }
