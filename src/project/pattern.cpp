@@ -3,6 +3,13 @@
 #include "common.hpp"
 #include "pattern.hpp"
 
+bool PatternLoop::is_muted(size_t seq_index) {
+    if (seq_index >= seq.size()) {
+        return true;
+    }
+    return seq.at(seq_index).muted;
+}
+
 size_t Pattern::parse_pattern_offset(std::filesystem::path dir) {
     return stoi(dir.filename().string().substr(0, 2));
 }
@@ -17,7 +24,7 @@ std::vector<PatternLoop> Pattern::init_loops(std::filesystem::path dir) {
         if (file.is_regular_file() && file.path().filename().string().starts_with('L')) {
             uint8_t track = stoi(file.path().filename().string().substr(1, 1));
             PatternLoop& inserted = result.emplace_back(PatternLoop(file.path(), track, {}));
-            SPDLOG_DEBUG("PRJKT loop initialized [name={},track={}]", inserted.loop.filename().string(), inserted.track);
+            SPDLOG_DEBUG("PRJKT loop initialized [name={},track={}]", inserted.loop.filename().string(), inserted.track_number);
         }
     }
     return result;   
@@ -29,7 +36,8 @@ Pattern::Pattern(BankPattern root_bank_pattern, std::filesystem::path dir):
     number(0),
     loops(init_loops(dir)),
     mutes(),
-    learned(false) { 
+    learned(false),
+    seq_count(0) { 
     SPDLOG_DEBUG("PRJKT pattern initialized [bank_pattern={},name={},loops={}]", bank_pattern.get_pattern(), name, loops.size());
 }
 
@@ -57,12 +65,23 @@ std::array<std::vector<bool>, PATTERN_MUTES>& Pattern::get_mutes() {
     return mutes;
 }
 
+bool Pattern::is_muted(size_t track_number, size_t seq_index) {
+    if (track_number >= mutes.size()) {
+        return true;
+    }
+    std::vector<bool>&m = mutes.at(track_number);
+    if (seq_index >= m.size()) {
+        return true;
+    }
+    return m.at(seq_index);
+}
+
 void Pattern::set_learned() {
 #ifndef NDEBUG
     SPDLOG_DEBUG("PRJKT pattern learned:");
     for (size_t i = 0; i < loops.size(); i++) {
         PatternLoop& loop = loops.at(i);
-        std::string s = std::to_string(loop.track);
+        std::string s = std::to_string(loop.track_number);
         for (size_t j = 0; j < loop.seq.size(); j++) {
             PatternLoopSeq& seq = loop.seq.at(j);
             if (seq.muted) {
@@ -82,9 +101,26 @@ void Pattern::set_learned() {
         SPDLOG_DEBUG("T{}{}", i + 1, s);
     }
 #endif
+    seq_count = 0;    
+    for (auto& mute : mutes) {
+        size_t s = mute.size();
+        if (s > seq_count) {
+            seq_count = s;
+        }
+    }
+    for (auto& loop : loops) {
+        size_t s = loop.seq.size();
+        if (s > seq_count) {
+            seq_count = s;
+        }
+    }
     learned = true;
 }
 
 bool Pattern::get_learned() {
     return learned;
+}
+
+size_t Pattern::get_seq_count() {
+    return seq_count;
 }

@@ -7,6 +7,44 @@
 #include "session.hpp"
 #include "engine.hpp"
 
+void Session::set_pattern(Song& song, Pattern& pattern) {
+    if (song.get_number() != active_song.get().get_number()) {
+        pattern_play_counters.clear();
+    }
+    active_song = song;
+    active_pattern = pattern;
+
+    auto it = pattern_play_counters.find(pattern.get_number());
+    size_t active_seq_index = 0;
+    if (it == pattern_play_counters.end()) {
+        active_seq_index = pattern_play_counters.at(it->first)++;
+    } else {
+        active_seq_index = 0;
+        pattern_play_counters.emplace(pattern.get_number(), 1);
+    }
+
+    MainScreen& main_screen = display.get_main_screen();
+
+    main_screen.all_loops_off();
+    for (PatternLoop& loop : pattern.get_loops()) {
+        main_screen.set_loop_state(loop.track_number - 1, loop.is_muted(active_seq_index) ? Muted : Playing);
+    }
+
+    main_screen.all_one_shots_off();
+    for (SongOneShot& one_shot : song.get_one_shots()) {
+        main_screen.set_one_shot_state(one_shot.number - 1, Muted);
+    }
+
+    main_screen.set_song_count(project.get_songs().size());    
+    main_screen.set_song_index(song.get_number() - 1);
+
+    main_screen.set_pattern_count(song.get_patterns().size());    
+    main_screen.set_pattern_index(pattern.get_number() - 1);
+
+    main_screen.set_pattern_seq_count(pattern.get_seq_count());
+    main_screen.set_pattern_seq_index(pattern_play_counters.at(pattern.get_number()));
+}
+
 void Session::update_durations() {
     if (started_timestamp != std::chrono::steady_clock::time_point::min()) {
         std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
@@ -40,10 +78,10 @@ void Session::load_all_clips(int expected_sample_rate, int loop_track_count) {
         }
         for (Pattern& pattern: song.get_patterns()) {
             for (PatternLoop& pattern_loop: pattern.get_loops()) {    
-                if (pattern_loop.track > loop_track_count) {
-                    throw OstrostrojException(fmt::format("SESSN invalid loop track! [{}, {}]", pattern_loop.track, pattern_loop.loop.c_str()));
+                if (pattern_loop.track_number > loop_track_count) {
+                    throw OstrostrojException(fmt::format("SESSN invalid loop track! [{}, {}]", pattern_loop.track_number, pattern_loop.loop.c_str()));
                 }            
-                load_clip(pattern_loop.loop, expected_sample_rate, pattern_loop.track <= ENGINE_LOOP_MONO_TRACKS ? 1 : 2);
+                load_clip(pattern_loop.loop, expected_sample_rate, pattern_loop.track_number <= ENGINE_LOOP_MONO_TRACKS ? 1 : 2);
             }
         }
     }
@@ -60,12 +98,7 @@ Session::Session(Project& _project, Display& _display, int expected_sample_rate,
     pattern_duration(0),
     started_timestamp(std::chrono::steady_clock::time_point::min()) {
     load_all_clips(expected_sample_rate, loop_track_count);
-
-    MainScreen& main_screen = display.get_main_screen();
-    main_screen.set_song_count(project.get_songs().size());
-    main_screen.set_song_index(0);
-    main_screen.set_pattern_count(active_song.get().get_patterns().size());
-    main_screen.set_pattern_index(0);
+    set_pattern(active_song, active_pattern);
 }
 
 bool Session::change_program(BankPattern target_pattern) {
@@ -73,10 +106,7 @@ bool Session::change_program(BankPattern target_pattern) {
         if (song.get_root_bank_pattern().get_program() <= target_pattern.get_program()) {
             for (Pattern& pattern : song.get_patterns() | std::views::reverse) {
                 if (pattern.get_bank_pattern().get_program() <= target_pattern.get_program()) {
-                    active_song = song;
-                    active_pattern = pattern;
-                    display.get_main_screen().set_song_index(active_song.get().get_number() - 1);
-                    display.get_main_screen().set_pattern_index(active_pattern.get().get_number() - 1);
+                    set_pattern(song, pattern);
                     SPDLOG_INFO("SESSN program changed [song={},pattern={}]", active_song.get().get_name(), active_pattern.get().get_name());
                     return true;
                 }

@@ -57,25 +57,29 @@ void Engine::note(uint8_t channel, uint8_t note, bool on, unsigned int clock, bo
     if (pattern_learn->valid_note(note)) {
         pattern_learn->note(note, on, clock);
         return;
-    } 
+    }
+    one_shot_note(note, on);
+}
+
+void Engine::one_shot_note(uint8_t note, bool on) {
     size_t octave = note / 12;
-    if (octave == 4 && on) {
-        size_t one_shot_number = 1 + note - (4 * 12);
-        for (SongOneShot& one_shot : session->get_song().get_one_shots()) {
-            if (one_shot.number == one_shot_number) {
-                lock_worker_tracks();
-                one_shots_track.add_clip(session->get_clip(one_shot.one_shot), 0, false);
-                unlock_worker_tracks();
-                SPDLOG_DEBUG("ENGIN one shot added [one_shot_number={}]", one_shot_number);
-                return;
-            }
-        }
-        lock_worker_tracks();
-        one_shots_track.clear(false);
-        unlock_worker_tracks();
-        SPDLOG_DEBUG("ENGIN one shot not found [one_shot_number={}]", one_shot_number);
+    if (octave != 4 || !on) {
         return;
     }
+    size_t one_shot_number = 1 + note - (4 * 12);
+    for (SongOneShot& one_shot : session->get_song().get_one_shots()) {
+        if (one_shot.number == one_shot_number) {
+            lock_worker_tracks();
+            one_shots_track.add_clip(session->get_clip(one_shot.one_shot), 0, false);
+            unlock_worker_tracks();
+            SPDLOG_DEBUG("ENGIN one shot added [one_shot_number={}]", one_shot_number);
+            return;
+        }
+    }
+    lock_worker_tracks();
+    one_shots_track.clear(false);
+    unlock_worker_tracks();
+    SPDLOG_DEBUG("ENGIN one shot not found [one_shot_number={}]", one_shot_number);
 }
 
 void Engine::controller(uint8_t channel, unsigned int param, signed int value, unsigned int clock, bool running) {
@@ -102,7 +106,7 @@ void Engine::program_changed(bool running, snd_pcm_uframes_t latency) {
 
 void Engine::add_loop_clips(bool running, snd_pcm_uframes_t latency) {
     for (PatternLoop& pattern_loop : session->get_pattern().get_loops()) {
-        size_t track_index = pattern_loop.track - 1;
+        size_t track_index = pattern_loop.track_number - 1;
         if (track_index >= ENGINE_LOOP_TRACKS) {
             throw OstrostrojException(fmt::format("Invalid track index! [track_index={},loop={}]", track_index, pattern_loop.loop.filename().string()));
         }

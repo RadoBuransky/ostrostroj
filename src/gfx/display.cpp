@@ -132,46 +132,26 @@ void MainScreen::set_pattern_duration(std::chrono::steady_clock::duration _patte
     changed = true;
 }
 
-void MainScreen::set_loop_playing(uint _number) {
-    if (_number < loops.size()) {
-        loops.at(_number) = Playing;
+void MainScreen::set_loop_state(size_t loop_index, TrackState state) {
+    if (loop_index < loops.size()) {
+        loops.at(loop_index) = state;
         changed = true;
     }
 }
 
-void MainScreen::set_loop_muted(uint _number) {
-    if (_number < loops.size()) {
-        loops.at(_number) = Muted;
+void MainScreen::all_loops_off() {
+    loops.fill(Off);
+}
+
+void MainScreen::set_one_shot_state(size_t one_shot_index, TrackState state) {
+    if (one_shot_index < one_shots.size()) {
+        one_shots.at(one_shot_index) = state;
         changed = true;
     }
 }
 
-void MainScreen::set_loop_off(uint _number) {
-    if (_number < loops.size()) {
-        loops.at(_number) = Off;
-        changed = true;
-    }
-}
-
-void MainScreen::set_one_shot_playing(uint _number) {
-    if (_number < one_shots.size()) {
-        one_shots.at(_number) = Playing;
-        changed = true;
-    }
-}
-
-void MainScreen::set_one_shot_muted(uint _number) {    
-    if (_number < one_shots.size()) {
-        one_shots.at(_number) = Muted;
-        changed = true;
-    }
-}
-
-void MainScreen::set_one_shot_off(uint _number) {    
-    if (_number < one_shots.size()) {
-        one_shots.at(_number) = Off;
-        changed = true;
-    }
+void MainScreen::all_one_shots_off() {
+    one_shots.fill(Off);
 }
 
 void MainScreen::set_song_count(uint _song_count) {

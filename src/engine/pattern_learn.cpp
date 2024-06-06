@@ -65,7 +65,7 @@ void PatternLearn::controller(unsigned int param, signed int value, unsigned int
     }
     uint8_t track = (param - L1_PARAM) + 1;
     for (PatternLoop& loop : pattern.get_loops()) {
-        if (loop.track == track) {
+        if (loop.track_number == track) {
             uint8_t step = get_step(clock);
             size_t old_size = loop.seq.size();
             if (step >= loop.seq.size()) {

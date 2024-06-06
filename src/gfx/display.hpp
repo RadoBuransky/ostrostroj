@@ -49,13 +49,11 @@ class MainScreen {
         void set_song_duration(std::chrono::steady_clock::duration _song_duration);
         void set_pattern_duration(std::chrono::steady_clock::duration _pattern_duration);
 
-        void set_loop_playing(uint _number);
-        void set_loop_muted(uint _number);
-        void set_loop_off(uint _number);
+        void set_loop_state(size_t loop_index, TrackState state);
+        void all_loops_off();
 
-        void set_one_shot_playing(uint _number);
-        void set_one_shot_muted(uint _number);
-        void set_one_shot_off(uint _number);
+        void set_one_shot_state(size_t one_shot_index, TrackState state);
+        void all_one_shots_off();
 
         void set_song_count(uint _song_count);
         void set_song_index(uint _song_index);
