@@ -1,4 +1,4 @@
-#define SPDLOG_ACTIVE_LEVEL 2
+#define SPDLOG_ACTIVE_LEVEL 1
 
 #include "common.hpp"
 #include "pattern_learn.hpp"
@@ -11,18 +11,20 @@ static constexpr uint8_t MAX_STEPS = 16;
 static constexpr int MIN_SATURATION = 1;
 static constexpr int MAX_SATURATION = 127;
 
-uint8_t PatternLearn::to_step(unsigned int clock) {
+uint8_t PatternLearn::to_step(uint clock) {
     return (clock - first_clock) / STEP_SIZE;
 }
 
-bool PatternLearn::check(unsigned int clock) {
+bool PatternLearn::check(uint clock) {
     if (pattern.get_learned()) {
         return false;
     }
     if (first_clock == 0) {
         first_clock = clock;
+        SPDLOG_DEBUG("PRJKT check[first_clock={}]", first_clock);
     }
     if (clock - first_clock >= MAX_STEPS * STEP_SIZE) {
+        SPDLOG_DEBUG("PRJKT check learned[clock={},first_clock={}]", clock, first_clock);
         pattern.set_learned();
         return false;
     }
@@ -39,7 +41,7 @@ bool PatternLearn::valid_note(uint8_t note) {
     return (note >= T1_NOTE) && (note < (T1_NOTE + PATTERN_MUTES));
 }
 
-void PatternLearn::note(uint8_t note, bool on, unsigned int clock) {
+void PatternLearn::note(uint8_t note, bool on, uint clock) {
     if (!on || !valid_note(note) || !check(clock)) {
         return;
     }
@@ -57,11 +59,11 @@ void PatternLearn::note(uint8_t note, bool on, unsigned int clock) {
     SPDLOG_DEBUG("PRJKT note learned [note={},on={},clock={},step={}]", note, on, clock, step);
 }
 
-bool PatternLearn::valid_controller(unsigned int param) {
+bool PatternLearn::valid_controller(uint param) {
     return (param >= L1_PARAM) && (param < (L1_PARAM + ENGINE_LOOP_TRACKS));
 }
 
-void PatternLearn::controller(unsigned int param, signed int value, unsigned int clock) {
+void PatternLearn::controller(uint param, signed int value, uint clock) {
     if (!valid_controller(param) || !check(clock)) {
         return;
     }

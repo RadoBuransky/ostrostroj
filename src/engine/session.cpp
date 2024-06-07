@@ -12,6 +12,7 @@ void Session::set_pattern(Song& song, Pattern& pattern) {
         pattern_play_counters.clear();
     }
     
+    // TODO: Pattern switching doesn't work
     inc_pattern_play_counters(song, pattern);
     size_t active_seq_index = pattern_play_counters.at(pattern.get_number() - 1) - 1;
 
@@ -38,6 +39,8 @@ void Session::set_pattern(Song& song, Pattern& pattern) {
 
     main_screen.set_pattern_seq_count(pattern.get_seq_count());
     main_screen.set_pattern_seq_index(active_seq_index);
+
+    display.tick(true);
 }
 
 void Session::update_durations() {
@@ -156,5 +159,4 @@ void Session::draw() {
 
 void Session::step_learned() {
     set_pattern(active_song, active_pattern);
-    display.tick(true);
 }

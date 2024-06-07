@@ -5,16 +5,16 @@
 class PatternLearn {
     private:
         Pattern& pattern;
-        uint8_t first_clock;
+        uint first_clock;
         uint8_t step;
-        uint8_t to_step(unsigned int clock);
-        bool check(unsigned int clock);
+        uint8_t to_step(uint clock);
+        bool check(uint clock);
     public:
         PatternLearn(Pattern& _pattern);
         virtual ~PatternLearn() = default;
         bool valid_note(uint8_t note);
-        void note(uint8_t note, bool on, unsigned int clock);
-        bool valid_controller(unsigned int param);
-        void controller(unsigned int param, signed int value, unsigned int clock);
+        void note(uint8_t note, bool on, uint clock);
+        bool valid_controller(uint param);
+        void controller(uint param, signed int value, uint clock);
         uint8_t get_step();
 };
