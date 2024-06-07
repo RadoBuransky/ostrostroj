@@ -1,4 +1,4 @@
-#define SPDLOG_ACTIVE_LEVEL 2
+#define SPDLOG_ACTIVE_LEVEL 1
 
 #include "common.hpp"
 #include "pattern.hpp"
@@ -101,6 +101,14 @@ void Pattern::set_learned() {
         SPDLOG_DEBUG("T{}{}", i + 1, s);
     }
 #endif
+    learned = true;
+}
+
+bool Pattern::get_learned() {
+    return learned;
+}
+
+void Pattern::update_seq_count() {
     seq_count = 0;    
     for (auto& mute : mutes) {
         size_t s = mute.size();
@@ -114,11 +122,7 @@ void Pattern::set_learned() {
             seq_count = s;
         }
     }
-    learned = true;
-}
-
-bool Pattern::get_learned() {
-    return learned;
+    SPDLOG_DEBUG("PRJKT update_seq_count[seq_count={}]", seq_count);
 }
 
 size_t Pattern::get_seq_count() {

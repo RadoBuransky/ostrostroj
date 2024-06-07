@@ -35,7 +35,7 @@ void MainScreen::draw_loops(unicorn_hat_mini_canvas& canvas) {
     draw_loop({2, 2}, loops[5], canvas);
 }
 
-void MainScreen::draw_loop(Point pos, TrackState& track_state, unicorn_hat_mini_canvas& canvas) {
+void MainScreen::draw_loop(Point pos, TrackState track_state, unicorn_hat_mini_canvas& canvas) {
     if (track_state != Playing) {
         return;
     }
@@ -43,6 +43,7 @@ void MainScreen::draw_loop(Point pos, TrackState& track_state, unicorn_hat_mini_
     canvas.at(pos.x + 9).at(pos.y + 1) = palette_yellow;
     canvas.at(pos.x + 10).at(pos.y) = palette_playing;
     canvas.at(pos.x + 10).at(pos.y + 1) = palette_playing;
+    SPDLOG_DEBUG("DSPLY draw_loop[track_state={}]", track_state);
 }
 
 void MainScreen::draw_songs(unicorn_hat_mini_canvas& canvas) {
@@ -50,6 +51,7 @@ void MainScreen::draw_songs(unicorn_hat_mini_canvas& canvas) {
     for (uint i = 0; i < count; i++) {
         canvas.at(i % 9).at(1 + (i / 9)) = i <= song_index ? palette_magenta : palette_cyan;
     }
+    SPDLOG_DEBUG("DSPLY draw_songs[song_count={},song_index={}]", song_count, song_index);
 }
 
 void MainScreen::draw_one_shots(unicorn_hat_mini_canvas& canvas) {
@@ -69,6 +71,7 @@ void MainScreen::draw_one_shots(unicorn_hat_mini_canvas& canvas) {
                 break;
         }
         canvas.at(x).at(y) = color;
+        SPDLOG_DEBUG("DSPLY draw_one_shots[i={},one_shots[i]={}]", i, one_shots[i]);
     }
 }
 
@@ -77,13 +80,15 @@ void MainScreen::draw_patterns(unicorn_hat_mini_canvas& canvas) {
     for (uint i = 0; i < count; i++) {
         canvas.at((UNICORN_HAT_MINI_COLS - count) + i).at(5) = (i == pattern_index) ? palette_playing : palette_cyan;
     }
+    SPDLOG_DEBUG("DSPLY draw_patterns[pattern_count={},pattern_index={}]", pattern_count, pattern_index);
 }
 
 void MainScreen::draw_pattern_seq(unicorn_hat_mini_canvas& canvas) {
     uint count = std::min(pattern_seq_count, (uint)8);
     for (uint i = 0; i < count; i++) {
         canvas.at((UNICORN_HAT_MINI_COLS - count) + i).at(6) = (i <= pattern_seq_index) ? palette_playing : palette_cyan;
-    }    
+    }
+    SPDLOG_DEBUG("DSPLY draw_pattern_seq[pattern_seq_count={},pattern_seq_index={}]", pattern_seq_count, pattern_seq_index);
 }
 
 MainScreen::MainScreen():

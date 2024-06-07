@@ -63,7 +63,13 @@ void Engine::note(uint8_t channel, uint8_t note, bool on, unsigned int clock, bo
         return;
     }
     if (pattern_learn->valid_note(note)) {
-        pattern_learn->note(note, on, clock);
+        if (!session->get_pattern().get_learned()) {
+            uint8_t old_step = pattern_learn->get_step();
+            pattern_learn->note(note, on, clock);
+            if (pattern_learn->get_step() != old_step) {
+                session->step_learned();
+            }
+        }
         return;
     }
     one_shot_note(note, on);
@@ -95,7 +101,13 @@ void Engine::controller(uint8_t channel, unsigned int param, signed int value, u
         return;
     }
     if (pattern_learn->valid_controller(param)) {
-        pattern_learn->controller(param, value, clock);
+        if (!session->get_pattern().get_learned()) {
+            uint8_t old_step = pattern_learn->get_step();
+            pattern_learn->controller(param, value, clock);
+            if (pattern_learn->get_step() != old_step) {
+                session->step_learned();
+            }
+        }
     }
 }
 

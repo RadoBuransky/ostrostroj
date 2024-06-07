@@ -11,19 +11,14 @@ void Session::set_pattern(Song& song, Pattern& pattern) {
     if (song.get_number() != active_song.get().get_number()) {
         pattern_play_counters.clear();
     }
+    
+    inc_pattern_play_counters(song, pattern);
+    size_t active_seq_index = pattern_play_counters.at(pattern.get_number() - 1) - 1;
+
     active_song = song;
     active_pattern = pattern;
 
-    auto it = pattern_play_counters.find(pattern.get_number());
-    size_t active_seq_index = 0;
-    if (it != pattern_play_counters.end()) {
-        active_seq_index = pattern_play_counters.at(it->first)++;
-    } else {
-        active_seq_index = 0;
-        pattern_play_counters.emplace(pattern.get_number(), 1);
-    }
-
-    MainScreen& main_screen = display.get_main_screen();
+    MainScreen& main_screen = display.get_main_screen();    
 
     main_screen.all_loops_off();
     for (PatternLoop& loop : pattern.get_loops()) {
@@ -42,7 +37,7 @@ void Session::set_pattern(Song& song, Pattern& pattern) {
     main_screen.set_pattern_index(pattern.get_number() - 1);
 
     main_screen.set_pattern_seq_count(pattern.get_seq_count());
-    main_screen.set_pattern_seq_index(pattern_play_counters.at(pattern.get_number()));
+    main_screen.set_pattern_seq_index(active_seq_index);
 }
 
 void Session::update_durations() {
@@ -58,6 +53,17 @@ void Session::update_durations() {
             main_screen.set_song_duration(song_duration);
             main_screen.set_pattern_duration(pattern_duration);
         }
+    }
+}
+
+void Session::inc_pattern_play_counters(Song& song, Pattern& pattern) {
+    auto it = pattern_play_counters.find(pattern.get_number() - 1);
+    if (it == pattern_play_counters.end()) {
+        pattern_play_counters.emplace(pattern.get_number() - 1, 1);
+        return;
+    }
+    if (active_song.get().get_number() != song.get_number() || active_pattern.get().get_number() != pattern.get_number()) {
+        pattern_play_counters.at(it->first)++;
     }
 }
 
@@ -146,4 +152,9 @@ void Session::pause() {
 void Session::draw() {
     update_durations();
     display.tick(false);
+}
+
+void Session::step_learned() {
+    set_pattern(active_song, active_pattern);
+    display.tick(true);
 }

@@ -11,7 +11,7 @@ static constexpr uint8_t MAX_STEPS = 16;
 static constexpr int MIN_SATURATION = 1;
 static constexpr int MAX_SATURATION = 127;
 
-uint8_t PatternLearn::get_step(unsigned int clock) {
+uint8_t PatternLearn::to_step(unsigned int clock) {
     return (clock - first_clock) / STEP_SIZE;
 }
 
@@ -31,7 +31,8 @@ bool PatternLearn::check(unsigned int clock) {
 
 PatternLearn::PatternLearn(Pattern& _pattern):
     pattern(_pattern),
-    first_clock(0) {
+    first_clock(0),
+    step(0) {
 }
 
 bool PatternLearn::valid_note(uint8_t note) {
@@ -42,16 +43,17 @@ void PatternLearn::note(uint8_t note, bool on, unsigned int clock) {
     if (!on || !valid_note(note) || !check(clock)) {
         return;
     }
+    step = to_step(clock);
     std::vector<bool>& mutes = pattern.get_mutes().at(note - T1_NOTE);
-    uint8_t step = get_step(clock);
     size_t old_size = mutes.size();
     if (step >= mutes.size()) {
         mutes.resize(step + 1);
         for (size_t i = old_size; i < step; i++) {
             mutes.at(i) = true;
         }
-        mutes.at(step) = false;
     }
+    mutes.at(step) = false;
+    pattern.update_seq_count();
     SPDLOG_DEBUG("PRJKT note learned [note={},on={},clock={},step={}]", note, on, clock, step);
 }
 
@@ -63,26 +65,31 @@ void PatternLearn::controller(unsigned int param, signed int value, unsigned int
     if (!valid_controller(param) || !check(clock)) {
         return;
     }
+    step = to_step(clock);
     uint8_t track = (param - L1_PARAM) + 1;
     for (PatternLoop& loop : pattern.get_loops()) {
         if (loop.track_number == track) {
-            uint8_t step = get_step(clock);
             size_t old_size = loop.seq.size();
             if (step >= loop.seq.size()) {
                 loop.seq.resize(step + 1);
                 for (size_t i = old_size; i < step; i++) {
                     loop.seq.at(i).muted = true;
                 }
-                PatternLoopSeq& seq = loop.seq.at(step);
-                if (value < MIN_SATURATION) {
-                    seq.muted = true;
-                } else {
-                    seq.muted = false;
-                    seq.saturation = ((float)(value - MIN_SATURATION)) / (float)(MAX_SATURATION - MIN_SATURATION);
-                }
             }
+            PatternLoopSeq& seq = loop.seq.at(step);
+            if (value < MIN_SATURATION) {
+                seq.muted = true;
+            } else {
+                seq.muted = false;
+                seq.saturation = ((float)(value - MIN_SATURATION)) / (float)(MAX_SATURATION - MIN_SATURATION);
+            }
+            pattern.update_seq_count();
             SPDLOG_DEBUG("PRJKT controller learned [param={},value={},clock={},step={}]", param, value, clock, step);
             return;
         }
     }
+}
+
+uint8_t PatternLearn::get_step() {
+    return step;
 }
