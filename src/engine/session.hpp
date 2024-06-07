@@ -14,7 +14,7 @@ class Session {
         std::chrono::steady_clock::duration song_duration;
         std::chrono::steady_clock::duration pattern_duration;
         std::chrono::steady_clock::time_point started_timestamp;
-        void set_pattern(Song& song, Pattern& pattern);
+        void set_pattern(Song& song, Pattern& pattern, bool running);
         void update_durations();
         void inc_pattern_play_counters(Song& song, Pattern& pattern);
         void load_clip(std::filesystem::path path, int expected_sample_rate, int expected_channels);

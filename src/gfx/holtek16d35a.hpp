@@ -15,6 +15,7 @@ struct RGB {
     uint8_t r;
     uint8_t g;
     uint8_t b;
+    RGB operator*(float c) const;
 };
 
 constexpr size_t HOLTEK_MAGIC_NUM = 28 * 8;

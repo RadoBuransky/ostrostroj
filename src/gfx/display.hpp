@@ -1,6 +1,7 @@
 #pragma once
 
 #include "unicornhatmini.hpp"
+#include "pattern.hpp"
 
 enum TrackState {
     Off = 0,
@@ -21,7 +22,7 @@ class MainScreen {
         std::chrono::steady_clock::duration song_duration;
         std::chrono::steady_clock::duration pattern_duration;
 
-        std::array<TrackState, 6> loops;
+        std::array<PatternLoopSeq, 6> loops;
         std::array<TrackState, 10> one_shots;
 
         uint song_count;
@@ -35,7 +36,7 @@ class MainScreen {
 
         void draw_song_and_pattern_duration(unicorn_hat_mini_canvas& canvas);
         void draw_loops(unicorn_hat_mini_canvas& canvas);
-        void draw_loop(Point pos, TrackState track_state, unicorn_hat_mini_canvas& canvas);
+        void draw_loop(Point pos, PatternLoopSeq loop, unicorn_hat_mini_canvas& canvas);
         void draw_one_shots(unicorn_hat_mini_canvas& canvas);
         void draw_songs(unicorn_hat_mini_canvas& canvas);
         void draw_patterns(unicorn_hat_mini_canvas& canvas);
@@ -49,7 +50,7 @@ class MainScreen {
         void set_song_duration(std::chrono::steady_clock::duration _song_duration);
         void set_pattern_duration(std::chrono::steady_clock::duration _pattern_duration);
 
-        void set_loop_state(size_t loop_index, TrackState state);
+        void set_loop_state(size_t loop_index, PatternLoopSeq state);
         void all_loops_off();
 
         void set_one_shot_state(size_t one_shot_index, TrackState state);

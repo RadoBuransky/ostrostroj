@@ -7,10 +7,16 @@
 #include "session.hpp"
 #include "engine.hpp"
 
-void Session::set_pattern(Song& song, Pattern& pattern) {
-    if (song.get_number() != active_song.get().get_number()) {
+void Session::set_pattern(Song& song, Pattern& pattern, bool running) {
+    MainScreen& main_screen = display.get_main_screen();    
+
+    if (!running || (song.get_number() != active_song.get().get_number())) {
+        song_duration = std::chrono::steady_clock::duration::zero();
+        main_screen.set_song_duration(song_duration);
         pattern_play_counters.clear();
     }
+    pattern_duration = std::chrono::steady_clock::duration::zero();
+    main_screen.set_pattern_duration(pattern_duration);
     
     inc_pattern_play_counters(song, pattern);
     size_t active_seq_index = pattern_play_counters.at(pattern.get_number() - 1) - 1;
@@ -18,11 +24,9 @@ void Session::set_pattern(Song& song, Pattern& pattern) {
     active_song = song;
     active_pattern = pattern;
 
-    MainScreen& main_screen = display.get_main_screen();    
-
     main_screen.all_loops_off();
-    for (PatternLoop& loop : pattern.get_loops()) {
-        main_screen.set_loop_state(loop.track_number - 1, loop.is_muted(active_seq_index) ? Muted : Playing);
+    for (PatternLoop& loop : pattern.get_loops()) {        
+        main_screen.set_loop_state(loop.track_number - 1, loop.get_or_default(active_seq_index));
     }
 
     main_screen.all_one_shots_off();
@@ -106,7 +110,7 @@ Session::Session(Project& _project, Display& _display, int expected_sample_rate,
     pattern_duration(0),
     started_timestamp(std::chrono::steady_clock::time_point::min()) {
     load_all_clips(expected_sample_rate, loop_track_count);
-    set_pattern(active_song, active_pattern);
+    set_pattern(active_song, active_pattern, false);
 }
 
 bool Session::change_program(BankPattern target_pattern, bool running) {
@@ -114,10 +118,7 @@ bool Session::change_program(BankPattern target_pattern, bool running) {
         if (song.get_root_bank_pattern().get_program() <= target_pattern.get_program()) {
             for (Pattern& pattern : song.get_patterns() | std::views::reverse) {
                 if (pattern.get_bank_pattern().get_program() <= target_pattern.get_program()) {
-                    if (!running) {
-                        pattern_play_counters.clear();
-                    }
-                    set_pattern(song, pattern);
+                    set_pattern(song, pattern, running);
                     SPDLOG_INFO("SESSN program changed [song={},pattern={}]", active_song.get().get_name(), active_pattern.get().get_name());
                     return true;
                 }
@@ -160,5 +161,5 @@ void Session::draw() {
 }
 
 void Session::step_learned() {
-    set_pattern(active_song, active_pattern);
+    set_pattern(active_song, active_pattern, true);
 }

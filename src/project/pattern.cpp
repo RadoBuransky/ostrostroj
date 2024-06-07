@@ -1,13 +1,13 @@
-#define SPDLOG_ACTIVE_LEVEL 1
+#define SPDLOG_ACTIVE_LEVEL 2
 
 #include "common.hpp"
 #include "pattern.hpp"
 
-bool PatternLoop::is_muted(size_t seq_index) {
+PatternLoopSeq PatternLoop::get_or_default(size_t seq_index) {
     if (seq_index >= seq.size()) {
-        return true;
+        return PatternLoopSeq();
     }
-    return seq.at(seq_index).muted;
+    return seq.at(seq_index);
 }
 
 size_t Pattern::parse_pattern_offset(std::filesystem::path dir) {
@@ -23,8 +23,12 @@ std::vector<PatternLoop> Pattern::init_loops(std::filesystem::path dir) {
     for (auto const& file : std::filesystem::directory_iterator(dir)) {
         if (file.is_regular_file() && file.path().filename().string().starts_with('L')) {
             uint8_t track = stoi(file.path().filename().string().substr(1, 1));
+#if SPDLOG_ACTIVE_LEVEL < 2
             PatternLoop& inserted = result.emplace_back(PatternLoop(file.path(), track, {}));
             SPDLOG_DEBUG("PRJKT loop initialized [name={},track={}]", inserted.loop.filename().string(), inserted.track_number);
+#else
+            result.emplace_back(PatternLoop(file.path(), track, {}));
+#endif
         }
     }
     return result;   

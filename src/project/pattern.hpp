@@ -6,15 +6,16 @@
 static constexpr size_t PATTERN_MUTES = 6;
 
 struct PatternLoopSeq {
-    bool muted;
-    float saturation; // 0.0 - 1.0
+    bool muted = true;
+    // 0.0 - 1.0
+    float saturation = 0.0; 
 };
 
 struct PatternLoop {
     std::filesystem::path loop;
     uint8_t track_number; // 1 - 6
     std::vector<PatternLoopSeq> seq;
-    bool is_muted(size_t seq_index);
+    PatternLoopSeq get_or_default(size_t seq_index);
 };
 
 class Pattern {

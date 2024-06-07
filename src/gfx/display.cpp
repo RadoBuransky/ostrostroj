@@ -35,14 +35,26 @@ void MainScreen::draw_loops(unicorn_hat_mini_canvas& canvas) {
     draw_loop({2, 2}, loops[5], canvas);
 }
 
-void MainScreen::draw_loop(Point pos, TrackState track_state, unicorn_hat_mini_canvas& canvas) {
-    if (track_state != Playing) {
-        return;
+void MainScreen::draw_loop(Point pos, PatternLoopSeq loop, unicorn_hat_mini_canvas& canvas) {
+    static const std::array<std::array<uint8_t, 2>, 4> shape = {{
+        {9,1},
+        {9,0},
+        {10,0},
+        {10,1}
+    }};
+    RGB color;
+    float compensated_saturation = std::max(loop.saturation, (float)0.1);
+    RGB point_color = palette_yellow * compensated_saturation;
+    if (loop.muted) {
+        color = palette_muted;
+    } else {
+        color = palette_playing * compensated_saturation;
     }
-    canvas.at(pos.x + 9).at(pos.y) = palette_playing;
-    canvas.at(pos.x + 9).at(pos.y + 1) = palette_yellow;
-    canvas.at(pos.x + 10).at(pos.y) = palette_playing;
-    canvas.at(pos.x + 10).at(pos.y + 1) = palette_playing;
+    uint8_t yellow_pos = (uint8_t)(loop.saturation * 4.0) / 4;
+    for (size_t pixel = 0; pixel < shape.size(); pixel++) {
+        const std::array<uint8_t, 2>& xy = shape.at(pixel);
+        canvas.at(xy.at(0) + pos.x).at(xy.at(1) + pos.y) = (!loop.muted && yellow_pos == pixel) ? point_color : color;
+    }
     SPDLOG_DEBUG("DSPLY draw_loop[track_state={}]", track_state);
 }
 
@@ -100,7 +112,7 @@ MainScreen::MainScreen():
     one_shots(),
     pattern_seq_count(0),
     pattern_seq_index(0) {
-    loops.fill(Off);
+    loops.fill({});
     one_shots.fill(Off);
 }
 
@@ -137,7 +149,7 @@ void MainScreen::set_pattern_duration(std::chrono::steady_clock::duration _patte
     changed = true;
 }
 
-void MainScreen::set_loop_state(size_t loop_index, TrackState state) {
+void MainScreen::set_loop_state(size_t loop_index, PatternLoopSeq state) {
     if (loop_index < loops.size()) {
         loops.at(loop_index) = state;
         changed = true;
@@ -145,7 +157,7 @@ void MainScreen::set_loop_state(size_t loop_index, TrackState state) {
 }
 
 void MainScreen::all_loops_off() {
-    loops.fill(Off);
+    loops.fill({});
 }
 
 void MainScreen::set_one_shot_state(size_t one_shot_index, TrackState state) {

@@ -76,6 +76,7 @@ void Engine::note(uint8_t channel, uint8_t note, bool on, unsigned int clock, bo
 }
 
 void Engine::one_shot_note(uint8_t note, bool on) {
+    // TODO: Sync display and folded keyboard notes layout
     size_t octave = note / 12;
     if (octave != 4 || !on) {
         return;

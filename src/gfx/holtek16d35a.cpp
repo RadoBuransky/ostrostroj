@@ -9,6 +9,14 @@
 
 // Holtek 16D35A https://cdn.shopify.com/s/files/1/0174/1800/files/HT16D35A_Bv120.pdf?v=1587113912
 
+RGB RGB::operator*(float c) const {
+    return {
+        (uint8_t)(r * c),
+        (uint8_t)(g * c),
+        (uint8_t)(b * c),
+    };
+}
+
 void Holtek16D35A::write(size_t size) {
     if (gpiod_line_set_value(cs_pin, 0) < 0) {
         throw OstrostrojException(fmt::format("UHATM gpiod_line_set_value(0) failed! [errno={}]", strerror(errno)));
