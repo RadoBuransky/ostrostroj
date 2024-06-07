@@ -12,7 +12,6 @@ void Session::set_pattern(Song& song, Pattern& pattern) {
         pattern_play_counters.clear();
     }
     
-    // TODO: Pattern switching doesn't work
     inc_pattern_play_counters(song, pattern);
     size_t active_seq_index = pattern_play_counters.at(pattern.get_number() - 1) - 1;
 
@@ -110,11 +109,14 @@ Session::Session(Project& _project, Display& _display, int expected_sample_rate,
     set_pattern(active_song, active_pattern);
 }
 
-bool Session::change_program(BankPattern target_pattern) {
+bool Session::change_program(BankPattern target_pattern, bool running) {
     for (Song& song : project.get_songs() | std::views::reverse) {
         if (song.get_root_bank_pattern().get_program() <= target_pattern.get_program()) {
             for (Pattern& pattern : song.get_patterns() | std::views::reverse) {
                 if (pattern.get_bank_pattern().get_program() <= target_pattern.get_program()) {
+                    if (!running) {
+                        pattern_play_counters.clear();
+                    }
                     set_pattern(song, pattern);
                     SPDLOG_INFO("SESSN program changed [song={},pattern={}]", active_song.get().get_name(), active_pattern.get().get_name());
                     return true;

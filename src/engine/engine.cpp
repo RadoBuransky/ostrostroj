@@ -39,7 +39,7 @@ bool Engine::handle_midi_event(snd_seq_event_t& midi_event, snd_pcm_state_t stat
             clock_interval_ms = midi_event.data.control.unused[1];
             SPDLOG_INFO("ENGIN MIDI PROGRAM CHANGE [param={},value={},mul={},clock_interval_ms={}]", midi_event.data.control.param,
                 midi_event.data.control.value, mul, clock_interval_ms);
-            if (session->change_program(BankPattern(midi_event.data.control.value + 1))) {
+            if (session->change_program(BankPattern(midi_event.data.control.value + 1), state == SND_PCM_STATE_RUNNING)) {
                 program_changed(state == SND_PCM_STATE_RUNNING, compute_latency(mul, clock_interval_ms));
             }
             result = ALSA_PCM_PROGRAM_CHANGE;

@@ -22,7 +22,7 @@ class Session {
     public:
         Session(Project& _project, Display& _display, int expected_sample_rate, int loop_track_count);
         virtual ~Session() = default;
-        bool change_program(BankPattern target_pattern);
+        bool change_program(BankPattern target_pattern, bool running);
         Project& get_project();
         Song& get_song();
         Pattern& get_pattern();
