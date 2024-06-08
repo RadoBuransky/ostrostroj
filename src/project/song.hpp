@@ -29,4 +29,5 @@ class Song {
         size_t get_number();
         std::vector<Pattern>& get_patterns();
         std::vector<SongOneShot>& get_one_shots();
+        void unlearn();
 };

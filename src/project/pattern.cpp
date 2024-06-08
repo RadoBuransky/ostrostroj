@@ -112,6 +112,16 @@ bool Pattern::get_learned() {
     return learned;
 }
 
+void Pattern::unlearn() {
+    for (PatternLoop& loop : loops) {
+        loop.seq.clear();
+    }
+    mutes.fill({});
+    seq_count = 0;
+    learned = false;
+    SPDLOG_DEBUG("PRJKT pattern unlearned");
+}
+
 void Pattern::update_seq_count() {
     seq_count = 0;    
     for (auto& mute : mutes) {

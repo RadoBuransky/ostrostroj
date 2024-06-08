@@ -74,3 +74,9 @@ std::vector<Pattern>& Song::get_patterns() {
 std::vector<SongOneShot>& Song::get_one_shots() {    
     return one_shots;
 }
+
+void Song::unlearn() {
+    for (Pattern& pattern : patterns) {
+        pattern.unlearn();
+    }
+}

@@ -42,6 +42,7 @@ class Pattern {
         bool is_muted(size_t track_number, size_t seq_index);
         void set_learned();
         bool get_learned();
+        void unlearn();
         void update_seq_count();
         size_t get_seq_count();
 };
