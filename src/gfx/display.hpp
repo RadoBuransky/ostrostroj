@@ -15,6 +15,9 @@ struct Point {
 };
 
 class MainScreen {
+    public:
+        static const size_t ONE_SHOT_COUNT = 10;
+
     private:
         std::atomic_bool changed;
         std::atomic_bool booting;
@@ -23,7 +26,7 @@ class MainScreen {
         std::chrono::steady_clock::duration pattern_duration;
 
         std::array<PatternLoopSeq, 6> loops;
-        std::array<TrackState, 10> one_shots;
+        std::array<TrackState, ONE_SHOT_COUNT> one_shots;
 
         uint song_count;
         uint song_index;

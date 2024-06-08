@@ -28,25 +28,3 @@ class FileClip: public Clip {
         void assert_format(const int expected_sample_rate, const int expected_channels) const;
         ClipBlock& get_head() const;
 };
-
-class LoopClip: public FileClip {
-    private:
-        const int track;
-        int get_track(std::filesystem::path _path) const;
-    public:
-        LoopClip(std::filesystem::path _path);
-        virtual ~LoopClip() = default;
-        int get_track() const;
-};
-
-class OneShotClip: public FileClip {
-    private:
-        const static inline std::vector<std::string> NOTE_NAMES = {"C_", "C#", "D_", "D#", "E_", "F_", "F#", "G_", "G#", "A_", "A#", "B_"};
-        const uint8_t note;
-        uint8_t get_note(std::filesystem::path _path) const;
-
-    public:
-        OneShotClip(const std::filesystem::path _path);
-        virtual ~OneShotClip() = default;
-        uint8_t get_note() const;
-};

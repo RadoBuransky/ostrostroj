@@ -67,9 +67,10 @@ void MainScreen::draw_songs(unicorn_hat_mini_canvas& canvas) {
 }
 
 void MainScreen::draw_one_shots(unicorn_hat_mini_canvas& canvas) {
+    const size_t row_one_shots = ONE_SHOT_COUNT / 2;
     for (uint i = 0; i < one_shots.size(); i++) {
-        uint x = (i / 2) * 2;
-        uint y = 4 + ((i % 2) * 2);
+        size_t x = (i % row_one_shots) * 2;
+        size_t y = (UNICORN_HAT_MINI_ROWS - 1) - ((i / row_one_shots) * 2);
         RGB color;
         switch (one_shots[i]) {
             case Muted:

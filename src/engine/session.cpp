@@ -35,7 +35,7 @@ void Session::set_pattern(Song& song, Pattern& pattern, bool running) {
 
     main_screen.all_one_shots_off();
     for (SongOneShot& one_shot : song.get_one_shots()) {
-        main_screen.set_one_shot_state(one_shot.number - 1, Muted);
+        main_screen.set_one_shot_state(one_shot.index, Muted);
     }
 
     main_screen.set_song_count(project.get_songs().size());    

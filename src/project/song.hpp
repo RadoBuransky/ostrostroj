@@ -6,7 +6,7 @@
 
 struct SongOneShot {
     std::filesystem::path one_shot;
-    uint8_t number;
+    uint8_t index;
 };
 
 class Song {

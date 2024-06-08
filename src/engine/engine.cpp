@@ -76,25 +76,35 @@ void Engine::note(uint8_t channel, uint8_t note, bool on, unsigned int clock, bo
 }
 
 void Engine::one_shot_note(uint8_t note, bool on) {
-    // TODO: Sync display and folded keyboard notes layout
     size_t octave = note / 12;
-    if (octave != 4 || !on) {
+    // 4th octave + C5
+    if (octave != 4 || note != 5*12 || !on) {
         return;
     }
-    size_t one_shot_number = 1 + note - (4 * 12);
+    note -= 4 * 12;
+    size_t one_shot_index = INT_MAX;
+    // The following logic is because how notes are layed out in two rows on Syntakt's keyboard (chromatic, folded)
+    if (note < MainScreen::ONE_SHOT_COUNT / 2) {
+        one_shot_index = note;
+    } else {
+        // Because Syntakt has 8 triggers in signle row
+        if (note >= 8) {
+            one_shot_index = note - (MainScreen::ONE_SHOT_COUNT / 2);
+        }
+    }
     for (SongOneShot& one_shot : session->get_song().get_one_shots()) {
-        if (one_shot.number == one_shot_number) {
+        if (one_shot.index == one_shot_index) {
             lock_worker_tracks();
             one_shots_track.add_clip(session->get_clip(one_shot.one_shot), 0, false);
             unlock_worker_tracks();
-            SPDLOG_DEBUG("ENGIN one shot added [one_shot_number={}]", one_shot_number);
+            SPDLOG_DEBUG("ENGIN one shot added [one_shot_index={}]", one_shot_index);
             return;
         }
     }
     lock_worker_tracks();
     one_shots_track.clear(false);
     unlock_worker_tracks();
-    SPDLOG_DEBUG("ENGIN one shot not found [one_shot_number={}]", one_shot_number);
+    SPDLOG_DEBUG("ENGIN one shot not found [one_shot_index={}]", one_shot_index);
 }
 
 void Engine::controller(uint8_t channel, unsigned int param, signed int value, unsigned int clock, bool running) {
