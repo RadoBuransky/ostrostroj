@@ -7,13 +7,6 @@
 #include "clipblock.hpp"
 
 class Clip {
-    public:
-        Clip() = default;
-        virtual ~Clip() = default;
-        virtual ClipBlock& get_head() const = 0;
-};
-
-class FileClip: public Clip {
     protected:
         std::filesystem::path path;
         SNDFILE* snd_file;
@@ -21,8 +14,8 @@ class FileClip: public Clip {
         std::unique_ptr<FileClipBlock> head;
         void load();
     public:
-        FileClip(const std::filesystem::path _path);
-        virtual ~FileClip();
+        Clip(const std::filesystem::path _path);
+        virtual ~Clip();
         const std::filesystem::path& get_path() const;
         SF_INFO& get_info();
         void assert_format(const int expected_sample_rate, const int expected_channels) const;

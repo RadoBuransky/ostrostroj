@@ -5,7 +5,7 @@
 
 class ClipPlayer {
     private:
-        const Clip& clip;
+        Clip& clip;
         const bool loop;
         const int32_t latency_samples;
         const int32_t fade_samples;
@@ -14,9 +14,13 @@ class ClipPlayer {
         const float* current_frame;
         const float* end_frame;
         long position;
+        bool draining;
+        bool muted;
         void update_pointers(ClipBlock& _block);
+        void fade_out();
+        void fade_in();
     public:
-        ClipPlayer(Clip& _clip, bool _loop, snd_pcm_uframes_t _latency_frames, bool predelay);
+        ClipPlayer(Clip& _clip, bool _loop, snd_pcm_uframes_t _latency_frames, bool predelay, bool _muted);
         virtual ~ClipPlayer() = default;
         inline bool pop(float& sample) {
             if (fade > fade_samples) {
@@ -38,7 +42,7 @@ class ClipPlayer {
                             sample *= -1.0 * (float)fade / (float)fade_samples;
                         }
                         fade++;
-                        if (fade == 0) {
+                        if (fade == 0 && draining) {
                             // Draining done
                             return false;
                         }
@@ -46,6 +50,9 @@ class ClipPlayer {
                 }
                 current_frame++;
                 position++;
+                if (muted) {
+                    sample = 0.0;
+                }
                 return true;        
             }
             if (block.get().has_next()) {
@@ -54,10 +61,6 @@ class ClipPlayer {
                 if (!loop) {
                     return false;
                 }
-                // SPDLOG_DEBUG("Lopp restart. [path={}, this=0x{:x}, clip=0x{:x}, current_frame=0x{:x}, end_frame=0x{:x}, block=0x{:x}]",
-                //     clip.get_path().c_str(), reinterpret_cast<intptr_t>(this), reinterpret_cast<intptr_t>(&clip),
-                //     reinterpret_cast<intptr_t>(current_frame.load()), reinterpret_cast<intptr_t>(end_frame.load()),
-                //     reinterpret_cast<intptr_t>(&block.get()));
                 block = std::ref(clip.get_head());
                 position = 0;
             }
@@ -65,4 +68,7 @@ class ClipPlayer {
             return pop(sample);
         }
         void drain();
+        void set_muted(bool _muted);
+        bool get_muted();
+        Clip& get_clip();
 };

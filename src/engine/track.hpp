@@ -31,6 +31,7 @@ class Track {
         InterleavedFifo& get_fifo() const;
         int get_track_number() const;
         int get_channels() const;
-        void add_clip(Clip& clip, snd_pcm_uframes_t latency, bool predelay);
+        void add_clip(Clip& clip, snd_pcm_uframes_t latency, bool predelay, bool muted);
         void clear(bool drop);
+        void set_clip_mute(std::filesystem::path& clip_path, bool muted);
 };

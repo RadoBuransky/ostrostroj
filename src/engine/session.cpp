@@ -81,7 +81,7 @@ void Session::load_clip(std::filesystem::path path, int expected_sample_rate, in
     if (clips.contains(path)) {
         return;
     }
-    auto inserted = clips.emplace(path, std::make_unique<FileClip>(path));
+    auto inserted = clips.emplace(path, std::make_unique<Clip>(path));
     if (inserted.second) {
         inserted.first->second->assert_format(expected_sample_rate, expected_channels);
     }
@@ -145,8 +145,18 @@ Song& Session::get_song() {
 Pattern& Session::get_pattern() {
     return active_pattern;
 }
+        
+PatternLoopSeq Session::get_current_loop_seq(uint8_t track_number) {
+    for (PatternLoop& loop : active_pattern.get().get_loops()) {
+        if (loop.track_number == track_number) {
+            return loop.get_or_default(pattern_play_counters.at(active_pattern.get().get_number() - 1));
+        }
+    }
+    SPDLOG_WARN("SESSN current loop seq not found! [track_number={}]", track_number);
+    return PatternLoopSeq();
+}
 
-FileClip& Session::get_clip(std::filesystem::path clip_path) {
+Clip& Session::get_clip(std::filesystem::path clip_path) {
     return *clips.at(clip_path).get();
 }
 

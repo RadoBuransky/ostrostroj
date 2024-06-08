@@ -95,7 +95,7 @@ void Engine::one_shot_note(uint8_t note, bool on) {
     for (SongOneShot& one_shot : session->get_song().get_one_shots()) {
         if (one_shot.index == one_shot_index) {
             lock_worker_tracks();
-            one_shots_track.add_clip(session->get_clip(one_shot.one_shot), 0, false);
+            one_shots_track.add_clip(session->get_clip(one_shot.one_shot), 0, false, false);
             unlock_worker_tracks();
             SPDLOG_DEBUG("ENGIN one shot added [one_shot_index={}]", one_shot_index);
             return;
@@ -117,6 +117,15 @@ void Engine::controller(uint8_t channel, unsigned int param, signed int value, u
             pattern_learn->controller(param, value, clock);
             if (pattern_learn->get_step() != old_step) {
                 session->step_learned();
+                
+                for (PatternLoop& pattern_loop : session->get_pattern().get_loops()) {
+                    if (!session->get_current_loop_seq(pattern_loop.track_number).muted) {
+                        EngineWorker& worker = get_worker(pattern_loop.track_number);
+                        worker.lock_tracks();
+                        loop_tracks.at(pattern_loop.track_number - 1)->set_clip_mute(pattern_loop.loop, false);
+                        worker.unlock_tracks();
+                    }
+                }
             }
         }
     }
@@ -142,7 +151,8 @@ void Engine::add_loop_clips(bool running, snd_pcm_uframes_t latency) {
         if (track_index >= ENGINE_LOOP_TRACKS) {
             throw OstrostrojException(fmt::format("Invalid track index! [track_index={},loop={}]", track_index, pattern_loop.loop.filename().string()));
         }
-        loop_tracks.at(track_index)->add_clip(session->get_clip(pattern_loop.loop), latency, running);
+        bool muted = session->get_current_loop_seq(pattern_loop.track_number).muted;
+        loop_tracks.at(track_index)->add_clip(session->get_clip(pattern_loop.loop), latency, running, muted);
         SPDLOG_DEBUG("ENGIN clip added [track_index={},loop={}]", track_index, pattern_loop.loop.c_str());
     }
 }
@@ -164,6 +174,17 @@ void Engine::unlock_worker_tracks() {
     for (std::unique_ptr<EngineWorker>& worker: workers) {
         worker->unlock_tracks();
     }
+}
+
+EngineWorker& Engine::get_worker(uint8_t track_number) {
+    for (std::unique_ptr<EngineWorker>& worker: workers) {
+        for (Track& track : worker->get_tracks()) {
+            if (track.get_track_number() == track_number) {
+                return *worker;
+            }
+        }
+    }
+    throw OstrostrojException(fmt::format("ENGIN worker not found! [track_number={}]", track_number));
 }
 
 void Engine::add_worker_track(std::map<size_t, std::vector<std::reference_wrapper<Track>>>& worker_tracks, Track& track) {

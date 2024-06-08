@@ -19,4 +19,5 @@ class EngineWorker {
         virtual ~EngineWorker();
         void lock_tracks();
         void unlock_tracks();
+        std::vector<std::reference_wrapper<Track>>& get_tracks();
 };

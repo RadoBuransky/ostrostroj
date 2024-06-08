@@ -7,7 +7,7 @@ class Session {
     private:
         Project& project;
         Display& display;
-        std::map<std::filesystem::path, std::unique_ptr<FileClip>> clips;
+        std::map<std::filesystem::path, std::unique_ptr<Clip>> clips;
         std::reference_wrapper<Song> active_song;
         std::reference_wrapper<Pattern> active_pattern;
         std::map<uint8_t, uint8_t> pattern_play_counters;
@@ -26,7 +26,8 @@ class Session {
         Project& get_project();
         Song& get_song();
         Pattern& get_pattern();
-        FileClip& get_clip(std::filesystem::path clip_path);
+        PatternLoopSeq get_current_loop_seq(uint8_t track_number);
+        Clip& get_clip(std::filesystem::path clip_path);
         void start();
         void pause();
         void draw();

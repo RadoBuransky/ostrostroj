@@ -3,14 +3,14 @@
 #include "clip.hpp"
 #include "clipfx.hpp"
 
-void FileClip::load() {
+void Clip::load() {
     ClipBlock* last = head.get();
     while (last->has_next()) {
         last = &last->get_next();
     }
 }
 
-FileClip::FileClip(const std::filesystem::path _path) :
+Clip::Clip(const std::filesystem::path _path) :
     path(_path),
     snd_file(sf_open(_path.c_str(), SFM_READ, &info)) {
     if (snd_file == nullptr) {
@@ -24,7 +24,7 @@ FileClip::FileClip(const std::filesystem::path _path) :
     SPDLOG_TRACE(std::format("FCLIP loaded. [{},{}Hz,{}ch,{:x}]", _path.c_str(), info.samplerate, info.channels, info.format));
 };
 
-FileClip::~FileClip() {
+Clip::~Clip() {
     if (snd_file != nullptr) {
         sf_close(snd_file);
         snd_file = nullptr;
@@ -32,15 +32,15 @@ FileClip::~FileClip() {
     }
 }
 
-const std::filesystem::path& FileClip::get_path() const {
+const std::filesystem::path& Clip::get_path() const {
     return path;
 }
 
-SF_INFO& FileClip::get_info() {
+SF_INFO& Clip::get_info() {
     return info;
 }
 
-void FileClip::assert_format(const int expected_sample_rate, const int expected_channels) const {
+void Clip::assert_format(const int expected_sample_rate, const int expected_channels) const {
     if (expected_sample_rate != info.samplerate) {
         throw OstrostrojException(fmt::format("FCLIP {}Hz sample rate expected! [{}Hz, {}]", expected_sample_rate, info.samplerate, path.string()));
     }
@@ -55,6 +55,6 @@ void FileClip::assert_format(const int expected_sample_rate, const int expected_
     }
 }
 
-ClipBlock& FileClip::get_head() const {
+ClipBlock& Clip::get_head() const {
     return *head;
 }

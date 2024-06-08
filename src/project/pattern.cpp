@@ -69,17 +69,6 @@ std::array<std::vector<bool>, PATTERN_MUTES>& Pattern::get_mutes() {
     return mutes;
 }
 
-bool Pattern::is_muted(size_t track_number, size_t seq_index) {
-    if (track_number >= mutes.size()) {
-        return true;
-    }
-    std::vector<bool>&m = mutes.at(track_number);
-    if (seq_index >= m.size()) {
-        return true;
-    }
-    return m.at(seq_index);
-}
-
 void Pattern::set_learned() {
 #ifndef NDEBUG
     SPDLOG_DEBUG("PRJKT pattern learned:");

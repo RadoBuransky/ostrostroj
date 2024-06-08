@@ -39,7 +39,6 @@ class Pattern {
         size_t get_number();
         std::vector<PatternLoop>& get_loops();
         std::array<std::vector<bool>, PATTERN_MUTES>& get_mutes();
-        bool is_muted(size_t track_number, size_t seq_index);
         void set_learned();
         bool get_learned();
         void unlearn();

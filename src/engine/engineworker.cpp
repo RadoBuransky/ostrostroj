@@ -65,3 +65,7 @@ void EngineWorker::unlock_tracks() {
     tracks_lock.unlock();
     SPDLOG_TRACE("EW{}   unlock_tracks", worker_index);
 }
+
+std::vector<std::reference_wrapper<Track>>& EngineWorker::get_tracks() {
+    return tracks;
+}
