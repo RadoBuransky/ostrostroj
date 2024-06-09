@@ -124,6 +124,8 @@ void Track::set_clip_mute(std::filesystem::path& clip_path, bool muted) {
 }
 
 void Track::set_saturation(float _saturation) {
+    static constexpr float DRIVE = 10000.0;
+    static constexpr float CURVE = 10000.0;
     if (_saturation < 0.0) {
         _saturation = 0.0;
     } else {
@@ -131,8 +133,8 @@ void Track::set_saturation(float _saturation) {
             _saturation = 1.0;
         }
     }
-
-    saturation_in_gain = 1.0 + (_saturation * 1000.0);
-    saturation_out_gain = (saturation_in_gain*saturation_in_gain) / (2 * (saturation_in_gain - std::log(saturation_in_gain + 1)));
-    SPDLOG_WARN("TRAK{} saturation[saturation_in_gain={},saturation_out_gain={}]", track_number, saturation_in_gain, saturation_out_gain);
+    _saturation = (std::pow(CURVE, _saturation) - 1.0) / (CURVE - 1.0);
+    saturation_in_gain = 1.0 + (_saturation * DRIVE);
+    saturation_out_gain = 2 / (1 + 10*std::log(saturation_in_gain));
+    SPDLOG_DEBUG("TRAK{} saturation[saturation_in_gain={},saturation_out_gain={}]", track_number, saturation_in_gain, saturation_out_gain);
 }
