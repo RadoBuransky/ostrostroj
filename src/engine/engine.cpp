@@ -339,13 +339,13 @@ void Engine::pcm_callback(PcmFrame_s24_3le& frame) {
             sample->silence();
         } else {
             if (!(*track_fifo)->pop(*sample)) {
-                SPDLOG_WARN("ENGIN track FIFO {} underrun...", sample - frame.channels.data());
+                SPDLOG_DEBUG("ENGIN track FIFO {} underrun...", sample - frame.channels.data());
                 int retries = 0;
                 do {
                     usleep(worker_sleep_time);
                     retries++;
                 } while (!(*track_fifo)->pop(*sample) && (!stop));
-                SPDLOG_WARN("ENGIN track FIFO {} underrun recovered [retries={}]", sample - frame.channels.data(), retries);
+                SPDLOG_DEBUG("ENGIN track FIFO {} underrun recovered [retries={}]", sample - frame.channels.data(), retries);
             }
         }
         sample++;

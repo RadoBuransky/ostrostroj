@@ -8,19 +8,25 @@ bool Track::pop(float& _sample) {
     if (clip_players.empty()) {
         return true;
     }
-    
-    float clip_sample;
-    std::vector<std::unique_ptr<ClipPlayer>>::iterator it = clip_players.begin();
-    while (it != clip_players.end()) {
-        if ((*it)->pop(clip_sample)) {
-            _sample += saturate(clip_sample);
-            it++;
-        } else {
-            SPDLOG_DEBUG("TRAK{} clip removed", track_number);
-            it = clip_players.erase(it);
+    if (warp.pop(_sample)) {
+        return true;
+    }    
+    do {
+        float clip_sample;
+        _sample = 0.0;
+        std::vector<std::unique_ptr<ClipPlayer>>::iterator it = clip_players.begin();
+        while (it != clip_players.end()) {
+            if ((*it)->pop(clip_sample)) {
+                _sample += saturate(clip_sample);
+                it++;
+            } else {
+                SPDLOG_DEBUG("TRAK{} clip removed", track_number);
+                it = clip_players.erase(it);
+            }
         }
-    }
-    _sample = (_sample > 1.0) ? 1.0 : (_sample < -1.0 ? -1.0 :_sample);
+        // Brickwall limitter
+        _sample = (_sample > 1.0) ? 1.0 : (_sample < -1.0 ? -1.0 :_sample);
+    } while (!warp.pushnpop(_sample));
     return true;
 }
 
@@ -43,7 +49,8 @@ Track::Track(int _track_number, int _channels, snd_pcm_uframes_t _period_size, u
     sample(0),
     sample_pending(false),
     saturation_in_gain(1.0),
-    saturation_out_gain(1.0) {
+    saturation_out_gain(1.0),
+    warp(_channels) {
 }
 
 Track::~Track() {

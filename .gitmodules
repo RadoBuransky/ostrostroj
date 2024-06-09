@@ -10,3 +10,6 @@
 [submodule "lib/spidev-lib"]
 	path = lib/spidev-lib
 	url = git@github.com:milekium/spidev-lib.git
+[submodule "lib/libsamplerate"]
+	path = lib/libsamplerate
+	url = git@github.com:libsndfile/libsamplerate.git

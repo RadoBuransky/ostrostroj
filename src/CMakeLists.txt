@@ -21,6 +21,7 @@ target_link_libraries(ostrostroj PRIVATE spdlog::spdlog_header_only
                                  PRIVATE ${ALSA_LIBRARIES}
                                  PRIVATE ${GPIOD_LIBRARIES}
                                  PRIVATE sndfile
-                                 PRIVATE spidev-lib++)
+                                 PRIVATE spidev-lib++
+                                 PRIVATE samplerate)
 
 target_link_options(ostrostroj PRIVATE "-Wl,--gc-sections")

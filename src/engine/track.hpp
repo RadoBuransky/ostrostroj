@@ -5,6 +5,7 @@
 #include "farbot/fifo.hpp"
 #include "alsapcm.hpp"
 #include "clipplayer.hpp"
+#include "warp.hpp"
 
 typedef farbot::fifo<PcmSample_s24_3le,
             farbot::fifo_options::concurrency::single,
@@ -25,6 +26,7 @@ class Track {
         bool sample_pending;
         float saturation_in_gain;
         float saturation_out_gain;
+        Warp warp;
         bool pop(float& _sample);
         float saturate(float clip_sample);
     public:
