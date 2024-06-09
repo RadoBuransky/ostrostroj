@@ -1,4 +1,4 @@
-#define SPDLOG_ACTIVE_LEVEL 2
+#define SPDLOG_ACTIVE_LEVEL 1
 
 #include "common.hpp"
 #include "engine.hpp"
@@ -124,8 +124,10 @@ void Engine::controller(uint8_t channel, unsigned int param, signed int value, u
                         worker.lock_tracks();
                         loop_tracks.at(pattern_loop.track_number - 1)->set_clip_mute(pattern_loop.loop, false);
                         worker.unlock_tracks();
+                        SPDLOG_DEBUG("ENGIN loop unmuted [track_number={},loop={}]", pattern_loop.track_number, pattern_loop.loop.c_str());
                     }
                 }
+                SPDLOG_DEBUG("ENGIN controller step learned [step={}]", pattern_learn->get_step());
             }
         }
     }

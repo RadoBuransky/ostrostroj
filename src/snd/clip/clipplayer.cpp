@@ -1,3 +1,5 @@
+#define SPDLOG_ACTIVE_LEVEL 1
+
 #include "common.hpp"
 #include "clipplayer.hpp"
 
@@ -62,8 +64,10 @@ void ClipPlayer::drain() {
 void ClipPlayer::set_muted(bool _muted) {
     if (_muted != muted) {
         if (!_muted) {
+            SPDLOG_DEBUG("CLIPP unmuted. [clip={}]", clip.get_path().c_str());
             fade_out();
         } else {
+            SPDLOG_DEBUG("CLIPP muted. [clip={}]", clip.get_path().c_str());
             fade_in();
         }
     }

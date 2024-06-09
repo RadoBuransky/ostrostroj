@@ -11,19 +11,18 @@ static constexpr uint8_t MAX_STEPS = 16;
 static constexpr int MIN_SATURATION = 1;
 static constexpr int MAX_SATURATION = 127;
 
-uint8_t PatternLearn::to_step(uint clock) {
-    return (clock - first_clock) / STEP_SIZE;
+void PatternLearn::update_step(uint clock) {
+    if (first_clock == 0) {
+        first_clock = clock;
+    }
+    step = (clock - first_clock) / STEP_SIZE;
 }
 
-bool PatternLearn::check(uint clock) {
+bool PatternLearn::check_step_and_set_learned() {
     if (pattern.get_learned()) {
         return false;
     }
-    if (first_clock == 0) {
-        first_clock = clock;
-        SPDLOG_DEBUG("PRJKT check[first_clock={}]", first_clock);
-    }
-    if (clock - first_clock >= MAX_STEPS * STEP_SIZE) {
+    if (step >= MAX_STEPS) {
         SPDLOG_DEBUG("PRJKT check learned[clock={},first_clock={}]", clock, first_clock);
         pattern.set_learned();
         return false;
@@ -42,10 +41,13 @@ bool PatternLearn::valid_note(uint8_t note) {
 }
 
 void PatternLearn::note(uint8_t note, bool on, uint clock) {
-    if (!on || !valid_note(note) || !check(clock)) {
+    update_step(clock);
+    if (!check_step_and_set_learned()) {
         return;
     }
-    step = to_step(clock);
+    if (!on || !valid_note(note)) {
+        return;
+    }
     std::vector<bool>& mutes = pattern.get_mutes().at(note - T1_NOTE);
     size_t old_size = mutes.size();
     if (step >= mutes.size()) {
@@ -64,10 +66,13 @@ bool PatternLearn::valid_controller(uint param) {
 }
 
 void PatternLearn::controller(uint param, signed int value, uint clock) {
-    if (!valid_controller(param) || !check(clock)) {
+    update_step(clock);
+    if (!check_step_and_set_learned()) {
         return;
     }
-    step = to_step(clock);
+    if (!valid_controller(param)) {
+        return;
+    }
     uint8_t track = (param - L1_PARAM) + 1;
     for (PatternLoop& loop : pattern.get_loops()) {
         if (loop.track_number == track) {

@@ -7,8 +7,8 @@ class PatternLearn {
         Pattern& pattern;
         uint first_clock;
         uint8_t step;
-        uint8_t to_step(uint clock);
-        bool check(uint clock);
+        void update_step(uint clock);
+        bool check_step_and_set_learned();
     public:
         PatternLearn(Pattern& _pattern);
         virtual ~PatternLearn() = default;
