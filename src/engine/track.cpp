@@ -142,6 +142,6 @@ void Track::set_saturation(float _saturation) {
     }
     _saturation = (std::pow(CURVE, _saturation) - 1.0) / (CURVE - 1.0);
     saturation_in_gain = 1.0 + (_saturation * DRIVE);
-    saturation_out_gain = 2 / (1 + 10*std::log(saturation_in_gain));
+    saturation_out_gain = 2 / (1 + 2.5*std::log(saturation_in_gain));
     SPDLOG_DEBUG("TRAK{} saturation[saturation_in_gain={},saturation_out_gain={}]", track_number, saturation_in_gain, saturation_out_gain);
 }
