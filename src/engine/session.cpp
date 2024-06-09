@@ -19,7 +19,6 @@ void Session::set_pattern(Song& song, Pattern& pattern, bool running) {
     main_screen.set_pattern_duration(pattern_duration);
     
     inc_pattern_play_counters(song, pattern);
-    size_t active_seq_index = pattern_play_counters.at(pattern.get_number() - 1) - 1;
 
     if (!running) {
         song.unlearn();
@@ -30,7 +29,7 @@ void Session::set_pattern(Song& song, Pattern& pattern, bool running) {
 
     main_screen.all_loops_off();
     for (PatternLoop& loop : pattern.get_loops()) {        
-        main_screen.set_loop_state(loop.track_number - 1, loop.get_or_default(active_seq_index));
+        main_screen.set_loop_state(loop.track_number - 1, loop.get_or_default(get_seq_index()));
     }
 
     main_screen.all_one_shots_off();
@@ -45,7 +44,7 @@ void Session::set_pattern(Song& song, Pattern& pattern, bool running) {
     main_screen.set_pattern_index(pattern.get_number() - 1);
 
     main_screen.set_pattern_seq_count(pattern.get_seq_count());
-    main_screen.set_pattern_seq_index(active_seq_index);
+    main_screen.set_pattern_seq_index(get_seq_index());
 
     display.tick(true);
 }
@@ -75,6 +74,10 @@ void Session::inc_pattern_play_counters(Song& song, Pattern& pattern) {
     if (active_song.get().get_number() != song.get_number() || active_pattern.get().get_number() != pattern.get_number()) {
         pattern_play_counters.at(it->first)++;
     }
+}
+
+size_t Session::get_seq_index() {
+    return pattern_play_counters.at(active_pattern.get().get_number() - 1) - 1;
 }
 
 void Session::load_clip(std::filesystem::path path, int expected_sample_rate, int expected_channels) {
@@ -149,11 +152,21 @@ Pattern& Session::get_pattern() {
 PatternLoopSeq Session::get_current_loop_seq(uint8_t track_number) {
     for (PatternLoop& loop : active_pattern.get().get_loops()) {
         if (loop.track_number == track_number) {
-            return loop.get_or_default(pattern_play_counters.at(active_pattern.get().get_number() - 1) - 1);
+            return loop.get_or_default(get_seq_index());
         }
     }
     SPDLOG_WARN("SESSN current loop seq not found! [track_number={}]", track_number);
     return PatternLoopSeq();
+}
+
+bool Session::get_current_mute(uint8_t mc_track_number) {
+    auto& mutes = active_pattern.get().get_mutes().at(mc_track_number - 1);
+    size_t seq_index = get_seq_index();
+    if (seq_index < mutes.size()) {
+        return mutes.at(seq_index);
+    }
+    // Muted by default
+    return true;
 }
 
 Clip& Session::get_clip(std::filesystem::path clip_path) {

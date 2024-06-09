@@ -68,7 +68,7 @@ std::vector<PatternLoop>& Pattern::get_loops() {
     return loops;
 }
 
-std::array<std::vector<bool>, PATTERN_MUTES>& Pattern::get_mutes() {
+std::array<std::vector<bool>, ModelCycles::MODEL_CYCLES_TRACK_COUNT>& Pattern::get_mutes() {
     return mutes;
 }
 

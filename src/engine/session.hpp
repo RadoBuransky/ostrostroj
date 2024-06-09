@@ -17,6 +17,7 @@ class Session {
         void set_pattern(Song& song, Pattern& pattern, bool running);
         void update_durations();
         void inc_pattern_play_counters(Song& song, Pattern& pattern);
+        size_t get_seq_index();
         void load_clip(std::filesystem::path path, int expected_sample_rate, int expected_channels);
         void load_all_clips(int expected_sample_rate, int loop_track_count);
     public:
@@ -27,6 +28,7 @@ class Session {
         Song& get_song();
         Pattern& get_pattern();
         PatternLoopSeq get_current_loop_seq(uint8_t track_number);
+        bool get_current_mute(uint8_t mc_track_number);
         Clip& get_clip(std::filesystem::path clip_path);
         void start();
         void pause();

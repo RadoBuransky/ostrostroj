@@ -36,7 +36,7 @@ PatternLearn::PatternLearn(Pattern& _pattern):
 }
 
 bool PatternLearn::valid_note(uint8_t note) {
-    return (note >= T1_NOTE) && (note < (T1_NOTE + PATTERN_MUTES));
+    return (note >= T1_NOTE) && (note < (T1_NOTE + ModelCycles::MODEL_CYCLES_TRACK_COUNT));
 }
 
 void PatternLearn::note(uint8_t note, bool on, uint clock) {

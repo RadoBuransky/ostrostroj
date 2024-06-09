@@ -60,7 +60,7 @@ bool AlsaMidi::process(snd_seq_event_t& event) {
             break;
     }
     if (push) {
-        if (!fifo.push(std::move(event))) {
+        if (!fifo_in.push(std::move(event))) {
             SPDLOG_ERROR("AMIDI FIFO overrun!");
         }
         callback();
@@ -68,7 +68,7 @@ bool AlsaMidi::process(snd_seq_event_t& event) {
     return pass;
 }
 
-void AlsaMidi::thru(unsigned char* raw, size_t size) {
+void AlsaMidi::write(unsigned char* raw, size_t size) {
     ssize_t written_size = snd_rawmidi_write(handle_out, raw, size);
     if (written_size < 0) {
         throw OstrostrojException(fmt::format("AMIDI snd_rawmidi_write failed! [err={}]", snd_strerror(written_size)));
@@ -85,15 +85,15 @@ void AlsaMidi::thru(unsigned char* raw, size_t size) {
 void AlsaMidi::parse(unsigned char* raw, size_t read_size) {
     snd_seq_event_t event;
     while (read_size > 0) {
-        ssize_t consumed_size = snd_midi_event_encode(parser, raw, read_size, &event);
+        ssize_t consumed_size = snd_midi_event_encode(parser_in, raw, read_size, &event);
         if (consumed_size < 0) {
             SPDLOG_ERROR("AMIDI snd_midi_event_encode_byte failed [err={}]", snd_strerror(consumed_size));
-            snd_midi_event_reset_encode(parser);
+            snd_midi_event_reset_encode(parser_in);
             return;
         }
         if (consumed_size > 0 && event.type != SND_SEQ_EVENT_NONE) {
             if (process(event)) {
-                thru(raw, consumed_size);
+                write(raw, consumed_size);
             }
         }
         read_size -= consumed_size;
@@ -181,7 +181,7 @@ snd_rawmidi_t* AlsaMidi::open_midi_in(const std::string& device_name) {
     if (err) {
         throw OstrostrojException(fmt::format("AMIDI snd_rawmidi_open {} failed! [err={}]", device_name, snd_strerror(err)));
     }
-    err = snd_midi_event_new(256, &parser);
+    err = snd_midi_event_new(256, &parser_in);
     if (err < 0) {
         throw OstrostrojException(fmt::format("AMIDI snd_midi_event_new failed! [err={}]", snd_strerror(err)));
     }
@@ -196,6 +196,10 @@ snd_rawmidi_t* AlsaMidi::open_midi_out(const std::string& device_name) {
     if (err) {
         throw OstrostrojException(fmt::format("AMIDI snd_rawmidi_open {} failed! [err={}]", device_name, snd_strerror(err)));
     }
+    err = snd_midi_event_new(256, &parser_out);
+    if (err < 0) {
+        throw OstrostrojException(fmt::format("AMIDI snd_midi_event_new failed! [err={}]", snd_strerror(err)));
+    }
     SPDLOG_INFO("AMIDI output open. [{}]", device_name);
     return result;
 }
@@ -204,7 +208,7 @@ AlsaMidi::AlsaMidi():
     handle_in(open_midi_in(MIDI_DEVICE_NAME)),
     handle_out(open_midi_out(MIDI_DEVICE_NAME)),
     stop(false),
-    fifo(AlsaMidiFifo(256)),
+    fifo_in(AlsaMidiFifo(256)),
     clock_counter(0),
     last_clock(std::chrono::steady_clock::now()),
     clock_interval(std::chrono::steady_clock::duration::min()),
@@ -214,9 +218,13 @@ AlsaMidi::AlsaMidi():
 
 AlsaMidi::~AlsaMidi() {
     shutdown();
-    if (parser) {
-        snd_midi_event_free(parser);
-        parser = nullptr;
+    if (parser_in) {
+        snd_midi_event_free(parser_in);
+        parser_in = nullptr;
+    }
+    if (parser_out) {
+        snd_midi_event_free(parser_out);
+        parser_out = nullptr;
     }
     if (handle_in) {
         snd_rawmidi_close(handle_in);
@@ -228,8 +236,8 @@ AlsaMidi::~AlsaMidi() {
     }
 }
 
-AlsaMidiFifo& AlsaMidi::get_fifo() {
-    return fifo;
+AlsaMidiFifo& AlsaMidi::get_fifo_in() {
+    return fifo_in;
 }
 
 void AlsaMidi::start(std::function<void(void)> _callback) {
@@ -238,6 +246,28 @@ void AlsaMidi::start(std::function<void(void)> _callback) {
     }
     callback = _callback;
     thru_thread = create_rt_thread("alsa_midi", 80, run_midi, this);
+}
+
+void AlsaMidi::write(snd_seq_event_t event) {
+    std::array<unsigned char, 12> raw;
+    ssize_t written_size = snd_midi_event_decode(parser_out, raw.data(), raw.size(), &event);
+    if (written_size < 0) {
+        SPDLOG_ERROR("AMIDI snd_midi_event_decode failed [err={}]", snd_strerror(written_size));
+        snd_midi_event_reset_decode(parser_out);
+        return;
+    }
+    write(raw.data(), written_size);
+#ifndef NDEBUG
+    switch(event.type) {
+        case SND_SEQ_EVENT_CONTROLLER:
+            SPDLOG_WARN("AMIDI write[SND_SEQ_EVENT_CONTROLLER,channel={},param={},value={}]", event.data.control.channel, event.data.control.param,
+                event.data.control.value);
+            break;
+        default:
+            SPDLOG_WARN("AMIDI write[type={},raw0={},raw1={},raw2={}]", event.type, event.data.raw32.d[0], event.data.raw32.d[1], event.data.raw32.d[2]);
+            break;
+    }    
+#endif
 }
 
 void AlsaMidi::shutdown() {

@@ -2,8 +2,7 @@
 
 #include "bank_pattern.hpp"
 #include "clip.hpp"
-
-static constexpr size_t PATTERN_MUTES = 6;
+#include "model_cycles.hpp"
 
 struct PatternLoopSeq {
     bool muted = true;
@@ -28,7 +27,7 @@ class Pattern {
         std::string name;
         size_t pattern_number;
         std::vector<PatternLoop> loops;
-        std::array<std::vector<bool>, PATTERN_MUTES> mutes;
+        std::array<std::vector<bool>, ModelCycles::MODEL_CYCLES_TRACK_COUNT> mutes;
         bool learned;
         size_t seq_count;
         size_t parse_pattern_offset(std::filesystem::path dir);
@@ -42,7 +41,7 @@ class Pattern {
         void set_number(size_t _number);
         size_t get_number();
         std::vector<PatternLoop>& get_loops();
-        std::array<std::vector<bool>, PATTERN_MUTES>& get_mutes();
+        std::array<std::vector<bool>, ModelCycles::MODEL_CYCLES_TRACK_COUNT>& get_mutes();
         void set_learned();
         bool get_learned();
         void unlearn();

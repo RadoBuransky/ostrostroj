@@ -9,6 +9,7 @@
 #include "session.hpp"
 #include "display.hpp"
 #include "pattern_learn.hpp"
+#include "model_cycles.hpp"
 
 static constexpr int ENGINE_LOOP_TRACKS = 6;
 static constexpr int ENGINE_LOOP_MONO_TRACKS = 4;
@@ -20,6 +21,7 @@ class Engine {
         AlsaMidi& alsa_midi;
         AlsaPcm& alsa_pcm;
         Display& display;
+        std::unique_ptr<ModelCycles> model_cycles;
         std::atomic_flag midi_flag;
         std::atomic_bool stop;
         std::array<std::unique_ptr<Track>, ENGINE_LOOP_TRACKS> loop_tracks; // 0-3 mono, 4-5 stereo
@@ -39,6 +41,7 @@ class Engine {
         void clear_loop_clips(bool running);
         void lock_worker_tracks();
         void unlock_worker_tracks();
+        void un_mute_mc_tracks();
         EngineWorker& get_worker(uint8_t track_number);
         void add_worker_track(std::map<size_t, std::vector<std::reference_wrapper<Track>>>& worker_tracks, Track& track);
         std::vector<std::unique_ptr<EngineWorker>> create_workers();

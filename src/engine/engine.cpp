@@ -66,6 +66,7 @@ void Engine::note(uint8_t channel, uint8_t note, bool on, unsigned int clock, bo
         if (!session->get_pattern().get_learned()) {
             pattern_learn->note(note, on, clock);
             session->step_learned();
+            un_mute_mc_tracks();
         }
         return;
     }
@@ -136,7 +137,7 @@ void Engine::program_changed(bool running, snd_pcm_uframes_t latency) {
     clear_loop_clips(running);
     add_loop_clips(running, latency);
     unlock_worker_tracks();
-    // TODO: Un/mute M:C tracks
+    un_mute_mc_tracks();
     SPDLOG_INFO("ENGIN program set={}", session->get_pattern().get_bank_pattern().get_pattern());
 }
 
@@ -168,6 +169,13 @@ void Engine::lock_worker_tracks() {
 void Engine::unlock_worker_tracks() {
     for (std::unique_ptr<EngineWorker>& worker: workers) {
         worker->unlock_tracks();
+    }
+}
+
+void Engine::un_mute_mc_tracks() {
+    for (size_t mc_track_number = 1; mc_track_number <= ModelCycles::MODEL_CYCLES_TRACK_COUNT; mc_track_number++) {
+        snd_seq_event_t event = model_cycles->mute_track(mc_track_number, session->get_current_mute(mc_track_number));
+        alsa_midi.write(event);
     }
 }
 
@@ -257,6 +265,7 @@ Engine::Engine(Workspace& _workspace, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm, 
     alsa_midi(_alsa_midi),
     alsa_pcm(_alsa_pcm),
     display(_display),
+    model_cycles(std::make_unique<ModelCycles>()),
     midi_flag(ATOMIC_FLAG_INIT),
     stop(false),
     loop_tracks {
@@ -289,14 +298,14 @@ bool Engine::pcm_event_callback(PcmEvent& event, snd_pcm_state_t state, bool syn
         return false;
     }
     snd_seq_event_t midi_event;
-    if (alsa_midi.get_fifo().pop(midi_event)) {
+    if (alsa_midi.get_fifo_in().pop(midi_event)) {
         return handle_midi_event(midi_event, state, event);
     } else {
         if (sync) {
             midi_flag.test_and_set();
             SPDLOG_TRACE("ENGIN waiting for MIDI flag...");
             midi_flag.wait(true);
-            if (!alsa_midi.get_fifo().pop(midi_event)) {
+            if (!alsa_midi.get_fifo_in().pop(midi_event)) {
                 if (stop) {
                     return false;
                 }
