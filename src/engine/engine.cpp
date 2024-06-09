@@ -114,16 +114,27 @@ void Engine::controller(uint8_t channel, unsigned int param, signed int value, u
             pattern_learn->controller(param, value, clock);
             session->step_learned();            
             for (PatternLoop& pattern_loop : session->get_pattern().get_loops()) {
-                if (!session->get_current_loop_seq(pattern_loop.track_number).muted) {
+                PatternLoopSeq loop_seq = session->get_current_loop_seq(pattern_loop.track_number);
+                if (!loop_seq.muted) {
                     EngineWorker& worker = get_worker(pattern_loop.track_number);
                     worker.lock_tracks();
-                    loop_tracks.at(pattern_loop.track_number - 1)->set_clip_mute(pattern_loop.loop, false);
+                    auto& track = loop_tracks.at(pattern_loop.track_number - 1);
+                    track->set_clip_mute(pattern_loop.loop, false);
+                    track->set_saturation(loop_seq.saturation);
                     worker.unlock_tracks();
                     SPDLOG_DEBUG("ENGIN loop unmuted [track_number={},loop={}]", pattern_loop.track_number, pattern_loop.loop.c_str());
                 }
             }
             SPDLOG_DEBUG("ENGIN controller learned [param={}]", param);
         }
+        return;
+    }
+    if (param == 118) {
+        float saturation = (float)value / 127;
+        for (auto& track : loop_tracks) {
+            track->set_saturation(saturation);
+        }
+        SPDLOG_WARN("ENGIN controller [saturation={}]", saturation);
     }
 }
 
@@ -147,9 +158,11 @@ void Engine::add_loop_clips(bool running, snd_pcm_uframes_t latency) {
         if (track_index >= ENGINE_LOOP_TRACKS) {
             throw OstrostrojException(fmt::format("Invalid track index! [track_index={},loop={}]", track_index, pattern_loop.loop.filename().string()));
         }
-        bool muted = session->get_current_loop_seq(pattern_loop.track_number).muted;
-        loop_tracks.at(track_index)->add_clip(session->get_clip(pattern_loop.loop), latency, running, muted);
-        SPDLOG_DEBUG("ENGIN clip added [track_index={},loop={}]", track_index, pattern_loop.loop.c_str());
+        PatternLoopSeq loop_seq = session->get_current_loop_seq(pattern_loop.track_number);
+        auto& track = loop_tracks.at(track_index);
+        track->add_clip(session->get_clip(pattern_loop.loop), latency, running, loop_seq.muted);
+        track->set_saturation(loop_seq.saturation);
+        SPDLOG_DEBUG("ENGIN clip added [track_index={},loop={},muted={},saturation={}]", track_index, pattern_loop.loop.c_str(), loop_seq.muted, loop_seq.saturation);
     }
 }
 

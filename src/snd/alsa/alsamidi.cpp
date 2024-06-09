@@ -260,11 +260,11 @@ void AlsaMidi::write(snd_seq_event_t event) {
 #ifndef NDEBUG
     switch(event.type) {
         case SND_SEQ_EVENT_CONTROLLER:
-            SPDLOG_WARN("AMIDI write[SND_SEQ_EVENT_CONTROLLER,channel={},param={},value={}]", event.data.control.channel, event.data.control.param,
+            SPDLOG_DEBUG("AMIDI write[SND_SEQ_EVENT_CONTROLLER,channel={},param={},value={}]", event.data.control.channel, event.data.control.param,
                 event.data.control.value);
             break;
         default:
-            SPDLOG_WARN("AMIDI write[type={},raw0={},raw1={},raw2={}]", event.type, event.data.raw32.d[0], event.data.raw32.d[1], event.data.raw32.d[2]);
+            SPDLOG_DEBUG("AMIDI write[type={},raw0={},raw1={},raw2={}]", event.type, event.data.raw32.d[0], event.data.raw32.d[1], event.data.raw32.d[2]);
             break;
     }    
 #endif

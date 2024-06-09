@@ -13,7 +13,7 @@ bool Track::pop(float& _sample) {
     std::vector<std::unique_ptr<ClipPlayer>>::iterator it = clip_players.begin();
     while (it != clip_players.end()) {
         if ((*it)->pop(clip_sample)) {
-            _sample += clip_sample;
+            _sample += saturate(clip_sample);
             it++;
         } else {
             SPDLOG_DEBUG("TRAK{} clip removed", track_number);
@@ -22,6 +22,14 @@ bool Track::pop(float& _sample) {
     }
     _sample = (_sample > 1.0) ? 1.0 : (_sample < -1.0 ? -1.0 :_sample);
     return true;
+}
+
+float Track::saturate(float clip_sample) {
+    if (saturation_in_gain <= 1.0) {
+        return clip_sample;
+    }
+    clip_sample *= saturation_in_gain;
+    return saturation_out_gain * (clip_sample / (std::abs(clip_sample) + 1.0));
 }
 
 Track::Track(int _track_number, int _channels, snd_pcm_uframes_t _period_size, uint8_t _periods, bool _loop):
@@ -33,7 +41,9 @@ Track::Track(int _track_number, int _channels, snd_pcm_uframes_t _period_size, u
     fifo(std::make_unique<InterleavedFifo>(_period_size * _channels * 2)),
     clip_players(),
     sample(0),
-    sample_pending(false) {
+    sample_pending(false),
+    saturation_in_gain(1.0),
+    saturation_out_gain(1.0) {
 }
 
 Track::~Track() {
@@ -111,4 +121,18 @@ void Track::set_clip_mute(std::filesystem::path& clip_path, bool muted) {
         }
     }
     SPDLOG_WARN("TRAK{} clip not found for mute [clip_path={}]", track_number, clip_path.c_str());
+}
+
+void Track::set_saturation(float _saturation) {
+    if (_saturation < 0.0) {
+        _saturation = 0.0;
+    } else {
+        if (_saturation > 1.0) {
+            _saturation = 1.0;
+        }
+    }
+
+    saturation_in_gain = 1.0 + (_saturation * 1000.0);
+    saturation_out_gain = (saturation_in_gain*saturation_in_gain) / (2 * (saturation_in_gain - std::log(saturation_in_gain + 1)));
+    SPDLOG_WARN("TRAK{} saturation[saturation_in_gain={},saturation_out_gain={}]", track_number, saturation_in_gain, saturation_out_gain);
 }

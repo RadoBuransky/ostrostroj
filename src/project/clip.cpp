@@ -1,7 +1,6 @@
 #include "common.hpp"
 #include <algorithm>
 #include "clip.hpp"
-#include "clipfx.hpp"
 
 void Clip::load() {
     ClipBlock* last = head.get();
