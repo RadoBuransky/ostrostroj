@@ -149,7 +149,7 @@ Pattern& Session::get_pattern() {
 PatternLoopSeq Session::get_current_loop_seq(uint8_t track_number) {
     for (PatternLoop& loop : active_pattern.get().get_loops()) {
         if (loop.track_number == track_number) {
-            return loop.get_or_default(pattern_play_counters.at(active_pattern.get().get_number() - 1));
+            return loop.get_or_default(pattern_play_counters.at(active_pattern.get().get_number() - 1) - 1);
         }
     }
     SPDLOG_WARN("SESSN current loop seq not found! [track_number={}]", track_number);

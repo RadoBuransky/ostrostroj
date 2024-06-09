@@ -10,7 +10,7 @@ class Session {
         std::map<std::filesystem::path, std::unique_ptr<Clip>> clips;
         std::reference_wrapper<Song> active_song;
         std::reference_wrapper<Pattern> active_pattern;
-        std::map<uint8_t, uint8_t> pattern_play_counters;
+        std::map<uint8_t, uint8_t> pattern_play_counters; // Pattern index -> Number of times it was started to played
         std::chrono::steady_clock::duration song_duration;
         std::chrono::steady_clock::duration pattern_duration;
         std::chrono::steady_clock::time_point started_timestamp;

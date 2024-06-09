@@ -5,8 +5,11 @@
 
 PatternLoopSeq PatternLoop::get_or_default(size_t seq_index) {
     if (seq_index >= seq.size()) {
+        SPDLOG_DEBUG("PRJKT pattern loop seq not found [track_number={},seq_index={}]", track_number, seq_index);
         return PatternLoopSeq();
     }
+    SPDLOG_DEBUG("PRJKT pattern loop seq found [track_number={},seq_index={},muted={},saturation={}]", track_number, seq_index,
+        seq.at(seq_index).muted, seq.at(seq_index).saturation);
     return seq.at(seq_index);
 }
 
@@ -37,7 +40,7 @@ std::vector<PatternLoop> Pattern::init_loops(std::filesystem::path dir) {
 Pattern::Pattern(BankPattern root_bank_pattern, std::filesystem::path dir):
     bank_pattern(root_bank_pattern.get_program() + parse_pattern_offset(dir)),
     name(parse_name(dir)),
-    number(0),
+    pattern_number(0),
     loops(init_loops(dir)),
     mutes(),
     learned(false),
@@ -50,11 +53,11 @@ BankPattern Pattern::get_bank_pattern() {
 }
 
 void Pattern::set_number(size_t _number) {
-    number = _number;
+    pattern_number = _number;
 }
 
 size_t Pattern::get_number() {
-    return number;
+    return pattern_number;
 }
 
 std::string Pattern::get_name() {
@@ -125,7 +128,7 @@ void Pattern::update_seq_count() {
             seq_count = s;
         }
     }
-    SPDLOG_DEBUG("PRJKT update_seq_count[seq_count={}]", seq_count);
+    SPDLOG_DEBUG("PRJKT pattern update_seq_count[number={},seq_count={}]", pattern_number, seq_count);
 }
 
 size_t Pattern::get_seq_count() {

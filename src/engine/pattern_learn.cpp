@@ -11,19 +11,19 @@ static constexpr uint8_t MAX_STEPS = 16;
 static constexpr int MIN_SATURATION = 1;
 static constexpr int MAX_SATURATION = 127;
 
-void PatternLearn::update_step(uint clock) {
+uint8_t PatternLearn::get_step(uint clock) {
     if (first_clock == 0) {
         first_clock = clock;
     }
-    step = (clock - first_clock) / STEP_SIZE;
+    return (clock - first_clock) / STEP_SIZE;
 }
 
-bool PatternLearn::check_step_and_set_learned() {
+bool PatternLearn::check_step_and_set_learned(uint8_t step) {
     if (pattern.get_learned()) {
         return false;
     }
     if (step >= MAX_STEPS) {
-        SPDLOG_DEBUG("PRJKT check learned[clock={},first_clock={}]", clock, first_clock);
+        SPDLOG_DEBUG("PRJKT check learned[step={},first_clock={}]", step, first_clock);
         pattern.set_learned();
         return false;
     }
@@ -32,8 +32,7 @@ bool PatternLearn::check_step_and_set_learned() {
 
 PatternLearn::PatternLearn(Pattern& _pattern):
     pattern(_pattern),
-    first_clock(0),
-    step(0) {
+    first_clock(0) {
 }
 
 bool PatternLearn::valid_note(uint8_t note) {
@@ -41,8 +40,8 @@ bool PatternLearn::valid_note(uint8_t note) {
 }
 
 void PatternLearn::note(uint8_t note, bool on, uint clock) {
-    update_step(clock);
-    if (!check_step_and_set_learned()) {
+    uint8_t step = get_step(clock);
+    if (!check_step_and_set_learned(step)) {
         return;
     }
     if (!on || !valid_note(note)) {
@@ -66,16 +65,16 @@ bool PatternLearn::valid_controller(uint param) {
 }
 
 void PatternLearn::controller(uint param, signed int value, uint clock) {
-    update_step(clock);
-    if (!check_step_and_set_learned()) {
+    uint8_t step = get_step(clock);
+    if (!check_step_and_set_learned(step)) {
         return;
     }
     if (!valid_controller(param)) {
         return;
     }
-    uint8_t track = (param - L1_PARAM) + 1;
+    uint8_t track_number = (param - L1_PARAM) + 1;
     for (PatternLoop& loop : pattern.get_loops()) {
-        if (loop.track_number == track) {
+        if (loop.track_number == track_number) {
             size_t old_size = loop.seq.size();
             if (step >= loop.seq.size()) {
                 loop.seq.resize(step + 1);
@@ -91,12 +90,9 @@ void PatternLearn::controller(uint param, signed int value, uint clock) {
                 seq.saturation = ((float)(value - MIN_SATURATION)) / (float)(MAX_SATURATION - MIN_SATURATION);
             }
             pattern.update_seq_count();
-            SPDLOG_DEBUG("PRJKT controller learned [param={},value={},clock={},step={}]", param, value, clock, step);
+            SPDLOG_DEBUG("PRJKT controller learned [param={},value={},clock={},step={},track_number={},muted={},saturation={}]",
+                param, value, clock, step, track_number, seq.muted, seq.saturation);
             return;
         }
     }
-}
-
-uint8_t PatternLearn::get_step() {
-    return step;
 }

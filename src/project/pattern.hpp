@@ -9,6 +9,10 @@ struct PatternLoopSeq {
     bool muted = true;
     // 0.0 - 1.0
     float saturation = 0.0; 
+    // PatternLoopSeq(PatternLoopSeq& src) {
+    //     muted = src.muted;
+    //     saturation = src.saturation;
+    // }
 };
 
 struct PatternLoop {
@@ -22,7 +26,7 @@ class Pattern {
     private:
         BankPattern bank_pattern;
         std::string name;
-        size_t number;
+        size_t pattern_number;
         std::vector<PatternLoop> loops;
         std::array<std::vector<bool>, PATTERN_MUTES> mutes;
         bool learned;

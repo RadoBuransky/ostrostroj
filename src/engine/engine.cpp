@@ -1,4 +1,4 @@
-#define SPDLOG_ACTIVE_LEVEL 1
+#define SPDLOG_ACTIVE_LEVEL 2
 
 #include "common.hpp"
 #include "engine.hpp"
@@ -64,11 +64,8 @@ void Engine::note(uint8_t channel, uint8_t note, bool on, unsigned int clock, bo
     }
     if (pattern_learn->valid_note(note)) {
         if (!session->get_pattern().get_learned()) {
-            uint8_t old_step = pattern_learn->get_step();
             pattern_learn->note(note, on, clock);
-            if (pattern_learn->get_step() != old_step) {
-                session->step_learned();
-            }
+            session->step_learned();
         }
         return;
     }
@@ -113,22 +110,18 @@ void Engine::controller(uint8_t channel, unsigned int param, signed int value, u
     }
     if (pattern_learn->valid_controller(param)) {
         if (!session->get_pattern().get_learned()) {
-            uint8_t old_step = pattern_learn->get_step();
             pattern_learn->controller(param, value, clock);
-            if (pattern_learn->get_step() != old_step) {
-                session->step_learned();
-                
-                for (PatternLoop& pattern_loop : session->get_pattern().get_loops()) {
-                    if (!session->get_current_loop_seq(pattern_loop.track_number).muted) {
-                        EngineWorker& worker = get_worker(pattern_loop.track_number);
-                        worker.lock_tracks();
-                        loop_tracks.at(pattern_loop.track_number - 1)->set_clip_mute(pattern_loop.loop, false);
-                        worker.unlock_tracks();
-                        SPDLOG_DEBUG("ENGIN loop unmuted [track_number={},loop={}]", pattern_loop.track_number, pattern_loop.loop.c_str());
-                    }
+            session->step_learned();            
+            for (PatternLoop& pattern_loop : session->get_pattern().get_loops()) {
+                if (!session->get_current_loop_seq(pattern_loop.track_number).muted) {
+                    EngineWorker& worker = get_worker(pattern_loop.track_number);
+                    worker.lock_tracks();
+                    loop_tracks.at(pattern_loop.track_number - 1)->set_clip_mute(pattern_loop.loop, false);
+                    worker.unlock_tracks();
+                    SPDLOG_DEBUG("ENGIN loop unmuted [track_number={},loop={}]", pattern_loop.track_number, pattern_loop.loop.c_str());
                 }
-                SPDLOG_DEBUG("ENGIN controller step learned [step={}]", pattern_learn->get_step());
             }
+            SPDLOG_DEBUG("ENGIN controller learned [param={}]", param);
         }
     }
 }
