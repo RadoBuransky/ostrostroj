@@ -4,32 +4,26 @@
 #include "warp.hpp"
 
 static constexpr uint8_t CONVERTER = SRC_LINEAR;
-static constexpr double TARGET_CHANGE_PERIOD_SEC = 2;
+static constexpr double TARGET_CHANGE_PERIOD_SEC = 5;
 static constexpr double MAX_RATIO = 1.0;
-static constexpr double MAX_STEP = 0.1;
+static constexpr double MAX_STEP = 0.0001;
 
 void Warp::update_ratio() {
-    // if (target_change_dist(random_engine) == 1) {
-    //     step_size = step_dist(random_engine);
-    //     SPDLOG_DEBUG("WARP  update_ratio[step_size={:.3f},ratio_accumulator={:.3f},ratio={:.3f}]", step_size, ratio_accumulator, ratio);
-    // }
-    // ratio += step_size - (ratio_accumulator * MAX_STEP * MAX_STEP);
-    if (ratio_counter++ == 10000) {
-        ratio_counter = 0;
-        ratio *= -1.0;
-        src_data.src_ratio = (ratio >= 0.0) ? (1.0 + ratio) : (1.0 / (1.0 - ratio));
-        SPDLOG_DEBUG("WARP{} update_ratio[ratio={},src_ratio={}]", track_number, ratio, src_data.src_ratio);
+    if (target_change_dist(random_engine) == 1) {
+        step_size = step_dist(random_engine);
+        if (track_number == 4) {
+            SPDLOG_DEBUG("WARP{}  update_ratio[step_size={:.3f},ratio_accumulator={:.3f},ratio={:.3f}]", track_number, step_size, ratio_accumulator, ratio);
+        }
     }
-    // ratio += step_size;
-    // if (ratio > MAX_RATIO) {
-    //     ratio = MAX_RATIO;
-    //     step_size = -MAX_STEP;
-    // } else {
-    //     if (ratio < -MAX_RATIO) {
-    //         ratio = -MAX_RATIO;
-    //         step_size = MAX_STEP;
-    //     }
-    // }
+    ratio += step_size - (ratio_accumulator * MAX_STEP * MAX_STEP);
+    if (ratio > MAX_RATIO) {
+        ratio = MAX_RATIO;
+    } else {
+        if (ratio < -MAX_RATIO) {
+            ratio = -MAX_RATIO;
+        }
+    }
+    src_data.src_ratio = (ratio >= 0.0) ? (1.0 + ratio) : (1.0 / (1.0 - ratio));
 }
 
 SRC_STATE* Warp::init_src_state(size_t _channels) {
@@ -49,16 +43,16 @@ Warp::Warp(size_t _channels, uint8_t _track_number):
     input_samples_pos(input_samples.data()),
     output_samples_gen(0),
     src_state(init_src_state(_channels)),
-    ratio(MAX_RATIO),
+    ratio(0.0),
     ratio_accumulator(0.0),
-    step_size(MAX_STEP),
+    step_size(0.0),
     random(),
     random_engine(random()),
-    target_change_dist(1, (uint)(96000 * _channels * TARGET_CHANGE_PERIOD_SEC)), // Yeah, hardcoded sampling rate
+    target_change_dist(1, (uint)(96000 * _channels * TARGET_CHANGE_PERIOD_SEC / input_samples.size())), // Yeah, hardcoded sampling rate
     step_dist(-MAX_STEP, MAX_STEP),
     ratio_counter(0) {
-    if (channels > input_samples.size()) {
-        throw OstrostrojException(fmt::format("WARP too many channels! [channels={}]", channels));
+    if (channels*2 > input_samples.size()) {
+        throw OstrostrojException(fmt::format("WARP{} we need to fit at least 2 frames in input buffer! [channels={}]", _track_number, channels));
     }
     src_data.data_in = input_samples.data();
     src_data.input_frames = input_samples.size() / channels;
@@ -68,7 +62,6 @@ Warp::Warp(size_t _channels, uint8_t _track_number):
     src_data.output_frames_gen = 0;
     src_data.src_ratio = 1.0;
     src_data.end_of_input = 0;
-    update_ratio();
 }
 
 Warp::~Warp() {
