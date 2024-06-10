@@ -39,4 +39,5 @@ class Track {
         void clear(bool drop);
         void set_clip_mute(std::filesystem::path& clip_path, bool muted);
         void set_saturation(float _saturation);
+        float get_saturation();
 };

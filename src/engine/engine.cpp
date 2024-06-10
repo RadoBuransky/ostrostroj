@@ -126,9 +126,24 @@ void Engine::controller(uint8_t channel, unsigned int param, signed int value, u
                 }
             }
             SPDLOG_DEBUG("ENGIN controller learned [param={}]", param);
+        } else {
+            if (param >= 111 && param <= 111 + 6) {
+                uint8_t track_number = param - 111 + 1;
+                float saturation = (float)value / 127;
+                for (auto& track : loop_tracks) {
+                    if ((uint8_t)track->get_track_number() == track_number) {
+                        // TODO: Do this properly, implement a generic CC relative encoder which remembers its last value and detects crossing it
+                        if (std::fabs(saturation - track->get_saturation()) < 0.1) {
+                            track->set_saturation(saturation);
+                        }
+                        return;
+                    }
+                }
+            }
         }
         return;
     }
+    // TODO: Man, improve this
     if (param == 118) {
         float saturation = (float)value / 127;
         for (auto& track : loop_tracks) {

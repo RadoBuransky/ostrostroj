@@ -9,9 +9,8 @@ class Saturation {
     public:
         Saturation(uint8_t _track_number);
         virtual ~Saturation() = default;
-
         void set_dry_wet(float _dry_wet);
+        float get_dry_wet();
         void set_drive(float _drive);
-
         float saturate(float sample);
 };

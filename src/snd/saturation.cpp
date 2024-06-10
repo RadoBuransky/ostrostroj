@@ -20,6 +20,10 @@ void Saturation::set_dry_wet(float _dry_wet) {
     SPDLOG_DEBUG("SAT{}  set_dry_wet[dry_wet={}]", track_number, dry_wet);
 }
 
+float Saturation::get_dry_wet() {
+    return dry_wet;
+}
+
 void Saturation::set_drive(float _drive) {
     _drive = std::max(0.0f, std::min(1.0f, _drive));
     _drive = (std::pow(CURVE, _drive) - 1.0) / (CURVE - 1.0);

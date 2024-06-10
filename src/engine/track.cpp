@@ -125,3 +125,7 @@ void Track::set_saturation(float _saturation) {
     saturation.set_drive(_saturation);
     saturation.set_dry_wet(_saturation);
 }
+
+float Track::get_saturation() {
+    return saturation.get_dry_wet();
+}
