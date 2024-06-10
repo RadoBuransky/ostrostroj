@@ -4,18 +4,25 @@
 #include "warp.hpp"
 
 static constexpr uint8_t CONVERTER = SRC_LINEAR;
-static constexpr double TARGET_CHANGE_PERIOD_SEC = 5;
-static constexpr double MAX_RATIO = 0.2;
-static constexpr double MAX_STEP = 0.0001;
+static constexpr double TARGET_CHANGE_PERIOD_SEC = 3;
+static constexpr double MAX_RATIO = 0.01;
+static constexpr double MAX_STEP = 0.0000001;
 
 void Warp::update_ratio() {
     if (target_change_dist(random_engine) == 1) {
-        step_size = step_dist(random_engine);
+        step_size = step_dist(random_engine) - (ratio_accumulator * MAX_STEP);
+        if (step_size > MAX_STEP) {
+            step_size = MAX_STEP;
+        } else {
+            if (step_size < -MAX_STEP) {
+                step_size = -MAX_STEP;
+            }
+        }
         if (track_number == 4) {
             SPDLOG_DEBUG("WARP{}  update_ratio[step_size={:.3f},ratio_accumulator={:.3f},ratio={:.3f}]", track_number, step_size, ratio_accumulator, ratio);
         }
     }
-    ratio += step_size - (ratio_accumulator * std::pow(MAX_STEP, 1.5));
+    ratio += step_size;
     if (ratio > MAX_RATIO) {
         ratio = MAX_RATIO;
     } else {
