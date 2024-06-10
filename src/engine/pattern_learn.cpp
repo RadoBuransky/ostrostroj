@@ -5,7 +5,6 @@
 #include "engine.hpp"
 
 static constexpr uint8_t T1_NOTE = 36; // C3
-static constexpr uint8_t L1_PARAM = 111; // CC #111
 static constexpr uint8_t STEP_SIZE = 6; // 1/8th note (https://en.wikipedia.org/wiki/MIDI_beat_clock)
 static constexpr uint8_t MAX_STEPS = 16;
 static constexpr int MIN_SATURATION = 1;

@@ -5,6 +5,7 @@ target_sources(ostrostroj
 
 set_target_properties(ostrostroj PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE)
 
+add_subdirectory(controller)
 add_subdirectory(engine)
 add_subdirectory(gfx)
 add_subdirectory(project)

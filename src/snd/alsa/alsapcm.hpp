@@ -2,8 +2,6 @@
 #include <alsa/pcm.h>
 #include "farbot/fifo.hpp"
 
-static constexpr int PCM_OUT_CHANNELS = 12;
-
 struct PcmSample_s24_3le {
     unsigned char b0;
     unsigned char b1;

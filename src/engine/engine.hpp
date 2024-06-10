@@ -10,10 +10,7 @@
 #include "display.hpp"
 #include "pattern_learn.hpp"
 #include "model_cycles.hpp"
-
-static constexpr int ENGINE_LOOP_TRACKS = 6;
-static constexpr int ENGINE_LOOP_MONO_TRACKS = 4;
-static_assert(ENGINE_LOOP_MONO_TRACKS + (ENGINE_LOOP_TRACKS - ENGINE_LOOP_MONO_TRACKS) * 2 + 2 < PCM_OUT_CHANNELS);
+#include "loop_encoders.hpp"
 
 class Engine {
     private:
@@ -22,6 +19,7 @@ class Engine {
         AlsaPcm& alsa_pcm;
         Display& display;
         std::unique_ptr<ModelCycles> model_cycles;
+        LoopEncoders loop_encoders;
         std::atomic_flag midi_flag;
         std::atomic_bool stop;
         std::array<std::unique_ptr<Track>, ENGINE_LOOP_TRACKS> loop_tracks; // 0-3 mono, 4-5 stereo
@@ -35,6 +33,8 @@ class Engine {
         void note(uint8_t channel, uint8_t note, bool on, unsigned int clock, bool running);
         void one_shot_note(uint8_t note, bool on);
         void controller(uint8_t channel, unsigned int param, signed int value, unsigned int clock, bool running);
+        void update_saturation();
+        void learn(unsigned int param, signed int value, unsigned int clock);
         snd_pcm_uframes_t compute_latency(uint8_t mul, uint8_t clock_interval);
         void program_changed(bool running, snd_pcm_uframes_t predelay);
         void add_loop_clips(bool running, snd_pcm_uframes_t predelay);

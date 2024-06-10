@@ -109,48 +109,47 @@ void Engine::controller(uint8_t channel, unsigned int param, signed int value, u
     if (channel != SOURCE_MIDI_CHANNEL || !running) {
         return;
     }
-    if (pattern_learn->valid_controller(param)) {
-        if (!session->get_pattern().get_learned()) {
-            pattern_learn->controller(param, value, clock);
-            session->step_learned();            
-            for (PatternLoop& pattern_loop : session->get_pattern().get_loops()) {
-                PatternLoopSeq loop_seq = session->get_current_loop_seq(pattern_loop.track_number);
-                if (!loop_seq.muted) {
-                    EngineWorker& worker = get_worker(pattern_loop.track_number);
-                    worker.lock_tracks();
-                    auto& track = loop_tracks.at(pattern_loop.track_number - 1);
-                    track->set_clip_mute(pattern_loop.loop, false);
-                    track->set_saturation(loop_seq.saturation);
-                    worker.unlock_tracks();
-                    SPDLOG_DEBUG("ENGIN loop unmuted [track_number={},loop={}]", pattern_loop.track_number, pattern_loop.loop.c_str());
-                }
-            }
-            SPDLOG_DEBUG("ENGIN controller learned [param={}]", param);
-        } else {
-            if (param >= 111 && param <= 111 + 6) {
-                uint8_t track_number = param - 111 + 1;
-                float saturation = (float)value / 127;
-                for (auto& track : loop_tracks) {
-                    if ((uint8_t)track->get_track_number() == track_number) {
-                        // TODO: Do this properly, implement a generic CC relative encoder which remembers its last value and detects crossing it
-                        if (std::fabs(saturation - track->get_saturation()) < 0.1) {
-                            track->set_saturation(saturation);
-                        }
-                        return;
-                    }
-                }
-            }
-        }
+    if (pattern_learn->valid_controller(param) && !session->get_pattern().get_learned()) {
+        learn(param, value, clock);
         return;
     }
-    // TODO: Man, improve this
-    if (param == 118) {
-        float saturation = (float)value / 127;
-        for (auto& track : loop_tracks) {
-            track->set_saturation(saturation);
-        }
-        SPDLOG_WARN("ENGIN controller [saturation={}]", saturation);
+    if (loop_encoders.handle(channel, param, value)) {
+        update_saturation();
+        return;
     }
+    // TODO: Do we want global saturation at all?
+    // if (param == 118) {
+    //     float saturation = (float)value / 127;
+    //     for (auto& track : loop_tracks) {
+    //         track->set_saturation(saturation);
+    //     }
+    //     SPDLOG_WARN("ENGIN controller [saturation={}]", saturation);
+    // }
+}
+
+void Engine::update_saturation() {
+    for (auto& track : loop_tracks) {
+        MidiEncoder& encoder = loop_encoders.get_encoder(track->get_track_number());
+        track->set_saturation(encoder.get_percentage());
+    }
+}
+
+void Engine::learn(unsigned int param, signed int value, unsigned int clock) {
+    pattern_learn->controller(param, value, clock);
+    session->step_learned();            
+    for (PatternLoop& pattern_loop : session->get_pattern().get_loops()) {
+        PatternLoopSeq loop_seq = session->get_current_loop_seq(pattern_loop.track_number);
+        if (!loop_seq.muted) {
+            EngineWorker& worker = get_worker(pattern_loop.track_number);
+            worker.lock_tracks();
+            auto& track = loop_tracks.at(pattern_loop.track_number - 1);
+            track->set_clip_mute(pattern_loop.loop, false);
+            track->set_saturation(loop_seq.saturation);
+            worker.unlock_tracks();
+            SPDLOG_DEBUG("ENGIN loop unmuted [track_number={},loop={}]", pattern_loop.track_number, pattern_loop.loop.c_str());
+        }
+    }
+    SPDLOG_DEBUG("ENGIN controller learned [param={}]", param);
 }
 
 snd_pcm_uframes_t Engine::compute_latency(uint8_t mul, uint8_t clock_interval) {
@@ -294,6 +293,7 @@ Engine::Engine(Workspace& _workspace, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm, 
     alsa_pcm(_alsa_pcm),
     display(_display),
     model_cycles(std::make_unique<ModelCycles>()),
+    loop_encoders(SOURCE_MIDI_CHANNEL, L1_PARAM),
     midi_flag(ATOMIC_FLAG_INIT),
     stop(false),
     loop_tracks {
