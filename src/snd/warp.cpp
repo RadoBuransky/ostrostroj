@@ -10,14 +10,7 @@ static constexpr double MAX_STEP = 0.0000001;
 
 void Warp::update_ratio() {
     if (target_change_dist(random_engine) == 1) {
-        step_size = step_dist(random_engine) - (ratio_accumulator * MAX_STEP);
-        if (step_size > MAX_STEP) {
-            step_size = MAX_STEP;
-        } else {
-            if (step_size < -MAX_STEP) {
-                step_size = -MAX_STEP;
-            }
-        }
+        step_size = generate_step_size();
         if (track_number == 4) {
             SPDLOG_DEBUG("WARP{}  update_ratio[step_size={:.3f},ratio_accumulator={:.3f},ratio={:.3f}]", track_number, step_size, ratio_accumulator, ratio);
         }
@@ -31,6 +24,17 @@ void Warp::update_ratio() {
         }
     }
     src_data.src_ratio = (ratio >= 0.0) ? (1.0 + ratio) : (1.0 / (1.0 - ratio));
+}
+
+double Warp::generate_step_size() {
+    double result = step_dist(random_engine) - (ratio_accumulator * MAX_STEP * 1000.0);
+    if (result > MAX_STEP) {
+        return MAX_STEP;
+    } 
+    if (result < -MAX_STEP) {
+        return -MAX_STEP;
+    }
+    return result;
 }
 
 SRC_STATE* Warp::init_src_state(size_t _channels) {
@@ -52,12 +56,11 @@ Warp::Warp(size_t _channels, uint8_t _track_number):
     src_state(init_src_state(_channels)),
     ratio(0.0),
     ratio_accumulator(0.0),
-    step_size(0.0),
+    step_size(generate_step_size()),
     random(),
     random_engine(random()),
     target_change_dist(1, (uint)(96000 * _channels * TARGET_CHANGE_PERIOD_SEC / input_samples.size())), // Yeah, hardcoded sampling rate
-    step_dist(-MAX_STEP, MAX_STEP),
-    ratio_counter(0) {
+    step_dist(-MAX_STEP, MAX_STEP) {
     if (channels*2 > input_samples.size()) {
         throw OstrostrojException(fmt::format("WARP{} we need to fit at least 2 frames in input buffer! [channels={}]", _track_number, channels));
     }
@@ -69,6 +72,7 @@ Warp::Warp(size_t _channels, uint8_t _track_number):
     src_data.output_frames_gen = 0;
     src_data.src_ratio = 1.0;
     src_data.end_of_input = 0;
+    update_ratio();
 }
 
 Warp::~Warp() {

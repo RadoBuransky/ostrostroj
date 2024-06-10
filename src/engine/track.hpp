@@ -6,6 +6,7 @@
 #include "alsapcm.hpp"
 #include "clipplayer.hpp"
 #include "warp.hpp"
+#include "saturation.hpp"
 
 typedef farbot::fifo<PcmSample_s24_3le,
             farbot::fifo_options::concurrency::single,
@@ -24,11 +25,9 @@ class Track {
         std::vector<std::unique_ptr<ClipPlayer>> clip_players;
         PcmSample_s24_3le sample;
         bool sample_pending;
-        float saturation_in_gain;
-        float saturation_out_gain;
         Warp warp;
+        Saturation saturation;
         bool pop(float& _sample);
-        float saturate(float clip_sample);
     public:
         Track(int _track_number, int _channels, snd_pcm_uframes_t _period_size, uint8_t _periods, bool _loop);
         virtual ~Track();        

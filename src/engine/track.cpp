@@ -17,7 +17,7 @@ bool Track::pop(float& _sample) {
         std::vector<std::unique_ptr<ClipPlayer>>::iterator it = clip_players.begin();
         while (it != clip_players.end()) {
             if ((*it)->pop(clip_sample)) {
-                _sample += saturate(clip_sample);
+                _sample += saturation.saturate(clip_sample);
                 it++;
             } else {
                 SPDLOG_DEBUG("TRAK{} clip removed", track_number);
@@ -30,17 +30,6 @@ bool Track::pop(float& _sample) {
     return true;
 }
 
-float Track::saturate(float clip_sample) {
-    // if (saturation_in_gain <= 1.0) {
-    //     return clip_sample;
-    // }
-    // clip_sample *= saturation_in_gain;
-
-    // // TODO: saturation_out_gain should wet/dry mix?
-    // return saturation_out_gain * (clip_sample / (std::abs(clip_sample) + 1.0));
-    return clip_sample;
-}
-
 Track::Track(int _track_number, int _channels, snd_pcm_uframes_t _period_size, uint8_t _periods, bool _loop):
     track_number(_track_number),
     channels(_channels),
@@ -51,9 +40,8 @@ Track::Track(int _track_number, int _channels, snd_pcm_uframes_t _period_size, u
     clip_players(),
     sample(0),
     sample_pending(false),
-    saturation_in_gain(1.0),
-    saturation_out_gain(1.0),
-    warp(_channels, _track_number) {
+    warp(_channels, _track_number),
+    saturation(_track_number) {
 }
 
 Track::~Track() {
@@ -134,17 +122,6 @@ void Track::set_clip_mute(std::filesystem::path& clip_path, bool muted) {
 }
 
 void Track::set_saturation(float _saturation) {
-    static constexpr float DRIVE = 10000.0;
-    static constexpr float CURVE = 10000.0;
-    if (_saturation < 0.0) {
-        _saturation = 0.0;
-    } else {
-        if (_saturation > 1.0) {
-            _saturation = 1.0;
-        }
-    }
-    _saturation = (std::pow(CURVE, _saturation) - 1.0) / (CURVE - 1.0);
-    saturation_in_gain = 1.0 + (_saturation * DRIVE);
-    saturation_out_gain = 2 / (1 + 5*std::log10(saturation_in_gain));
-    SPDLOG_DEBUG("TRAK{} saturation[saturation_in_gain={},saturation_out_gain={}]", track_number, saturation_in_gain, saturation_out_gain);
+    saturation.set_drive(_saturation);
+    saturation.set_dry_wet(_saturation);
 }
