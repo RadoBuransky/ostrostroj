@@ -1,20 +1,30 @@
 #pragma once
 
 #include <samplerate.h>
+#include <random>
 
 class Warp {
     private:
         const size_t channels;
-        std::array<float, 2> input_frame;
-        size_t input_frame_pos;
-        std::array<float, 32> output;
+        const uint8_t track_number;
+        std::array<float, 32> input_samples; // Must be at least 2 frames
+        float* input_samples_pos;
+        std::array<float, 256> output_samples; // Must be at big enough to hold all warped input samples at once
         size_t output_samples_gen;
         SRC_STATE* src_state;
         SRC_DATA src_data;
-        float ratio;
+        double ratio; // -1.0 = half speed, 1.0 = double speed
+        double ratio_accumulator;
+        double step_size;
+        std::random_device random;
+        std::default_random_engine random_engine;
+        std::uniform_int_distribution<uint> target_change_dist;
+        std::uniform_real_distribution<double> step_dist;
+        size_t ratio_counter;
+        void update_ratio();
         SRC_STATE* init_src_state(size_t channels);
     public:
-        Warp(size_t _channels);
+        Warp(size_t _channels, uint8_t _track_number);
         virtual ~Warp();
         bool pushnpop(float &sample);
         bool pop(float &sample);

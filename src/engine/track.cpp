@@ -31,11 +31,14 @@ bool Track::pop(float& _sample) {
 }
 
 float Track::saturate(float clip_sample) {
-    if (saturation_in_gain <= 1.0) {
-        return clip_sample;
-    }
-    clip_sample *= saturation_in_gain;
-    return saturation_out_gain * (clip_sample / (std::abs(clip_sample) + 1.0));
+    // if (saturation_in_gain <= 1.0) {
+    //     return clip_sample;
+    // }
+    // clip_sample *= saturation_in_gain;
+
+    // // TODO: saturation_out_gain should wet/dry mix?
+    // return saturation_out_gain * (clip_sample / (std::abs(clip_sample) + 1.0));
+    return clip_sample;
 }
 
 Track::Track(int _track_number, int _channels, snd_pcm_uframes_t _period_size, uint8_t _periods, bool _loop):
@@ -50,7 +53,7 @@ Track::Track(int _track_number, int _channels, snd_pcm_uframes_t _period_size, u
     sample_pending(false),
     saturation_in_gain(1.0),
     saturation_out_gain(1.0),
-    warp(_channels) {
+    warp(_channels, _track_number) {
 }
 
 Track::~Track() {
@@ -142,6 +145,6 @@ void Track::set_saturation(float _saturation) {
     }
     _saturation = (std::pow(CURVE, _saturation) - 1.0) / (CURVE - 1.0);
     saturation_in_gain = 1.0 + (_saturation * DRIVE);
-    saturation_out_gain = 2 / (1 + 2.5*std::log(saturation_in_gain));
+    saturation_out_gain = 2 / (1 + 5*std::log10(saturation_in_gain));
     SPDLOG_DEBUG("TRAK{} saturation[saturation_in_gain={},saturation_out_gain={}]", track_number, saturation_in_gain, saturation_out_gain);
 }
