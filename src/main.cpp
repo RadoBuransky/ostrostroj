@@ -28,6 +28,8 @@ class OstrostrojApp {
             sigemptyset(&sigIntHandler.sa_mask);
             sigIntHandler.sa_flags = 0;
             sigaction(SIGINT, &sigIntHandler, NULL);
+            sigaction(SIGTERM, &sigIntHandler, NULL);
+            sigaction(SIGKILL, &sigIntHandler, NULL);
             running_flag.test_and_set();
             SPDLOG_INFO("Running...");
             running_flag.wait(true);
@@ -64,6 +66,7 @@ class OstrostrojApp {
 };
 
 int main(int argc, char* argv[]) {
+    // TODO: Get workspace root directory as an argument
     spdlog::set_pattern("%L [%H:%M:%S.%e] [%t] %v");
     spdlog::set_level(spdlog::level::trace);
     SPDLOG_INFO("Ostrostroj started. [{}]", static_cast<int>(spdlog::get_level()));

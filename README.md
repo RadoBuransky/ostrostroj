@@ -23,3 +23,9 @@
                 - Loop files...
             - One shot files (`S0.wav`, `S1_.wav`, `S3_melody.wav`, ...)
         - Another song directory (`A05_menej`)
+
+## Logs
+
+```shell
+journalctl -u ostrostroj
+```
