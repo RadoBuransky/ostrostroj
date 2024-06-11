@@ -1,6 +1,5 @@
 #pragma once
 
-#include <alsa/asoundlib.h>
 #include "clip.hpp"
 
 class ClipPlayer {

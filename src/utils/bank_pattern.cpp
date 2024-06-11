@@ -1,4 +1,6 @@
 #include "common.hpp"
+#define SPDLOG_ACTIVE_LEVEL 2
+#include <spdlog/spdlog.h>
 #include "bank_pattern.hpp"
 
 BankPattern::BankPattern(const std::string _pattern):

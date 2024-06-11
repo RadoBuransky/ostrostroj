@@ -1,6 +1,7 @@
 set(CMAKE_CROSSCOMPILING TRUE)
 set(CMAKE_SYSTEM_NAME Linux)
 set(CMAKE_SYSTEM_PROCESSOR arm)
+set(CMAKE_BUILD_PARALLEL_LEVEL 12)
 
 set(triple "aarch64-none-linux-gnu")
 set(CMAKE_C_COMPILER "C:\\Program Files (x86)\\Arm GNU Toolchain aarch64-none-linux-gnu\\12.2 rel1\\bin\\aarch64-none-linux-gnu-gcc.exe")

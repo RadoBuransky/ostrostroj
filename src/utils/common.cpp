@@ -1,4 +1,6 @@
 #include "common.hpp"
+#define SPDLOG_ACTIVE_LEVEL 2
+#include <spdlog/spdlog.h>
 
 pthread_t create_rt_thread(std::string name, int sched_priority, void *(*start_routine) (void *), void* arg) {
     // https://github.com/jackaudio/jack2/blob/c46c1b16e0eabbcf55ef69b0ffb96dfe16521cfa/posix/JackPosixThread.cpp#L117

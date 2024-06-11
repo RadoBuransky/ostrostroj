@@ -1,7 +1,6 @@
 #include "common.hpp"
-#include <linux/spi/spidev.h>
-#include <errno.h>
-#include <gpiod.h>
+#define SPDLOG_ACTIVE_LEVEL 2
+#include <spdlog/spdlog.h>
 #include "holtek16d35a.hpp"
 
 // https://pypi.org/project/spidev/

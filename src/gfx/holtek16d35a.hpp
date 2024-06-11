@@ -1,8 +1,5 @@
 #pragma once
 
-#include <gpiod.h>
-#include <spidev_lib++.h>
-
 constexpr uint8_t RGB_MAX = 0x3F;
 constexpr uint8_t RGB_75 = 0x2E;
 constexpr uint8_t RGB_50 = 0x1F;

@@ -1,10 +1,6 @@
 #include "common.hpp"
-#include <unistd.h>
-#include <iostream>
-#include <sys/reboot.h>
-#include <signal.h>
-#include <cstdlib>
-#include <functional>
+#define SPDLOG_ACTIVE_LEVEL 2
+#include <spdlog/spdlog.h>
 #include "workspace.hpp"
 #include "engine.hpp"
 #include "profiler.hpp"

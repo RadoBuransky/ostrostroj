@@ -1,7 +1,6 @@
-#define SPDLOG_ACTIVE_LEVEL 2
-
 #include "common.hpp"
-#include <alsa/asoundlib.h>
+#define SPDLOG_ACTIVE_LEVEL 2
+#include <spdlog/spdlog.h>
 #include "alsamidi.hpp"
 
 static constexpr int POLL_TIMEOUT_MS = 200;

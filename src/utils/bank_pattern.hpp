@@ -1,7 +1,5 @@
 #pragma once
 
-#include <string>
-
 /**
  * A01 pattern = program 1
  * A02 pattern = program 2

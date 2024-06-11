@@ -1,6 +1,4 @@
 #pragma once
-#include <alsa/asoundlib.h>
-#include "farbot/fifo.hpp"
 
 typedef farbot::fifo<snd_seq_event_t,
             farbot::fifo_options::concurrency::single,

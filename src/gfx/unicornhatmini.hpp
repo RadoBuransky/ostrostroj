@@ -1,6 +1,5 @@
 #pragma once
 
-#include <gpiod.h>
 #include "holtek16d35a.hpp"
 
 constexpr size_t UNICORN_HAT_MINI_COLS = 17;

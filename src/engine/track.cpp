@@ -1,6 +1,8 @@
-#define SPDLOG_ACTIVE_LEVEL 2
-
 #include "common.hpp"
+
+#define SPDLOG_ACTIVE_LEVEL 2
+#include <spdlog/spdlog.h>
+
 #include "track.hpp"
 
 bool Track::pop(float& _sample) {

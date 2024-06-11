@@ -1,6 +1,8 @@
-#define SPDLOG_ACTIVE_LEVEL 2
-
 #include "common.hpp"
+
+#define SPDLOG_ACTIVE_LEVEL 2
+#include <spdlog/spdlog.h>
+
 #include "engine.hpp"
 
 static constexpr uint8_t SOURCE_MIDI_CHANNEL = 7;

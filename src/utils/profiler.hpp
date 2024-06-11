@@ -1,5 +1,3 @@
-#include <atomic>
-#include <spdlog/spdlog.h>
 
 // #define PROFILING
 

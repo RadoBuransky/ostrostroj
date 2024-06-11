@@ -1,6 +1,6 @@
-#define SPDLOG_ACTIVE_LEVEL 2
-
 #include "common.hpp"
+#define SPDLOG_ACTIVE_LEVEL 2
+#include <spdlog/spdlog.h>
 #include "song.hpp"
 
 static constexpr char DELIMITER = '_';

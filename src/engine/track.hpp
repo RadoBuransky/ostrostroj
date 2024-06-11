@@ -1,7 +1,5 @@
 #pragma once
 
-#include <chrono>
-#include <alsa/asoundlib.h>
 #include "farbot/fifo.hpp"
 #include "alsapcm.hpp"
 #include "clipplayer.hpp"

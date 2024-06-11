@@ -1,6 +1,6 @@
-#define SPDLOG_ACTIVE_LEVEL 1
-
 #include "common.hpp"
+#define SPDLOG_ACTIVE_LEVEL 2
+#include <spdlog/spdlog.h>
 #include "warp.hpp"
 
 static constexpr uint8_t CONVERTER = SRC_LINEAR;

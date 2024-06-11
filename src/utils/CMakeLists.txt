@@ -7,3 +7,5 @@ target_sources(ostrostroj
         ${CMAKE_CURRENT_LIST_DIR}/profiler.hpp)
 
 target_include_directories(ostrostroj PRIVATE ${CMAKE_CURRENT_LIST_DIR})
+
+target_precompile_headers(ostrostroj PRIVATE ${CMAKE_CURRENT_LIST_DIR}/common.hpp)

@@ -1,9 +1,5 @@
 #pragma once
 
-#include <vector>
-#include <filesystem>
-#include <chrono>
-#include <sndfile.hh>
 #include "clipblock.hpp"
 
 class Clip {

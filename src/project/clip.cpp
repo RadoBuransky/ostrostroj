@@ -1,5 +1,6 @@
 #include "common.hpp"
-#include <algorithm>
+#define SPDLOG_ACTIVE_LEVEL 2
+#include <spdlog/spdlog.h>
 #include "clip.hpp"
 
 void Clip::load() {

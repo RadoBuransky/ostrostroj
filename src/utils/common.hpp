@@ -1,11 +1,30 @@
 #pragma once
 
-#ifndef SPDLOG_ACTIVE_LEVEL
-    #define SPDLOG_ACTIVE_LEVEL 2
-#endif
-#include <spdlog/spdlog.h>
+#include <algorithm>
+#include <alsa/asoundlib.h>
+#include <alsa/pcm.h>
+#include <atomic>
+#include <chrono>
+#include <cstdlib>
+#include <errno.h>
+#include <farbot/fifo.hpp>
+#include <filesystem>
+#include <functional>
+#include <gpiod.h>
+#include <iostream>
+#include <linux/spi/spidev.h>
+#include <map>
+#include <mutex>
+#include <random>
+#include <ranges>
+#include <samplerate.h>
+#include <signal.h>
+#include <spidev_lib++.h>
+#include <sndfile.hh>
 #include <stdexcept>
 #include <string>
+#include <sys/reboot.h>
+#include <unistd.h>
 #include <vector>
 
 static constexpr int PCM_OUT_CHANNELS = 12;

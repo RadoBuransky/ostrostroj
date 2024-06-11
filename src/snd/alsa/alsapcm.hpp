@@ -1,5 +1,4 @@
 #pragma once
-#include <alsa/pcm.h>
 #include "farbot/fifo.hpp"
 
 struct PcmSample_s24_3le {

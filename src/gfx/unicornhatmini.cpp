@@ -1,4 +1,6 @@
 #include "common.hpp"
+#define SPDLOG_ACTIVE_LEVEL 2
+#include <spdlog/spdlog.h>
 #include "unicornhatmini.hpp"
 
 // https://pinout.xyz/pinout/unicorn_hat_mini#

@@ -1,8 +1,8 @@
-#define SPDLOG_ACTIVE_LEVEL 2
-
 #include "common.hpp"
-#include <algorithm>
-#include <ranges>
+
+#define SPDLOG_ACTIVE_LEVEL 2
+#include <spdlog/spdlog.h>
+
 #include "project.hpp"
 #include "session.hpp"
 #include "engine.hpp"
