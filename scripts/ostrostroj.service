@@ -1,0 +1,13 @@
+[Unit]
+Description=Ostrostroj
+After=network.target
+
+[Service]
+Type=simple
+User=rado
+WorkingDirectory=/home/rado
+ExecStart=/usr/local/bin/ostrostroj
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
