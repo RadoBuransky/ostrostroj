@@ -8,6 +8,6 @@ class LoopEncoders {
     public:
         LoopEncoders(uint8_t channel, uint first_param);
         virtual ~LoopEncoders() = default;
-        bool handle(uint8_t _channel, uint _param, int _value);
-        MidiEncoder& get_encoder(uint8_t track_number);
+        ssize_t handle(uint8_t _channel, uint _param, int _value);
+        MidiEncoder& get_encoder(size_t track_number);
 };

@@ -17,4 +17,6 @@ class MidiEncoder {
         void set_value(int _value);
         int get_value();
         float get_percentage();
+        void set_percentage(float _percentage);
+        bool is_grabbed();
 };

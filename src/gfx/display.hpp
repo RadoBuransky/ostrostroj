@@ -3,6 +3,11 @@
 #include "unicornhatmini.hpp"
 #include "pattern.hpp"
 
+struct LoopState {
+    PatternLoopSeq seq;
+    bool grabbed;
+};
+
 enum TrackState {
     Off = 0,
     Muted,
@@ -25,7 +30,7 @@ class MainScreen {
         std::chrono::steady_clock::duration song_duration;
         std::chrono::steady_clock::duration pattern_duration;
 
-        std::array<PatternLoopSeq, 6> loops;
+        std::array<LoopState, 6> loops;
         std::array<TrackState, ONE_SHOT_COUNT> one_shots;
 
         uint song_count;
@@ -39,7 +44,7 @@ class MainScreen {
 
         void draw_song_and_pattern_duration(unicorn_hat_mini_canvas& canvas);
         void draw_loops(unicorn_hat_mini_canvas& canvas);
-        void draw_loop(Point pos, PatternLoopSeq loop, unicorn_hat_mini_canvas& canvas);
+        void draw_loop(Point pos, LoopState loop, unicorn_hat_mini_canvas& canvas);
         void draw_one_shots(unicorn_hat_mini_canvas& canvas);
         void draw_songs(unicorn_hat_mini_canvas& canvas);
         void draw_patterns(unicorn_hat_mini_canvas& canvas);
@@ -54,6 +59,7 @@ class MainScreen {
         void set_pattern_duration(std::chrono::steady_clock::duration _pattern_duration);
 
         void set_loop_state(size_t loop_index, PatternLoopSeq state);
+        void set_loop_grabbed(size_t loop_index, bool grabbed);
         void all_loops_off();
 
         void set_one_shot_state(size_t one_shot_index, TrackState state);

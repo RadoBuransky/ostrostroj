@@ -6,12 +6,7 @@
 
 struct PatternLoopSeq {
     bool muted = true;
-    // 0.0 - 1.0
-    float saturation = 0.0; 
-    // PatternLoopSeq(PatternLoopSeq& src) {
-    //     muted = src.muted;
-    //     saturation = src.saturation;
-    // }
+    float saturation = 0.0;  // 0.0 - 1.0
 };
 
 struct PatternLoop {

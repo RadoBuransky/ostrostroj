@@ -7,6 +7,7 @@ constexpr RGB palette_off = {0, 0, 0};
 constexpr RGB palette_red = {RGB_MAX, 0, 0};
 constexpr RGB palette_green = {0, RGB_10, 0};
 constexpr RGB palette_blue = {0, 0, RGB_01};
+constexpr RGB palette_white = {RGB_MAX, RGB_10, RGB_10};
 
 constexpr RGB palette_yellow = {RGB_MAX, RGB_10, 0};
 constexpr RGB palette_magenta = {RGB_MAX, 0, RGB_01};
@@ -35,7 +36,7 @@ void MainScreen::draw_loops(unicorn_hat_mini_canvas& canvas) {
     draw_loop({2, 2}, loops[5], canvas);
 }
 
-void MainScreen::draw_loop(Point pos, PatternLoopSeq loop, unicorn_hat_mini_canvas& canvas) {
+void MainScreen::draw_loop(Point pos, LoopState loop, unicorn_hat_mini_canvas& canvas) {
     static const std::array<std::array<uint8_t, 2>, 4> shape = {{
         {9,1},
         {9,0},
@@ -43,17 +44,17 @@ void MainScreen::draw_loop(Point pos, PatternLoopSeq loop, unicorn_hat_mini_canv
         {10,1}
     }};
     RGB color;
-    float compensated_saturation = std::max(loop.saturation, (float)0.1);
+    float compensated_saturation = std::max(loop.seq.saturation, (float)0.1);
     RGB point_color = palette_yellow * compensated_saturation;
-    if (loop.muted) {
+    if (loop.seq.muted) {
         color = palette_muted;
     } else {
-        color = palette_playing * compensated_saturation;
+        color = (loop.grabbed ? palette_white : palette_playing) * compensated_saturation;
     }
-    uint8_t yellow_pos = (uint8_t)(loop.saturation * 4.0) / 4;
+    uint8_t yellow_pos = (uint8_t)(loop.seq.saturation * 4.0) / 4;
     for (size_t pixel = 0; pixel < shape.size(); pixel++) {
         const std::array<uint8_t, 2>& xy = shape.at(pixel);
-        canvas.at(xy.at(0) + pos.x).at(xy.at(1) + pos.y) = (!loop.muted && yellow_pos == pixel) ? point_color : color;
+        canvas.at(xy.at(0) + pos.x).at(xy.at(1) + pos.y) = (!loop.seq.muted && yellow_pos == pixel) ? point_color : color;
     }
     SPDLOG_DEBUG("DSPLY draw_loop[track_state={}]", track_state);
 }
@@ -113,7 +114,7 @@ MainScreen::MainScreen():
     one_shots(),
     pattern_seq_count(0),
     pattern_seq_index(0) {
-    loops.fill({});
+    loops.fill({{}, false});
     one_shots.fill(Off);
 }
 
@@ -152,13 +153,18 @@ void MainScreen::set_pattern_duration(std::chrono::steady_clock::duration _patte
 
 void MainScreen::set_loop_state(size_t loop_index, PatternLoopSeq state) {
     if (loop_index < loops.size()) {
-        loops.at(loop_index) = state;
+        loops.at(loop_index).seq = state;
         changed = true;
     }
 }
 
+void MainScreen::set_loop_grabbed(size_t loop_index, bool grabbed) {
+    loops.at(loop_index).grabbed = grabbed;
+    changed = true;
+}
+
 void MainScreen::all_loops_off() {
-    loops.fill({});
+    loops.fill({{}, false});
 }
 
 void MainScreen::set_one_shot_state(size_t one_shot_index, TrackState state) {

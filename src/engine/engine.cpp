@@ -115,24 +115,27 @@ void Engine::controller(uint8_t channel, unsigned int param, signed int value, u
         learn(param, value, clock);
         return;
     }
-    if (loop_encoders.handle(channel, param, value)) {
-        update_saturation();
+    ssize_t track_number;
+    if ((track_number = loop_encoders.handle(channel, param, value)) > 0) {
+        update_saturation(track_number);
         return;
     }
-    // TODO: Do we want global saturation at all?
-    // if (param == 118) {
-    //     float saturation = (float)value / 127;
-    //     for (auto& track : loop_tracks) {
-    //         track->set_saturation(saturation);
-    //     }
-    //     SPDLOG_WARN("ENGIN controller [saturation={}]", saturation);
-    // }
 }
 
-void Engine::update_saturation() {
+void Engine::update_saturation(ssize_t track_number) {
     for (auto& track : loop_tracks) {
-        MidiEncoder& encoder = loop_encoders.get_encoder(track->get_track_number());
-        track->set_saturation(encoder.get_percentage());
+        if (track->get_track_number() == track_number) {
+            MidiEncoder& encoder = loop_encoders.get_encoder(track_number);
+            if (encoder.is_grabbed()) {
+                track->set_saturation(encoder.get_percentage());
+                PatternLoopSeq loop_seq = session->get_current_loop_seq(track_number);
+                loop_seq.saturation = track->get_saturation();
+                display.get_main_screen().set_loop_state(track_number - 1, loop_seq);
+                display.get_main_screen().set_loop_grabbed(track_number - 1, true);
+                display.tick(true);
+            }
+            return;
+        }
     }
 }
 
@@ -147,6 +150,7 @@ void Engine::learn(unsigned int param, signed int value, unsigned int clock) {
             auto& track = loop_tracks.at(pattern_loop.track_number - 1);
             track->set_clip_mute(pattern_loop.loop, false);
             track->set_saturation(loop_seq.saturation);
+            loop_encoders.get_encoder(track->get_track_number()).set_percentage(loop_seq.saturation);
             worker.unlock_tracks();
             SPDLOG_DEBUG("ENGIN loop unmuted [track_number={},loop={}]", pattern_loop.track_number, pattern_loop.loop.c_str());
         }
@@ -178,6 +182,7 @@ void Engine::add_loop_clips(bool running, snd_pcm_uframes_t latency) {
         auto& track = loop_tracks.at(track_index);
         track->add_clip(session->get_clip(pattern_loop.loop), latency, running, loop_seq.muted);
         track->set_saturation(loop_seq.saturation);
+        loop_encoders.get_encoder(track->get_track_number()).set_percentage(loop_seq.saturation);
         SPDLOG_DEBUG("ENGIN clip added [track_index={},loop={},muted={},saturation={}]", track_index, pattern_loop.loop.c_str(), loop_seq.muted, loop_seq.saturation);
     }
 }

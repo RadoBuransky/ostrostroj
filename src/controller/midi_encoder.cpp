@@ -62,5 +62,14 @@ int MidiEncoder::get_value() {
 }
 
 float MidiEncoder::get_percentage() {
-    return (value - min_value) / (max_value - min_value);
+    return (float)(value - min_value) / (float)(max_value - min_value);
+}
+
+void MidiEncoder::set_percentage(float _percentage) {
+    _percentage = std::max(0.0f, std::min(1.0f, _percentage));
+    set_value((float)min_value + (float)(max_value - min_value) * _percentage);
+}
+
+bool MidiEncoder::is_grabbed() {
+    return grabbed;
 }
