@@ -3,8 +3,8 @@
 #include <spdlog/spdlog.h>
 #include "saturation.hpp"
 
-static constexpr float DRIVE = 10000.0;
-static constexpr float CURVE = 10000.0;
+static constexpr float DRIVE = 100000.0;
+static constexpr float CURVE = 100000.0;
 
 Saturation::Saturation(uint8_t _track_number):
     track_number(_track_number),

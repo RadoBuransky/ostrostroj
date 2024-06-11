@@ -7,7 +7,7 @@ constexpr RGB palette_off = {0, 0, 0};
 constexpr RGB palette_red = {RGB_MAX, 0, 0};
 constexpr RGB palette_green = {0, RGB_10, 0};
 constexpr RGB palette_blue = {0, 0, RGB_01};
-constexpr RGB palette_white = {RGB_MAX, RGB_10, RGB_10};
+constexpr RGB palette_white = {RGB_MAX, RGB_25, RGB_25};
 
 constexpr RGB palette_yellow = {RGB_MAX, RGB_10, 0};
 constexpr RGB palette_magenta = {RGB_MAX, 0, RGB_01};
@@ -45,16 +45,18 @@ void MainScreen::draw_loop(Point pos, LoopState loop, unicorn_hat_mini_canvas& c
     }};
     RGB color;
     float compensated_saturation = std::max(loop.seq.saturation, (float)0.1);
-    RGB point_color = palette_yellow * compensated_saturation;
+    RGB point_color;
     if (loop.seq.muted) {
         color = palette_muted;
-    } else {
+        point_color = palette_muted;
+    } else {        
         color = (loop.grabbed ? palette_white : palette_playing) * compensated_saturation;
+        point_color = (loop.grabbed ? palette_magenta : palette_yellow) * compensated_saturation;
     }
-    uint8_t yellow_pos = (uint8_t)(loop.seq.saturation * 4.0) / 4;
+    uint8_t yellow_pos = std::min((uint8_t)3, (uint8_t)(loop.seq.saturation * 4.0));
     for (size_t pixel = 0; pixel < shape.size(); pixel++) {
         const std::array<uint8_t, 2>& xy = shape.at(pixel);
-        canvas.at(xy.at(0) + pos.x).at(xy.at(1) + pos.y) = (!loop.seq.muted && yellow_pos == pixel) ? point_color : color;
+        canvas.at(xy.at(0) + pos.x).at(xy.at(1) + pos.y) = (yellow_pos == pixel) ? point_color : color;
     }
     SPDLOG_DEBUG("DSPLY draw_loop[track_state={}]", track_state);
 }
