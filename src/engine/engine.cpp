@@ -1,8 +1,6 @@
 #include "common.hpp"
-
 #define SPDLOG_ACTIVE_LEVEL 2
 #include <spdlog/spdlog.h>
-
 #include "engine.hpp"
 
 static constexpr uint8_t SOURCE_MIDI_CHANNEL = 7;
@@ -61,6 +59,17 @@ bool Engine::handle_midi_event(snd_seq_event_t& midi_event, snd_pcm_state_t stat
 }
 
 void Engine::note(uint8_t channel, uint8_t note, bool on, unsigned int clock, bool running) {
+    switch (command_controller.note(channel, note, on, clock, running)) {
+        case RESTART:
+            // TODO:
+            return;
+        case SHUTDOWN:
+            // TODO:
+            return;
+        case NOOP:
+            break;
+    }
+
     if (channel != SOURCE_MIDI_CHANNEL || !running) {
         return;
     }
@@ -301,6 +310,7 @@ Engine::Engine(Workspace& _workspace, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm, 
     display(_display),
     model_cycles(std::make_unique<ModelCycles>()),
     loop_encoders(SOURCE_MIDI_CHANNEL, L1_PARAM),
+    command_controller(),
     midi_flag(ATOMIC_FLAG_INIT),
     stop(false),
     loop_tracks {

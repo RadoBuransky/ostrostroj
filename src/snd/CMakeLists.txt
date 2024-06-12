@@ -1,9 +1,7 @@
 target_sources(ostrostroj
     PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}/saturation.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/saturation.hpp
-        ${CMAKE_CURRENT_LIST_DIR}/warp.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/warp.hpp)
+        ${CMAKE_CURRENT_LIST_DIR}/warp.cpp)
     
 target_include_directories(ostrostroj PRIVATE ${CMAKE_CURRENT_LIST_DIR})
 

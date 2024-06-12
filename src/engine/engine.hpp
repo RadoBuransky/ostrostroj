@@ -11,6 +11,7 @@
 #include "pattern_learn.hpp"
 #include "model_cycles.hpp"
 #include "loop_encoders.hpp"
+#include "command_controller.hpp"
 
 class Engine {
     private:
@@ -20,6 +21,7 @@ class Engine {
         Display& display;
         std::unique_ptr<ModelCycles> model_cycles;
         LoopEncoders loop_encoders;
+        CommandController command_controller;
         std::atomic_flag midi_flag;
         std::atomic_bool stop;
         std::array<std::unique_ptr<Track>, ENGINE_LOOP_TRACKS> loop_tracks; // 0-3 mono, 4-5 stereo
