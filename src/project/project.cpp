@@ -35,6 +35,9 @@ Project::Project(std::filesystem::path dir):
     number(parse_number(dir)),
     name(parse_name(dir)),
     songs(init_songs(dir)) {
+    if (songs.empty()) {
+        throw OstrostrojException(fmt::format("PRJKT no songs found! [dir={}]", dir.c_str()));
+    }
     SPDLOG_INFO("PRJKT project initialized [number={},name={},songs={}]", number, name, songs.size());
 }
 

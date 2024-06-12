@@ -37,11 +37,11 @@ class OstrostrojApp {
         }
 
     public:
-        OstrostrojApp():
+        OstrostrojApp(std::string workspace_dir):
             display(std::chrono::seconds(1)),
             alsa_pcm(),
             alsa_midi(),
-            workspace("/home/rado/projects/"),
+            workspace(workspace_dir),
             engine(workspace, alsa_midi, alsa_pcm, display) {
             try {
                 alsa_pcm.start(
@@ -67,21 +67,27 @@ class OstrostrojApp {
 };
 
 int main(int argc, char* argv[]) {
-    // TODO: Get workspace root directory as an argument
     spdlog::set_pattern("%L [%H:%M:%S.%e] [%t] %v");
     spdlog::set_level(spdlog::level::trace);
     SPDLOG_INFO("APP   started [{}]", static_cast<int>(spdlog::get_level()));
+    int result;
     try {
-        if ((argc > 1) && (strcmp(argv[1], "shutdown") == 0)) {
-            sync();
-            reboot(RB_POWER_OFF); 
-            SPDLOG_INFO("APP   shut down!");
-        } else {
-            auto ostrostrojApp = OstrostrojApp();
-            ostrostrojApp.main();
-        }    
+        if (argc < 2) {
+            throw OstrostrojException("1 argument needed for workspace directory!");
+        }        
+        auto ostrostrojApp = OstrostrojApp(std::string(argv[1]));
+        ostrostrojApp.main();
+
+        // TODO: Shutdown device on demand
+        //     sync();
+        //     reboot(RB_POWER_OFF); 
+        //     SPDLOG_INFO("APP   shut down!");
+        //
+        result = 0;
     } catch (std::exception const &ex) {
         SPDLOG_ERROR("APP   failed[{}]", ex.what());
+        result = 1;
     }
     spdlog::shutdown();
+    return result;
 }

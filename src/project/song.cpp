@@ -47,6 +47,9 @@ Song::Song(std::filesystem::path dir):
     number(0),
     patterns(init_patterns(dir)),
     one_shots(init_one_shots(dir)) {
+    if (patterns.empty()) {
+        throw OstrostrojException(fmt::format("PRJKT no patterns found! [dir={}]", dir.c_str()));
+    }
     SPDLOG_INFO("PRJKT song initialized [root_bank_pattern={},name={},patterns={},one_shots={}]", root_bank_pattern.get_pattern(),
         name, patterns.size(), one_shots.size());
 }

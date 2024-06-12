@@ -45,6 +45,9 @@ Pattern::Pattern(BankPattern root_bank_pattern, std::filesystem::path dir):
     mutes(),
     learned(false),
     seq_count(0) { 
+    if (loops.empty()) {
+        throw OstrostrojException(fmt::format("PRJKT no loops found! [dir={}]", dir.c_str()));
+    }
     SPDLOG_DEBUG("PRJKT pattern initialized [bank_pattern={},name={},loops={}]", bank_pattern.get_pattern(), name, loops.size());
 }
 

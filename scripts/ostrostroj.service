@@ -4,9 +4,9 @@ After=network.target
 
 [Service]
 Type=simple
-User=rado
-WorkingDirectory=/home/rado
-ExecStart=/usr/local/bin/ostrostroj
+User=root
+WorkingDirectory=/srv/ostrostroj
+ExecStart=/usr/local/bin/ostrostroj /srv/ostrostroj/
 Restart=on-failure
 
 [Install]
