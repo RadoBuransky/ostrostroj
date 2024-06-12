@@ -60,13 +60,13 @@ bool Engine::handle_midi_event(snd_seq_event_t& midi_event, snd_pcm_state_t stat
 
 void Engine::note(uint8_t channel, uint8_t note, bool on, unsigned int clock, bool running) {
     switch (command_controller.note(channel, note, on, clock, running)) {
-        case RESTART:
-            // TODO:
+        case ENGINE_EXIT_RESTART:
+            exit(EngineExit::ENGINE_EXIT_RESTART);
             return;
-        case SHUTDOWN:
-            // TODO:
+        case ENGINE_EXIT_SHUTDOWN:
+            exit(EngineExit::ENGINE_EXIT_SHUTDOWN);
             return;
-        case NOOP:
+        case ENGINE_EXIT_NOOP:
             break;
     }
 
@@ -82,6 +82,13 @@ void Engine::note(uint8_t channel, uint8_t note, bool on, unsigned int clock, bo
         return;
     }
     one_shot_note(note, on);
+}
+
+void Engine::exit(EngineExit _exit_code) {
+    exit_code = _exit_code;
+    SPDLOG_INFO("ENGIN exit[exit_code={}]", (int)exit_code);
+    running_flag.clear();
+    running_flag.notify_all();    
 }
 
 void Engine::one_shot_note(uint8_t note, bool on) {
@@ -303,14 +310,15 @@ std::array<InterleavedFifo*, PCM_OUT_CHANNELS> Engine::init_track_fifos() {
     return result;
 }
 
-Engine::Engine(Workspace& _workspace, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm, Display& _display):
+Engine::Engine(Workspace& _workspace, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm, Display& _display, std::atomic_flag& _running_flag):
     workspace(_workspace),
     alsa_midi(_alsa_midi),
     alsa_pcm(_alsa_pcm),
     display(_display),
+    running_flag(_running_flag),
     model_cycles(std::make_unique<ModelCycles>()),
     loop_encoders(SOURCE_MIDI_CHANNEL, L1_PARAM),
-    command_controller(),
+    command_controller(SOURCE_MIDI_CHANNEL),
     midi_flag(ATOMIC_FLAG_INIT),
     stop(false),
     loop_tracks {
@@ -324,7 +332,9 @@ Engine::Engine(Workspace& _workspace, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm, 
     one_shots_track(Track(7, 2, _alsa_pcm.get_period_size(), _alsa_pcm.get_periods(), false)),
     track_fifos(init_track_fifos()),
     worker_sleep_time(std::chrono::microseconds(_alsa_pcm.get_period_time()).count() / 2),
-    workers(create_workers()) {
+    workers(create_workers()),
+    pattern_learn(),
+    exit_code(EngineExit::ENGINE_EXIT_NOOP) {
     session = std::make_unique<Session>(workspace.get_projects().at(0), display, alsa_pcm.get_sample_rate(), loop_tracks.size());
     display.tick(true);
 }
@@ -393,4 +403,8 @@ void Engine::midi_callback() {
 
 int Engine::get_loop_track_count() const {
     return loop_tracks.size();    
+}
+
+EngineExit Engine::get_exit_code() const {
+    return exit_code;
 }

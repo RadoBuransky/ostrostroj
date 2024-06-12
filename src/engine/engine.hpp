@@ -13,12 +13,19 @@
 #include "loop_encoders.hpp"
 #include "command_controller.hpp"
 
+enum EngineExit {
+    ENGINE_EXIT_NOOP = 0,
+    ENGINE_EXIT_RESTART,
+    ENGINE_EXIT_SHUTDOWN
+};
+
 class Engine {
     private:
         Workspace& workspace;
         AlsaMidi& alsa_midi;
         AlsaPcm& alsa_pcm;
         Display& display;
+        std::atomic_flag& running_flag;
         std::unique_ptr<ModelCycles> model_cycles;
         LoopEncoders loop_encoders;
         CommandController command_controller;
@@ -31,8 +38,10 @@ class Engine {
         std::vector<std::unique_ptr<EngineWorker>> workers;
         std::unique_ptr<Session> session;
         std::unique_ptr<PatternLearn> pattern_learn;
+        EngineExit exit_code;
         bool handle_midi_event(snd_seq_event_t& midi_event, snd_pcm_state_t state, PcmEvent& result);
         void note(uint8_t channel, uint8_t note, bool on, unsigned int clock, bool running);
+        void exit(EngineExit _exit_code);
         void one_shot_note(uint8_t note, bool on);
         void controller(uint8_t channel, unsigned int param, signed int value, unsigned int clock, bool running);
         void update_saturation(ssize_t track_number);
@@ -49,7 +58,7 @@ class Engine {
         std::vector<std::unique_ptr<EngineWorker>> create_workers();
         std::array<InterleavedFifo*, PCM_OUT_CHANNELS> init_track_fifos();
     public:
-        Engine(Workspace& _workspace, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm, Display& _display);
+        Engine(Workspace& _workspace, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm, Display& _display, std::atomic_flag& _running_flag);
         virtual ~Engine();
 
         void shutdown();
@@ -62,4 +71,6 @@ class Engine {
         void midi_callback();
 
         int get_loop_track_count() const;
+        EngineExit get_exit_code() const;
+
 };

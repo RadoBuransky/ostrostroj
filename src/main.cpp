@@ -42,7 +42,7 @@ class OstrostrojApp {
             alsa_pcm(),
             alsa_midi(),
             workspace(workspace_dir),
-            engine(workspace, alsa_midi, alsa_pcm, display) {
+            engine(workspace, alsa_midi, alsa_pcm, display, running_flag) {
             try {
                 alsa_pcm.start(
                     std::bind(&Engine::pcm_event_callback, &engine, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
@@ -61,8 +61,9 @@ class OstrostrojApp {
             SPDLOG_INFO("APP   finished.");
         }
 
-        void main() {
+        EngineExit main() {
             waitForSignal();
+            return engine.get_exit_code();
         }
 };
 
@@ -75,15 +76,15 @@ int main(int argc, char* argv[]) {
         if (argc < 2) {
             throw OstrostrojException("1 argument needed for workspace directory!");
         }        
-        auto ostrostrojApp = OstrostrojApp(std::string(argv[1]));
-        ostrostrojApp.main();
-
-        // TODO: Shutdown device on demand
-        //     sync();
-        //     reboot(RB_POWER_OFF); 
-        //     SPDLOG_INFO("APP   shut down!");
-        //
-        result = 0;
+        OstrostrojApp ostrostrojApp = OstrostrojApp(std::string(argv[1]));
+        switch(ostrostrojApp.main()) {
+            case EngineExit::ENGINE_EXIT_NOOP:
+                result = 0;
+            case EngineExit::ENGINE_EXIT_RESTART:            
+                result = 2;
+            case EngineExit::ENGINE_EXIT_SHUTDOWN:
+                result = 3;
+        }
     } catch (std::exception const &ex) {
         SPDLOG_ERROR("APP   failed[{}]", ex.what());
         result = 1;

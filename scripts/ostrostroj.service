@@ -7,6 +7,8 @@ Type=simple
 User=root
 WorkingDirectory=/srv/ostrostroj
 ExecStart=/usr/local/bin/ostrostroj /srv/ostrostroj/
+ExecStopPost=/bin/sh -c \
+        'if [ "$EXIT_STATUS" = "2" ]; then systemctl reboot; elif [ "$EXIT_STATUS" = "3" ]; then systemctl poweroff; fi'
 Restart=on-failure
 
 [Install]

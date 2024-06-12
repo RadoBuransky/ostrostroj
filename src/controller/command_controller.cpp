@@ -7,10 +7,10 @@
 static const std::vector<MidiNote> RESTART_SEQ = {{MidiNote(F, 4), MidiNote(D, 5), MidiNote(G, 4)}};
 static const std::vector<MidiNote> SHUTDOWN_SEQ = {{MidiNote(C_, 5), MidiNote(F_, 4), MidiNote(D_, 5)}};
 
-CommandController::CommandController():
+CommandController::CommandController(uint8_t channel):
     commands({
-        CommandSeq(RESTART_SEQ, Command::RESTART),
-        CommandSeq(SHUTDOWN_SEQ, Command::SHUTDOWN)
+        CommandSeq(RESTART_SEQ, Command::RESTART, channel),
+        CommandSeq(SHUTDOWN_SEQ, Command::SHUTDOWN, channel)
     }) {
 }
 
