@@ -336,6 +336,10 @@ Engine::Engine(Workspace& _workspace, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm, 
     pattern_learn(),
     exit_code(EngineExit::ENGINE_EXIT_NOOP) {
     session = std::make_unique<Session>(workspace.get_projects().at(0), display, alsa_pcm.get_sample_rate(), loop_tracks.size());
+    
+    // TODO: Show on display for 2 seconds:
+    session->get_mem_size_bytes();
+
     display.tick(true);
 }
 

@@ -14,12 +14,13 @@ class Session {
         std::chrono::steady_clock::duration song_duration;
         std::chrono::steady_clock::duration pattern_duration;
         std::chrono::steady_clock::time_point started_timestamp;
+        size_t mem_size_bytes;
         void set_pattern(Song& song, Pattern& pattern, bool running);
         void update_durations();
         void inc_pattern_play_counters(Song& song, Pattern& pattern);
         size_t get_seq_index();
-        void load_clip(std::filesystem::path path, int expected_sample_rate, int expected_channels);
-        void load_all_clips(int expected_sample_rate, int loop_track_count);
+        size_t load_clip(std::filesystem::path path, int expected_sample_rate, int expected_channels);
+        size_t load_all_clips(int expected_sample_rate, int loop_track_count);
     public:
         Session(Project& _project, Display& _display, int expected_sample_rate, int loop_track_count);
         virtual ~Session() = default;
@@ -34,4 +35,5 @@ class Session {
         void pause();
         void draw();
         void step_learned();
+        size_t get_mem_size_bytes() const;
 };

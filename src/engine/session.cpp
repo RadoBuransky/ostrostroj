@@ -80,30 +80,34 @@ size_t Session::get_seq_index() {
     return pattern_play_counters.at(active_pattern.get().get_number() - 1) - 1;
 }
 
-void Session::load_clip(std::filesystem::path path, int expected_sample_rate, int expected_channels) {
+size_t Session::load_clip(std::filesystem::path path, int expected_sample_rate, int expected_channels) {
     if (clips.contains(path)) {
-        return;
+        return 0;
     }
     auto inserted = clips.emplace(path, std::make_unique<Clip>(path));
     if (inserted.second) {
         inserted.first->second->assert_format(expected_sample_rate, expected_channels);
+        return inserted.first->second->get_mem_size_bytes();
     }
+    return 0;
 }
 
-void Session::load_all_clips(int expected_sample_rate, int loop_track_count) {
+size_t Session::load_all_clips(int expected_sample_rate, int loop_track_count) {
+    size_t result = 0;
     for (Song& song: project.get_songs()) {
         for (SongOneShot& song_one_shot: song.get_one_shots()) {
-            load_clip(song_one_shot.one_shot, expected_sample_rate, 2);
+            result += load_clip(song_one_shot.one_shot, expected_sample_rate, 2);
         }
         for (Pattern& pattern: song.get_patterns()) {
             for (PatternLoop& pattern_loop: pattern.get_loops()) {    
                 if (pattern_loop.track_number > loop_track_count) {
                     throw OstrostrojException(fmt::format("SESSN invalid loop track! [{}, {}]", pattern_loop.track_number, pattern_loop.loop.c_str()));
                 }            
-                load_clip(pattern_loop.loop, expected_sample_rate, pattern_loop.track_number <= ENGINE_LOOP_MONO_TRACKS ? 1 : 2);
+                result += load_clip(pattern_loop.loop, expected_sample_rate, pattern_loop.track_number <= ENGINE_LOOP_MONO_TRACKS ? 1 : 2);
             }
         }
     }
+    return result;
 }
 
 Session::Session(Project& _project, Display& _display, int expected_sample_rate, int loop_track_count):
@@ -116,7 +120,7 @@ Session::Session(Project& _project, Display& _display, int expected_sample_rate,
     song_duration(0),
     pattern_duration(0),
     started_timestamp(std::chrono::steady_clock::time_point::min()) {
-    load_all_clips(expected_sample_rate, loop_track_count);
+    mem_size_bytes = load_all_clips(expected_sample_rate, loop_track_count);
     set_pattern(active_song, active_pattern, false);
 }
 
@@ -189,4 +193,8 @@ void Session::draw() {
 
 void Session::step_learned() {
     set_pattern(active_song, active_pattern, true);
+}
+
+size_t Session::get_mem_size_bytes() const {
+    return mem_size_bytes;
 }

@@ -3,11 +3,14 @@
 #include <spdlog/spdlog.h>
 #include "clip.hpp"
 
-void Clip::load() {
+size_t Clip::load() {
     ClipBlock* last = head.get();
+    size_t result = last->get_buffer().size();
     while (last->has_next()) {
         last = &last->get_next();
+        result += last->get_buffer().size();
     }
+    return result*sizeof(float);
 }
 
 Clip::Clip(const std::filesystem::path _path) :
@@ -20,7 +23,7 @@ Clip::Clip(const std::filesystem::path _path) :
         throw OstrostrojException(fmt::format("FCLIP file error! [{}]", sf_error(snd_file)));   
     }
     head = std::make_unique<FileClipBlock>(snd_file, info.channels, 0);
-    load();
+    mem_size_bytes = load();
     SPDLOG_TRACE(std::format("FCLIP loaded. [{},{}Hz,{}ch,{:x}]", _path.c_str(), info.samplerate, info.channels, info.format));
 };
 
@@ -57,4 +60,8 @@ void Clip::assert_format(const int expected_sample_rate, const int expected_chan
 
 ClipBlock& Clip::get_head() const {
     return *head;
+}
+
+size_t Clip::get_mem_size_bytes() const {
+    return mem_size_bytes;
 }
