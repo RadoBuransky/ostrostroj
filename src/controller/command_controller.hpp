@@ -1,5 +1,7 @@
 #pragma once
 
+#include "command_seq.hpp"
+
 enum Command {
     NOOP = 0,
     RESTART = 1,
@@ -7,6 +9,8 @@ enum Command {
 };
 
 class CommandController {
+    private:
+        std::array<CommandSeq, 2> commands;
     public:
         CommandController();
         virtual ~CommandController() = default;
