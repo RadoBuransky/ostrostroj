@@ -71,7 +71,7 @@ int main(int argc, char* argv[]) {
     spdlog::set_pattern("%L [%H:%M:%S.%e] [%t] %v");
     spdlog::set_level(spdlog::level::trace);
     SPDLOG_INFO("APP   started [{}]", static_cast<int>(spdlog::get_level()));
-    int result;
+    int result = 1;
     try {
         if (argc < 2) {
             throw OstrostrojException("1 argument needed for workspace directory!");
@@ -80,10 +80,13 @@ int main(int argc, char* argv[]) {
         switch(ostrostrojApp.main()) {
             case EngineExit::ENGINE_EXIT_NOOP:
                 result = 0;
+                break;
             case EngineExit::ENGINE_EXIT_RESTART:            
                 result = 2;
+                break;
             case EngineExit::ENGINE_EXIT_SHUTDOWN:
                 result = 3;
+                break;
         }
     } catch (std::exception const &ex) {
         SPDLOG_ERROR("APP   failed[{}]", ex.what());

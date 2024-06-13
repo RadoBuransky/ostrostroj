@@ -109,7 +109,6 @@ void MainScreen::draw_pattern_seq(unicorn_hat_mini_canvas& canvas) {
 
 MainScreen::MainScreen():
     changed(true),
-    booting(true),
     song_duration(0),
     pattern_duration(0),
     loops(),
@@ -126,20 +125,12 @@ bool MainScreen::draw(unicorn_hat_mini_canvas& canvas) {
     }
     changed = false;
     canvas.fill({0,0,0});
-    if (booting) {
-        canvas.at(0).at(0) = palette_red;
-        canvas.at(1).at(0) = palette_red;
-        canvas.at(2).at(0) = palette_red;
-        booting = false;
-        changed = true;
-    } else {
-        draw_song_and_pattern_duration(canvas);
-        draw_loops(canvas);
-        draw_songs(canvas);
-        draw_one_shots(canvas);
-        draw_patterns(canvas);
-        draw_pattern_seq(canvas);
-    }
+    draw_song_and_pattern_duration(canvas);
+    draw_loops(canvas);
+    draw_songs(canvas);
+    draw_one_shots(canvas);
+    draw_patterns(canvas);
+    draw_pattern_seq(canvas);
     return true;
 }
 
@@ -210,10 +201,37 @@ void MainScreen::set_pattern_seq_index(uint _index) {
     changed = true;
 }
 
+SystemScreen::SystemScreen():
+    init(true),
+    mem_usage(0) {    
+}
+
+bool SystemScreen::draw(unicorn_hat_mini_canvas& canvas) {    
+    canvas.fill({0,0,0});
+    if (init) {
+        canvas.at(0).at(0) = palette_red;
+        canvas.at(1).at(0) = palette_red;
+        canvas.at(2).at(0) = palette_red;
+        init = false;
+        return true;
+    }
+    size_t mem_usage_cols = std::ceil(mem_usage*UNICORN_HAT_MINI_COLS);
+    for (size_t x = 0; x < mem_usage_cols; x++) {
+        canvas.at(x).at(0) = palette_cyan;
+    }
+    return true;
+}
+
+void SystemScreen::set_mem_usage(float _mem_usage) {
+    mem_usage = std::max(0.0f, std::min(1.0f, _mem_usage));
+}
+
 Display::Display(std::chrono::milliseconds _refresh):
     refresh(_refresh),
     unicorn_hat_mini(),
     main_screen(),
+    system_screen(),
+    active_screen(system_screen),
     next_refresh() {
     tick(true);
 }
@@ -223,10 +241,19 @@ void Display::tick(bool force) {
         return;
     }
     next_refresh = std::chrono::steady_clock::now() + refresh;
-    main_screen.draw(unicorn_hat_mini.get_canvas());
-    unicorn_hat_mini.show();
+    if (active_screen.get().draw(unicorn_hat_mini.get_canvas())) {
+        unicorn_hat_mini.show();
+    }
 }
 
 MainScreen& Display::get_main_screen() {
     return main_screen;
+}
+
+SystemScreen& Display::get_system_screen() {
+    return system_screen;
+}
+
+void Display::set_active_screen(Screen& _screen) {
+    active_screen = _screen;
 }

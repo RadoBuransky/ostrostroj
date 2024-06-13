@@ -57,6 +57,7 @@ class Engine {
         void add_worker_track(std::map<size_t, std::vector<std::reference_wrapper<Track>>>& worker_tracks, Track& track);
         std::vector<std::unique_ptr<EngineWorker>> create_workers();
         std::array<InterleavedFifo*, PCM_OUT_CHANNELS> init_track_fifos();
+        void init_display();
     public:
         Engine(Workspace& _workspace, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm, Display& _display, std::atomic_flag& _running_flag);
         virtual ~Engine();

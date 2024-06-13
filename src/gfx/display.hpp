@@ -19,13 +19,18 @@ struct Point {
     uint8_t y;
 };
 
-class MainScreen {
+class Screen {
+    public:
+        virtual ~Screen() = default;
+        virtual bool draw(unicorn_hat_mini_canvas& canvas) = 0;
+};
+
+class MainScreen : public Screen {
     public:
         static const size_t ONE_SHOT_COUNT = 10;
 
     private:
         std::atomic_bool changed;
-        std::atomic_bool booting;
 
         std::chrono::steady_clock::duration song_duration;
         std::chrono::steady_clock::duration pattern_duration;
@@ -53,7 +58,7 @@ class MainScreen {
         MainScreen();
         virtual ~MainScreen() = default;
 
-        bool draw(unicorn_hat_mini_canvas& canvas);
+        virtual bool draw(unicorn_hat_mini_canvas& canvas);
 
         void set_song_duration(std::chrono::steady_clock::duration _song_duration);
         void set_pattern_duration(std::chrono::steady_clock::duration _pattern_duration);
@@ -75,11 +80,24 @@ class MainScreen {
         void set_pattern_seq_index(uint _index);
 };
 
+class SystemScreen : public Screen {
+    private:
+        bool init;
+        float mem_usage;
+    public:
+        SystemScreen();
+        virtual ~SystemScreen() = default;
+        virtual bool draw(unicorn_hat_mini_canvas& canvas);
+        void set_mem_usage(float _mem_usage);
+};
+
 class Display {
     private:
         const std::chrono::milliseconds refresh;
         UnicornHatMini unicorn_hat_mini;
         MainScreen main_screen;
+        SystemScreen system_screen;
+        std::reference_wrapper<Screen> active_screen;
         std::chrono::time_point<std::chrono::steady_clock> next_refresh;
 
     public:
@@ -90,5 +108,8 @@ class Display {
          * Call this as often as you want, it won't refresh the screen faster than "refresh" period.
         */
         void tick(bool force);
+
         MainScreen& get_main_screen();
+        SystemScreen& get_system_screen();
+        void set_active_screen(Screen& _screen);
 };

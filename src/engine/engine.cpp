@@ -4,6 +4,7 @@
 #include "engine.hpp"
 
 static constexpr uint8_t SOURCE_MIDI_CHANNEL = 7;
+static constexpr size_t MAX_MEM_BYTES = 7L*1024L*1024L*1024L;
 
 bool Engine::handle_midi_event(snd_seq_event_t& midi_event, snd_pcm_state_t state, PcmEvent& result) {
     uint8_t mul;
@@ -310,6 +311,17 @@ std::array<InterleavedFifo*, PCM_OUT_CHANNELS> Engine::init_track_fifos() {
     return result;
 }
 
+void Engine::init_display() {
+    size_t mem_size_bytes = session->get_mem_size_bytes();
+    float mem_usage = (float)mem_size_bytes / (float)MAX_MEM_BYTES;
+    SPDLOG_INFO("ENGIN memory used={} MB ({:.1f}%)", mem_size_bytes/(1024*1024), mem_usage);
+    display.get_system_screen().set_mem_usage(mem_usage);
+    display.tick(true);
+    sleep(1);
+    display.set_active_screen(display.get_main_screen());
+    display.tick(true);
+}
+
 Engine::Engine(Workspace& _workspace, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm, Display& _display, std::atomic_flag& _running_flag):
     workspace(_workspace),
     alsa_midi(_alsa_midi),
@@ -336,11 +348,7 @@ Engine::Engine(Workspace& _workspace, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm, 
     pattern_learn(),
     exit_code(EngineExit::ENGINE_EXIT_NOOP) {
     session = std::make_unique<Session>(workspace.get_projects().at(0), display, alsa_pcm.get_sample_rate(), loop_tracks.size());
-    
-    // TODO: Show on display for 2 seconds:
-    session->get_mem_size_bytes();
-
-    display.tick(true);
+    init_display();
 }
 
 Engine::~Engine() {
