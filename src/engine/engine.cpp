@@ -49,6 +49,10 @@ bool Engine::handle_midi_event(snd_seq_event_t& midi_event, snd_pcm_state_t stat
             note(midi_event.data.note.channel, midi_event.data.note.note, midi_event.data.note.velocity > 0,
                 midi_event.time.tick, state == SND_PCM_STATE_RUNNING);
             return false;
+        case SND_SEQ_EVENT_NOTEOFF:
+            note(midi_event.data.note.channel, midi_event.data.note.note, false,
+                midi_event.time.tick, state == SND_PCM_STATE_RUNNING);
+            return false;
         case SND_SEQ_EVENT_CONTROLLER:
             controller(midi_event.data.control.channel, midi_event.data.control.param, midi_event.data.control.value,
                 midi_event.time.tick, state == SND_PCM_STATE_RUNNING);

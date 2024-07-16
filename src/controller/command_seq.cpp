@@ -1,5 +1,5 @@
 #include "common.hpp"
-#define SPDLOG_ACTIVE_LEVEL 2
+#define SPDLOG_ACTIVE_LEVEL 1
 #include <spdlog/spdlog.h>
 #include "command_seq.hpp"
 
@@ -18,10 +18,16 @@ bool CommandSeq::note(uint8_t _channel, uint8_t note, bool on, unsigned int, boo
         return false;
     }
     if (seq_counter == seq.size()) {
-        if (!on && note == seq.back().get_value() && std::chrono::steady_clock::now() > seq_started + SEQ_TIMEOUT) {
-            seq_counter = 0;
-            SPDLOG_DEBUG("CMDSQ command detected[context={}]", context);
-            return true;
+        if (note == seq.back().get_value()) {
+            if (on) {
+                // Syntakt sends the same note twice
+                return false;
+            }
+            if (std::chrono::steady_clock::now() > seq_started + SEQ_TIMEOUT) {
+                seq_counter = 0;
+                SPDLOG_DEBUG("CMDSQ command detected[context={}]", context);
+                return true;
+            }
         }
     } else {
         if (on) {
