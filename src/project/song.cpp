@@ -78,6 +78,15 @@ std::vector<SongOneShot>& Song::get_one_shots() {
     return one_shots;
 }
 
+std::optional<std::reference_wrapper<SongOneShot>> Song::get_one_shot(uint8_t one_shot_number) {
+    for (SongOneShot& one_shot : one_shots) {
+        if (one_shot.number == one_shot_number) {
+            return std::ref(one_shot);
+        }
+    }
+    return std::nullopt;
+}
+
 void Song::unlearn() {
     for (Pattern& pattern : patterns) {
         pattern.unlearn();

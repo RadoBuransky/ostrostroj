@@ -43,6 +43,7 @@ Pattern::Pattern(BankPattern root_bank_pattern, std::filesystem::path dir):
     pattern_number(0),
     loops(init_loops(dir)),
     mutes(),
+    one_shots(),
     learned(false),
     seq_count(0) { 
     if (loops.empty()) {
@@ -73,6 +74,10 @@ std::vector<PatternLoop>& Pattern::get_loops() {
 
 std::array<std::vector<bool>, ModelCycles::MODEL_CYCLES_TRACK_COUNT>& Pattern::get_mutes() {
     return mutes;
+}
+
+std::vector<uint8_t>& Pattern::get_one_shots() {
+    return one_shots;
 }
 
 void Pattern::set_learned() {
@@ -130,6 +135,9 @@ void Pattern::update_seq_count() {
         if (s > seq_count) {
             seq_count = s;
         }
+    }
+    if (one_shots.size() > seq_count) {
+        seq_count = one_shots.size();
     }
     SPDLOG_DEBUG("PRJKT pattern update_seq_count[number={},seq_count={}]", pattern_number, seq_count);
 }

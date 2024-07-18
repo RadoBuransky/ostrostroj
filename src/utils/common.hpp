@@ -34,6 +34,7 @@ static constexpr int ENGINE_LOOP_MONO_TRACKS = 4;
 static_assert(ENGINE_LOOP_MONO_TRACKS + (ENGINE_LOOP_TRACKS - ENGINE_LOOP_MONO_TRACKS) * 2 + 2 < PCM_OUT_CHANNELS);
 
 static constexpr uint8_t L1_PARAM = 111; // CC #111
+static constexpr uint8_t ONE_SHOT_PARAM = 119; // CC #119
 
 class OstrostrojException : public std::runtime_error {
     public:

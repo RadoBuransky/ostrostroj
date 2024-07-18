@@ -103,29 +103,28 @@ void Engine::one_shot_note(uint8_t note, bool on) {
         return;
     }
     note -= 4 * 12;
-    size_t one_shot_index = INT_MAX;
+    size_t one_shot_number = INT_MAX;
     // The following logic is because how notes are layed out in two rows on Syntakt's keyboard (chromatic, folded)
     if (note < MainScreen::ONE_SHOT_COUNT / 2) {
-        one_shot_index = note;
+        one_shot_number = note;
     } else {
         // Because Syntakt has 8 triggers in signle row
         if (note >= 8) {
-            one_shot_index = note - (MainScreen::ONE_SHOT_COUNT / 2);
+            one_shot_number = note - (MainScreen::ONE_SHOT_COUNT / 2);
         }
     }
-    for (SongOneShot& one_shot : session->get_song().get_one_shots()) {
-        if (one_shot.index == one_shot_index) {
-            lock_worker_tracks();
-            one_shots_track.add_clip(session->get_clip(one_shot.one_shot), 0, false, false);
-            unlock_worker_tracks();
-            SPDLOG_DEBUG("ENGIN one shot added [one_shot_index={}]", one_shot_index);
-            return;
-        }
+    std::optional<std::reference_wrapper<SongOneShot>> one_shot_maybe = session->get_song().get_one_shot(one_shot_number);
+    if (one_shot_maybe.has_value()) {
+        lock_worker_tracks();
+        one_shots_track.add_clip(session->get_clip(one_shot_maybe.value().get().one_shot), 0, false, false);
+        unlock_worker_tracks();
+        SPDLOG_DEBUG("ENGIN one shot added [one_shot_index={}]", one_shot_number);
+        return;
     }
     lock_worker_tracks();
     one_shots_track.clear(false);
     unlock_worker_tracks();
-    SPDLOG_DEBUG("ENGIN one shot not found [one_shot_index={}]", one_shot_index);
+    SPDLOG_DEBUG("ENGIN one shot not found [one_shot_index={}]", one_shot_number);
 }
 
 void Engine::controller(uint8_t channel, unsigned int param, signed int value, unsigned int clock, bool running) {
@@ -188,9 +187,18 @@ void Engine::program_changed(bool running, snd_pcm_uframes_t latency) {
     lock_worker_tracks();
     clear_loop_clips(running);
     add_loop_clips(running, latency);
+    add_one_shot_clip();
     unlock_worker_tracks();
     un_mute_mc_tracks();
     SPDLOG_INFO("ENGIN program set={}", session->get_pattern().get_bank_pattern().get_pattern());
+}
+
+void Engine::add_one_shot_clip() {
+    std::optional<std::reference_wrapper<Clip>> clip = session->get_current_one_shot_clip();
+    if (clip.has_value()) {
+        one_shots_track.add_clip(clip.value(), 0, false, false);
+        SPDLOG_INFO("ENGIN PC one-shot added");
+    }
 }
 
 void Engine::add_loop_clips(bool running, snd_pcm_uframes_t latency) {

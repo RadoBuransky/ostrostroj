@@ -23,6 +23,7 @@ class Pattern {
         size_t pattern_number;
         std::vector<PatternLoop> loops;
         std::array<std::vector<bool>, ModelCycles::MODEL_CYCLES_TRACK_COUNT> mutes;
+        std::vector<uint8_t> one_shots; // One-shot number 1, 2, 3, ... 0 means no one-shot to be played.
         bool learned;
         size_t seq_count;
         size_t parse_pattern_offset(std::filesystem::path dir);
@@ -37,6 +38,7 @@ class Pattern {
         size_t get_number();
         std::vector<PatternLoop>& get_loops();
         std::array<std::vector<bool>, ModelCycles::MODEL_CYCLES_TRACK_COUNT>& get_mutes();
+        std::vector<uint8_t>& get_one_shots();
         void set_learned();
         bool get_learned();
         void unlearn();

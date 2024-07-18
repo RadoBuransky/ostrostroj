@@ -48,6 +48,7 @@ class Engine {
         void learn(unsigned int param, signed int value, unsigned int clock);
         snd_pcm_uframes_t compute_latency(uint8_t mul, uint8_t clock_interval);
         void program_changed(bool running, snd_pcm_uframes_t predelay);
+        void add_one_shot_clip();
         void add_loop_clips(bool running, snd_pcm_uframes_t predelay);
         void clear_loop_clips(bool running);
         void lock_worker_tracks();

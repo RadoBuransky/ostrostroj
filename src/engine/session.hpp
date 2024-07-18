@@ -31,6 +31,7 @@ class Session {
         PatternLoopSeq get_current_loop_seq(uint8_t track_number);
         bool get_current_mute(uint8_t mc_track_number);
         Clip& get_clip(std::filesystem::path clip_path);
+        std::optional<std::reference_wrapper<Clip>> get_current_one_shot_clip();
         void start();
         void pause();
         void draw();

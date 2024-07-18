@@ -1,6 +1,6 @@
 #include "common.hpp"
 
-#define SPDLOG_ACTIVE_LEVEL 2
+#define SPDLOG_ACTIVE_LEVEL 1
 #include <spdlog/spdlog.h>
 
 #include "pattern_learn.hpp"
@@ -62,7 +62,7 @@ void PatternLearn::note(uint8_t note, bool on, uint clock) {
 }
 
 bool PatternLearn::valid_controller(uint param) {
-    return (param >= L1_PARAM) && (param < (L1_PARAM + ENGINE_LOOP_TRACKS));
+    return ((param >= L1_PARAM) && (param < (L1_PARAM + ENGINE_LOOP_TRACKS))) || (param == ONE_SHOT_PARAM);
 }
 
 void PatternLearn::controller(uint param, signed int value, uint clock) {
@@ -71,6 +71,19 @@ void PatternLearn::controller(uint param, signed int value, uint clock) {
         return;
     }
     if (!valid_controller(param)) {
+        return;
+    }
+    if (param == ONE_SHOT_PARAM) {
+        std::vector<uint8_t>& one_shots = pattern.get_one_shots();
+        size_t old_size = one_shots.size();
+        if (step >= old_size) {
+            one_shots.resize(step + 1);
+            for (size_t i = old_size; i < step; i++) {
+                one_shots.at(i) = 0;
+            }
+            one_shots.at(step) = (uint8_t)value;
+        }
+        SPDLOG_DEBUG("PRJKT controller learned one-shot [param={},value={},clock={},step={}]", param, value, clock, step);
         return;
     }
     uint8_t track_number = (param - L1_PARAM) + 1;
@@ -91,7 +104,7 @@ void PatternLearn::controller(uint param, signed int value, uint clock) {
                 seq.saturation = ((float)(value - MIN_SATURATION)) / (float)(MAX_SATURATION - MIN_SATURATION);
             }
             pattern.update_seq_count();
-            SPDLOG_DEBUG("PRJKT controller learned [param={},value={},clock={},step={},track_number={},muted={},saturation={}]",
+            SPDLOG_DEBUG("PRJKT controller learned loop [param={},value={},clock={},step={},track_number={},muted={},saturation={}]",
                 param, value, clock, step, track_number, seq.muted, seq.saturation);
             return;
         }
