@@ -73,9 +73,6 @@ void Session::inc_pattern_play_counters(Song& song, Pattern& pattern) {
         pattern_play_counters.emplace(pattern.get_number() - 1, 1);
         return;
     }
-    // if (active_song.get().get_number() != song.get_number() || active_pattern.get().get_number() != pattern.get_number()) {
-    //     pattern_play_counters.at(it->first)++;
-    // }
     pattern_play_counters.at(it->first)++;
 }
 
@@ -182,20 +179,16 @@ Clip& Session::get_clip(std::filesystem::path clip_path) {
 
 std::optional<std::reference_wrapper<Clip>> Session::get_current_one_shot_clip() {
     size_t seq_index = get_seq_index();
-    SPDLOG_WARN("SESSN get_current_one_shot_clip[seq_index={}]", seq_index);
     std::vector<uint8_t> one_shot_numbers = active_pattern.get().get_one_shots();
     if (seq_index >= one_shot_numbers.size()) {
-        SPDLOG_WARN("SESSN get_current_one_shot_clip[one_shot_numbers.size()={}]", one_shot_numbers.size());
         return std::nullopt;
     }
     uint8_t one_shot_number = one_shot_numbers.at(seq_index);
     if (one_shot_number == 0) {
-        SPDLOG_WARN("SESSN get_current_one_shot_clip[one_shot_number=0]");
         return std::nullopt;
     }
     std::optional<std::reference_wrapper<SongOneShot>> one_shot_maybe = active_song.get().get_one_shot(one_shot_number);
     if (!one_shot_maybe.has_value()) {
-        SPDLOG_WARN("SESSN get_current_one_shot_clip[one_shot_maybe=empty]");
         return std::nullopt;
     }
     return *clips.at(one_shot_maybe.value().get().one_shot);

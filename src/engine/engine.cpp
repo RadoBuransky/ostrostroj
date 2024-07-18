@@ -74,7 +74,6 @@ void Engine::note(uint8_t channel, uint8_t note, bool on, unsigned int clock, bo
         case ENGINE_EXIT_NOOP:
             break;
     }
-
     if (channel != SOURCE_MIDI_CHANNEL || !running) {
         return;
     }
@@ -99,18 +98,18 @@ void Engine::exit(EngineExit _exit_code) {
 void Engine::one_shot_note(uint8_t note, bool on) {
     size_t octave = note / 12;
     // 4th octave + C5
-    if (octave != 4 || note != 5*12 || !on) {
+    if (((octave != 4) && (note != 5*12)) || !on) {
         return;
     }
     note -= 4 * 12;
     size_t one_shot_number = INT_MAX;
     // The following logic is because how notes are layed out in two rows on Syntakt's keyboard (chromatic, folded)
     if (note < MainScreen::ONE_SHOT_COUNT / 2) {
-        one_shot_number = note;
+        one_shot_number = 1 + note;
     } else {
-        // Because Syntakt has 8 triggers in signle row
+        // Because Syntakt has 8 triggers in single row
         if (note >= 8) {
-            one_shot_number = note - (MainScreen::ONE_SHOT_COUNT / 2);
+            one_shot_number = 1 + note - (8 - (MainScreen::ONE_SHOT_COUNT / 2));
         }
     }
     std::optional<std::reference_wrapper<SongOneShot>> one_shot_maybe = session->get_song().get_one_shot(one_shot_number);
@@ -118,13 +117,13 @@ void Engine::one_shot_note(uint8_t note, bool on) {
         lock_worker_tracks();
         one_shots_track.add_clip(session->get_clip(one_shot_maybe.value().get().one_shot), 0, false, false);
         unlock_worker_tracks();
-        SPDLOG_DEBUG("ENGIN one shot added [one_shot_index={}]", one_shot_number);
+        SPDLOG_DEBUG("ENGIN one shot added [one_shot_number={}]", one_shot_number);
         return;
     }
     lock_worker_tracks();
     one_shots_track.clear(false);
     unlock_worker_tracks();
-    SPDLOG_DEBUG("ENGIN one shot not found [one_shot_index={}]", one_shot_number);
+    SPDLOG_DEBUG("ENGIN one shot not found [one_shot_number={}]", one_shot_number);
 }
 
 void Engine::controller(uint8_t channel, unsigned int param, signed int value, unsigned int clock, bool running) {
@@ -197,7 +196,7 @@ void Engine::add_one_shot_clip() {
     std::optional<std::reference_wrapper<Clip>> clip = session->get_current_one_shot_clip();
     if (clip.has_value()) {
         one_shots_track.add_clip(clip.value(), 0, false, false);
-        SPDLOG_INFO("ENGIN PC one-shot added");
+        SPDLOG_DEBUG("ENGIN PC one-shot added");
     }
 }
 
