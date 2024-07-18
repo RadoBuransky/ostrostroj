@@ -41,7 +41,7 @@ ClipPlayer::ClipPlayer(Clip& _clip, bool _loop, snd_pcm_uframes_t _latency_frame
     clip(_clip),
     loop(_loop),
     latency_samples(_latency_frames * _clip.get_head().get_channels()),
-    fade_samples(FADE_FRAMES * _clip.get_head().get_channels()),
+    fade_samples(_loop ? (FADE_FRAMES * _clip.get_head().get_channels()) : 0),
     fade((_loop ? fade_samples : 0) + (predelay ? latency_samples : 0)),
     block(_clip.get_head()),
     current_frame(nullptr),

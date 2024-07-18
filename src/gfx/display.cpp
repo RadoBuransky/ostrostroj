@@ -160,9 +160,9 @@ void MainScreen::all_loops_off() {
     loops.fill({{}, false});
 }
 
-void MainScreen::set_one_shot_state(size_t one_shot_number, TrackState state) {
-    if (one_shot_number < one_shots.size()) {
-        one_shots.at(one_shot_number - 1) = state;
+void MainScreen::set_one_shot_state(size_t one_shot_index, TrackState state) {
+    if (one_shot_index < one_shots.size()) {
+        one_shots.at(one_shot_index) = state;
         changed = true;
     }
 }

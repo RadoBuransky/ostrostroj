@@ -16,6 +16,7 @@ class Session {
         std::chrono::steady_clock::time_point started_timestamp;
         size_t mem_size_bytes;
         void set_pattern(Song& song, Pattern& pattern, bool running);
+        void update_display();
         void update_durations();
         void inc_pattern_play_counters(Song& song, Pattern& pattern);
         size_t get_seq_index();

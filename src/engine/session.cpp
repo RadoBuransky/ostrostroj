@@ -8,42 +8,44 @@
 #include "engine.hpp"
 
 void Session::set_pattern(Song& song, Pattern& pattern, bool running) {
-    MainScreen& main_screen = display.get_main_screen();    
-
     if (!running || (song.get_number() != active_song.get().get_number())) {
-        song_duration = std::chrono::steady_clock::duration::zero();
-        main_screen.set_song_duration(song_duration);
         pattern_play_counters.clear();
-    }
-    pattern_duration = std::chrono::steady_clock::duration::zero();
-    main_screen.set_pattern_duration(pattern_duration);
-    
+    }    
     inc_pattern_play_counters(song, pattern);
-
     if (!running) {
         song.unlearn();
     }
-
     active_song = song;
     active_pattern = pattern;
+    update_display();
+}
+
+void Session::update_display() {
+    MainScreen& main_screen = display.get_main_screen();
+
+    song_duration = std::chrono::steady_clock::duration::zero();
+    main_screen.set_song_duration(song_duration);
+
+    pattern_duration = std::chrono::steady_clock::duration::zero();
+    main_screen.set_pattern_duration(pattern_duration);
 
     main_screen.all_loops_off();
-    for (PatternLoop& loop : pattern.get_loops()) {        
+    for (PatternLoop& loop : active_pattern.get().get_loops()) {        
         main_screen.set_loop_state(loop.track_number - 1, loop.get_or_default(get_seq_index()));
     }
 
     main_screen.all_one_shots_off();
-    for (SongOneShot& one_shot : song.get_one_shots()) {
-        main_screen.set_one_shot_state(one_shot.number, Muted);
+    for (SongOneShot& one_shot : active_song.get().get_one_shots()) {
+        main_screen.set_one_shot_state(one_shot.number - 1, Muted);
     }
 
     main_screen.set_song_count(project.get_songs().size());    
-    main_screen.set_song_index(song.get_number() - 1);
+    main_screen.set_song_index(active_song.get().get_number() - 1);
 
-    main_screen.set_pattern_count(song.get_patterns().size());    
-    main_screen.set_pattern_index(pattern.get_number() - 1);
+    main_screen.set_pattern_count(active_song.get().get_patterns().size());    
+    main_screen.set_pattern_index(active_pattern.get().get_number() - 1);
 
-    main_screen.set_pattern_seq_count(pattern.get_seq_count());
+    main_screen.set_pattern_seq_count(active_pattern.get().get_seq_count());
     main_screen.set_pattern_seq_index(get_seq_index());
 
     display.tick(true);
@@ -71,9 +73,10 @@ void Session::inc_pattern_play_counters(Song& song, Pattern& pattern) {
         pattern_play_counters.emplace(pattern.get_number() - 1, 1);
         return;
     }
-    if (active_song.get().get_number() != song.get_number() || active_pattern.get().get_number() != pattern.get_number()) {
-        pattern_play_counters.at(it->first)++;
-    }
+    // if (active_song.get().get_number() != song.get_number() || active_pattern.get().get_number() != pattern.get_number()) {
+    //     pattern_play_counters.at(it->first)++;
+    // }
+    pattern_play_counters.at(it->first)++;
 }
 
 size_t Session::get_seq_index() {
@@ -179,16 +182,20 @@ Clip& Session::get_clip(std::filesystem::path clip_path) {
 
 std::optional<std::reference_wrapper<Clip>> Session::get_current_one_shot_clip() {
     size_t seq_index = get_seq_index();
+    SPDLOG_WARN("SESSN get_current_one_shot_clip[seq_index={}]", seq_index);
     std::vector<uint8_t> one_shot_numbers = active_pattern.get().get_one_shots();
     if (seq_index >= one_shot_numbers.size()) {
+        SPDLOG_WARN("SESSN get_current_one_shot_clip[one_shot_numbers.size()={}]", one_shot_numbers.size());
         return std::nullopt;
     }
     uint8_t one_shot_number = one_shot_numbers.at(seq_index);
     if (one_shot_number == 0) {
+        SPDLOG_WARN("SESSN get_current_one_shot_clip[one_shot_number=0]");
         return std::nullopt;
     }
     std::optional<std::reference_wrapper<SongOneShot>> one_shot_maybe = active_song.get().get_one_shot(one_shot_number);
     if (!one_shot_maybe.has_value()) {
+        SPDLOG_WARN("SESSN get_current_one_shot_clip[one_shot_maybe=empty]");
         return std::nullopt;
     }
     return *clips.at(one_shot_maybe.value().get().one_shot);
@@ -209,7 +216,7 @@ void Session::draw() {
 }
 
 void Session::step_learned() {
-    set_pattern(active_song, active_pattern, true);
+    update_display();
 }
 
 size_t Session::get_mem_size_bytes() const {
