@@ -159,7 +159,7 @@ PatternLoopSeq Session::get_current_loop_seq(uint8_t track_number) {
             return loop.get_or_default(get_seq_index());
         }
     }
-    SPDLOG_WARN("SESSN current loop seq not found! [track_number={}]", track_number);
+    SPDLOG_DEBUG("SESSN current loop seq not found [track_number={}]", track_number);
     return PatternLoopSeq();
 }
 

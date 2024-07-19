@@ -159,6 +159,7 @@ void Engine::update_saturation(ssize_t track_number) {
 }
 
 void Engine::learn(unsigned int param, signed int value, unsigned int clock) {
+    bool had_one_shot_clip = session->get_current_one_shot_clip().has_value();
     pattern_learn->controller(param, value, clock);
     session->step_learned();            
     for (PatternLoop& pattern_loop : session->get_pattern().get_loops()) {
@@ -173,6 +174,14 @@ void Engine::learn(unsigned int param, signed int value, unsigned int clock) {
             worker.unlock_tracks();
             SPDLOG_DEBUG("ENGIN loop unmuted [track_number={},loop={}]", pattern_loop.track_number, pattern_loop.loop.c_str());
         }
+    }
+    if (!had_one_shot_clip && session->get_current_one_shot_clip().has_value()) {
+        // We just learned about one-shot, so let's add it
+        EngineWorker& worker = get_worker(one_shots_track.get_track_number());
+        worker.lock_tracks();
+        add_one_shot_clip();
+        worker.unlock_tracks();
+        SPDLOG_DEBUG("ENGIN learned one-shot added");
     }
     SPDLOG_DEBUG("ENGIN controller learned [param={}]", param);
 }
@@ -196,7 +205,7 @@ void Engine::add_one_shot_clip() {
     std::optional<std::reference_wrapper<Clip>> clip = session->get_current_one_shot_clip();
     if (clip.has_value()) {
         one_shots_track.add_clip(clip.value(), 0, false, false);
-        SPDLOG_DEBUG("ENGIN PC one-shot added");
+        SPDLOG_DEBUG("ENGIN one-shot added[clip={}]", clip.value().get().get_path().c_str());
     }
 }
 

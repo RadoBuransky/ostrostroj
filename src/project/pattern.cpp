@@ -117,6 +117,7 @@ void Pattern::unlearn() {
         loop.seq.clear();
     }
     mutes.fill({});
+    one_shots.clear();
     seq_count = 0;
     learned = false;
     SPDLOG_DEBUG("PRJKT pattern unlearned");
