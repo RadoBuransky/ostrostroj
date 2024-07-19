@@ -61,7 +61,7 @@ Create following directory structure and copy (`scp`) audio files to it:
     1. SYN PAGE (MIDI Source): Channel 8
     1. FLT PAGE (CC Value): enable all by setting them to 0 (zero) by pressing FUNC + encoder
     1. AMP PAGE (CC Select):
-        1. Loops (mute + saturation):
+        1. Loops (unmute + saturation):
             1. CC1 Select=CC #111
             1. CC2 Select=CC #112
             1. CC3 Select=CC #113
@@ -78,8 +78,71 @@ Create following directory structure and copy (`scp`) audio files to it:
 
 ### Display
 
-![](doc/UnicornHATMini_2of3_1500x1500_crop_center.jpg "Pimoroni Mini Hat")
+*TODO*
 
-### Song Mode
+![](doc/UnicornHATMini_2of3_1500x1500_crop_center.jpeg "Pimoroni Mini Hat")
 
-### Live Controls
+### Song Edit
+
+*Important: Use `1ST` condition for each trig lock*
+
+By default all loops are muted so to be able to hear anything you must unmute a loop.
+
+1. Select `TRACK` 8 and switch to `GRID RECORDING` mode.
+1. Each step represents a single block of looped playback of the current song section. The number of loops can be changed in `SONG MODE`. The first step defines which loops will play the first time this song section is played. The second step becomes active after the next pattern change to this song section again.
+    
+    Example: We have a song with two sections: `A01_verse` and `A05_chorus`. We create 2 steps for the first section `verse` and we start the playback. Now the first step is active and it stays active until we switch to `chorus`. Then if we switch back from `chorus` to `verse` that's when the second step of `verse` is activated.
+
+#### Unmute and Saturation for Loops
+
+Create parameter lock for the step and the CC which corresponds to the loop that you want to control. CC value `0` means that the loop is muted. Increasing the value increases both saturation level and also wet/dry mix (`127` is the max value). 
+
+#### Unmute Model:Cycles Tracks
+
+All Model:Cycles tracks are muted by default after a pattern change. To enable an M:C track add MIDI note to the step that you want the track to be enabled:
+- C3 -T1 unmuted
+- D3 -T2 unmuted
+- E3 -T3 unmuted
+- F3 -T4 unmuted
+- G3 -T5 unmuted
+- A3 -T6 unmuted
+
+Only 4 tracks can be enabled because Syntakt can play only at most 4 notes at a time.
+
+#### Automatic Playback of One-Shots
+
+CC parameter #119 is used to trigger automatic playback of one-shot samples. CC value between `1` and `10` select one-shot file with the corresponding number.
+
+#### Auxiliary Pattern for Single-Section Changes
+
+The problem is when we want to make a change (un/mute a loop or play a one-shot) but we want to keep the same song section. Syntakt doesn't send any MIDI messages related to `SONG MODE`. We need to do the following trick.
+    
+Notice that there is a gap between patterns of `A01_verse` and `A05_chorus`. We can use it to create an auxiliary pattern `A02` but only on Syntakt, workspace structure remains unchanged. Now in `SONG MODE` we can add one row for `A01` and then right after it we can add another row for `A02`. During playback Syntakt switches from `A01` to `A02` but because we don't have a section for `A02`, Ostrostroj falls back to `A01`. This triggers a pattern change which activates the next step of `A01`.
+
+Auxiliary pattern doesn't (and probably shouldn't) have anything on `TRACK` 8. It would overwrite the main pattern `A01`.
+
+### Live Performance Controls
+
+#### Loop Saturation Rotary Encoders
+
+#### One-shot Samples Triggering
+
+### System Controls
+
+#### Device Shut Down
+
+Gracefully shuts down the device.
+
+#### Device Restart
+
+Gracefully restarts the device.
+
+#### Service Restart
+
+Use when you want to reload projects after workspace update. 
+
+### Tips & Tricks
+
+#### Auto Playback of One-Shots 
+
+#### Gaps Between Syntakt Patterns
