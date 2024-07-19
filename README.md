@@ -125,24 +125,28 @@ Auxiliary pattern doesn't (and probably shouldn't) have anything on `TRACK` 8. I
 
 #### Loop Saturation Rotary Encoders
 
+Switch to `TRACK` 8, `FLTR` page and use rotary encoders A - E to change saturation level for individual loops. To avoid sudden audio change encoder must be first turned "to catch" the current value and then it can be used to change it.
+
+*Important: Avoid touching of the encoders during the first pass because it can mess up learning process.*
+
 #### One-shot Samples Triggering
+
+Turn on Keyboard and play individual notes to trigger one-shot samples. See display to know which keys are mapped to samples.
 
 ### System Controls
 
 #### Device Shut Down
 
-Gracefully shuts down the device.
+Gracefully shut down the device by playing notes in sequence C#5 + F#4 + D#5 (`TRIG` 6 + 15 + 8) hold 3 sec.
 
 #### Device Restart
 
-Gracefully restarts the device.
+Gracefully restart the device by playing notes in sequence F4 + D5 + G4 (`TRIG` 14 + 7 + 16) hold 3 sec.
 
 #### Service Restart
 
-Use when you want to reload projects after workspace update. 
+Use when you want to reload projects after workspace update by playing notes in sequence F4 + F#4 + G4 (`TRIG` 14 + 15 + 16) hold 3 sec.
 
-### Tips & Tricks
+#### Change Active Project
 
-#### Auto Playback of One-Shots 
-
-#### Gaps Between Syntakt Patterns
+*TODO: Not implemented yet*
