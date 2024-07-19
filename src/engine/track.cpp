@@ -125,7 +125,7 @@ void Track::set_clip_mute(std::filesystem::path& clip_path, bool muted) {
 
 void Track::set_saturation(float _saturation) {
     saturation.set_drive(_saturation);
-    saturation.set_dry_wet(_saturation);
+    saturation.set_dry_wet(std::min(1.0f, _saturation * 1.5f)); // Reaches 100% wet before 100% saturation
 }
 
 float Track::get_saturation() {

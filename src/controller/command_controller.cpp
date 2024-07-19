@@ -4,13 +4,15 @@
 #include "command_controller.hpp"
 #include "midi_note.hpp"
 
-static const std::vector<MidiNote> RESTART_SEQ = {{MidiNote(F, 4), MidiNote(D, 5), MidiNote(G, 4)}};
-static const std::vector<MidiNote> SHUTDOWN_SEQ = {{MidiNote(C_, 5), MidiNote(F_, 4), MidiNote(D_, 5)}};
+static const std::vector<MidiNote> RESTART_DEVICE_SEQ = {{MidiNote(F, 4), MidiNote(D, 5), MidiNote(G, 4)}};
+static const std::vector<MidiNote> SHUTDOWN_DEVICE_SEQ = {{MidiNote(C_, 5), MidiNote(F_, 4), MidiNote(D_, 5)}};
+static const std::vector<MidiNote> RESTART_SERVICE_SEQ = {{MidiNote(F, 4), MidiNote(F_, 4), MidiNote(G, 4)}};
 
 CommandController::CommandController(uint8_t channel):
     commands({
-        CommandSeq(RESTART_SEQ, Command::RESTART, channel),
-        CommandSeq(SHUTDOWN_SEQ, Command::SHUTDOWN, channel)
+        CommandSeq(RESTART_DEVICE_SEQ, Command::RESTART_DEVICE, channel),
+        CommandSeq(SHUTDOWN_DEVICE_SEQ, Command::SHUTDOWN_DEVICE, channel),
+        CommandSeq(RESTART_SERVICE_SEQ, Command::RESTART_SERVICE, channel)
     }) {
 }
 

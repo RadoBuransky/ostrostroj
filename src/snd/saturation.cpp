@@ -28,7 +28,7 @@ void Saturation::set_drive(float _drive) {
     _drive = std::max(0.0f, std::min(1.0f, _drive));
     _drive = (std::pow(CURVE, _drive) - 1.0) / (CURVE - 1.0);
     in_gain = 1.0 + (_drive * DRIVE);
-    out_gain = 2 / (1 + 5*std::log10(in_gain));
+    out_gain = 2 / (1 + 50*std::log10(in_gain));
     SPDLOG_DEBUG("SAT{}  set_drive[_drive={},in_gain={},out_gain={}]", track_number, _drive, in_gain, out_gain);
 }
 

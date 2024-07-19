@@ -81,10 +81,13 @@ int main(int argc, char* argv[]) {
             case EngineExit::ENGINE_EXIT_NOOP:
                 result = 0;
                 break;
-            case EngineExit::ENGINE_EXIT_RESTART:            
+            case EngineExit::ENGINE_EXIT_RESTART_SERVICE:
+                result = 1; // Non-zero process result means failure which causes service to restart
+                break;
+            case EngineExit::ENGINE_EXIT_RESTART_DEVICE:            
                 result = 2;
                 break;
-            case EngineExit::ENGINE_EXIT_SHUTDOWN:
+            case EngineExit::ENGINE_EXIT_SHUTDOWN_DEVICE:
                 result = 3;
                 break;
         }

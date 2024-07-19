@@ -65,13 +65,16 @@ bool Engine::handle_midi_event(snd_seq_event_t& midi_event, snd_pcm_state_t stat
 
 void Engine::note(uint8_t channel, uint8_t note, bool on, unsigned int clock, bool running) {
     switch (command_controller.note(channel, note, on, clock, running)) {
-        case ENGINE_EXIT_RESTART:
-            exit(EngineExit::ENGINE_EXIT_RESTART);
+        case Command::RESTART_DEVICE:
+            exit(EngineExit::ENGINE_EXIT_RESTART_DEVICE);
             return;
-        case ENGINE_EXIT_SHUTDOWN:
-            exit(EngineExit::ENGINE_EXIT_SHUTDOWN);
+        case Command::SHUTDOWN_DEVICE:
+            exit(EngineExit::ENGINE_EXIT_SHUTDOWN_DEVICE);
             return;
-        case ENGINE_EXIT_NOOP:
+        case Command::RESTART_SERVICE:
+            exit(EngineExit::ENGINE_EXIT_RESTART_SERVICE);
+            return;
+        case Command::NOOP:
             break;
     }
     if (channel != SOURCE_MIDI_CHANNEL || !running) {

@@ -4,13 +4,14 @@
 
 enum Command {
     NOOP = 0,
-    RESTART = 1,
-    SHUTDOWN = 2
+    RESTART_DEVICE,
+    SHUTDOWN_DEVICE,
+    RESTART_SERVICE
 };
 
 class CommandController {
     private:
-        std::array<CommandSeq, 2> commands;
+        std::array<CommandSeq, 3> commands;
     public:
         CommandController(uint8_t channel);
         virtual ~CommandController() = default;
