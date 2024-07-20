@@ -45,6 +45,7 @@ Create following directory structure and copy (`scp`) audio files to it:
             - Section directory (`01_verse`)
                 - Mono loop audio files (`L1.wav` - `L4.wav`)
                 - Stereo loop audio files (`L5.wav`, `L6.wav`)
+                - Time warping can be disabled for a track by appending `_nowarp` to file name.
             - Another section directory (`02_chorus`)
                 - Loop files...
                 - *Hint: use symlinks to reuse existing loop files*
@@ -133,6 +134,10 @@ Switch to `TRACK` 8, `FLTR` page and use rotary encoders A - E to change saturat
 #### One-shot Samples Triggering
 
 Turn on Keyboard and play individual notes to trigger one-shot samples. See display to know which keys are mapped to samples.
+
+### Warping
+
+All loop tracks are time-warped by default. It means that their tempo slowly randomly oscillates to make it more groovy and interesting. This can be disabled by adding `_nowarp` to file name.
 
 ### System Controls
 
