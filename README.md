@@ -11,6 +11,7 @@
     1. Start: `sudo systemctl start ostrostroj`
     1. Enable auto start on boot: `sudo systemctl enable ostrostroj`
     1. Create workspace `sudo mkdir /srv/ostrostroj`
+        1. Change owner: `sudo chown -R rado:rado /srv/ostrostroj`
         1. Read, write for everyone: `sudo chmod -R 0775 /srv/ostrostroj`
 
 ## Running

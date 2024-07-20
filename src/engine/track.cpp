@@ -93,7 +93,9 @@ void Track::add_clip(Clip& clip, snd_pcm_uframes_t latency, bool predelay, bool 
     // Magic number measured experimentally. Needs to be updated whenever we change period, period size, ...
     snd_pcm_uframes_t compensated_latency = std::max(((float)latency - (((float)periods + 2.9) * (float)period_size)), 0.0);
     clip_players.push_back(std::make_unique<ClipPlayer>(clip, loop, compensated_latency, predelay, muted));
-    SPDLOG_DEBUG("TRAK{} clip added [compensated_latency={},predelay={}]", track_number, compensated_latency, predelay);
+    bool warp_enabled = clip.is_warp_enabled();
+    warp.set_bypass(!warp_enabled);
+    SPDLOG_DEBUG("TRAK{} clip added [compensated_latency={},predelay={},warp_enabled={}]", track_number, compensated_latency, predelay, warp_enabled);
 }
 
 /**

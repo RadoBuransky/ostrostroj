@@ -182,7 +182,7 @@ void Engine::learn(unsigned int param, signed int value, unsigned int clock) {
         // We just learned about one-shot, so let's add it
         EngineWorker& worker = get_worker(one_shots_track.get_track_number());
         worker.lock_tracks();
-        add_one_shot_clip();
+        add_one_shot_clip(last_computed_latency);
         worker.unlock_tracks();
         SPDLOG_DEBUG("ENGIN learned one-shot added");
     }
@@ -190,7 +190,8 @@ void Engine::learn(unsigned int param, signed int value, unsigned int clock) {
 }
 
 snd_pcm_uframes_t Engine::compute_latency(uint8_t mul, uint8_t clock_interval) {
-    return ((snd_pcm_uframes_t)mul * (snd_pcm_uframes_t)clock_interval * alsa_pcm.get_sample_rate()) / 1000;
+    last_computed_latency = ((snd_pcm_uframes_t)mul * (snd_pcm_uframes_t)clock_interval * alsa_pcm.get_sample_rate()) / 1000;
+    return last_computed_latency;
 }
 
 void Engine::program_changed(bool running, snd_pcm_uframes_t latency) {
@@ -198,16 +199,16 @@ void Engine::program_changed(bool running, snd_pcm_uframes_t latency) {
     lock_worker_tracks();
     clear_loop_clips(running);
     add_loop_clips(running, latency);
-    add_one_shot_clip();
+    add_one_shot_clip(latency);
     unlock_worker_tracks();
     un_mute_mc_tracks();
     SPDLOG_INFO("ENGIN program set={}", session->get_pattern().get_bank_pattern().get_pattern());
 }
 
-void Engine::add_one_shot_clip() {
+void Engine::add_one_shot_clip(snd_pcm_uframes_t latency) {
     std::optional<std::reference_wrapper<Clip>> clip = session->get_current_one_shot_clip();
     if (clip.has_value()) {
-        one_shots_track.add_clip(clip.value(), 0, false, false);
+        one_shots_track.add_clip(clip.value(), latency, true, false);
         SPDLOG_DEBUG("ENGIN one-shot added[clip={}]", clip.value().get().get_path().c_str());
     }
 }
@@ -369,7 +370,8 @@ Engine::Engine(Workspace& _workspace, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm, 
     worker_sleep_time(std::chrono::microseconds(_alsa_pcm.get_period_time()).count() / 2),
     workers(create_workers()),
     pattern_learn(),
-    exit_code(EngineExit::ENGINE_EXIT_NOOP) {
+    exit_code(EngineExit::ENGINE_EXIT_NOOP),
+    last_computed_latency(0) {
     session = std::make_unique<Session>(workspace.get_projects().at(0), display, alsa_pcm.get_sample_rate(), loop_tracks.size());
     init_display();
 }

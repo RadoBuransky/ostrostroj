@@ -18,4 +18,5 @@ class Clip {
         void assert_format(const int expected_sample_rate, const int expected_channels) const;
         ClipBlock& get_head() const;
         size_t get_mem_size_bytes() const;
+        bool is_warp_enabled() const;
 };

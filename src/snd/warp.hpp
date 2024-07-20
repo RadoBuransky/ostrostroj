@@ -17,6 +17,7 @@ class Warp {
         std::uniform_int_distribution<uint> target_change_dist;
         std::uniform_real_distribution<double> step_dist;
         double step_size;
+        bool bypass;
         void update_ratio();
         double generate_step_size();
         SRC_STATE* init_src_state(size_t channels);
@@ -25,4 +26,5 @@ class Warp {
         virtual ~Warp();
         bool pushnpop(float &sample);
         bool pop(float &sample);
+        void set_bypass(bool _bypass);
 };

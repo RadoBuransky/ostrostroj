@@ -26,6 +26,11 @@ std::vector<PatternLoop> Pattern::init_loops(std::filesystem::path dir) {
     for (auto const& file : std::filesystem::directory_iterator(dir)) {
         if (file.is_regular_file() && file.path().filename().string().starts_with('L')) {
             uint8_t track = stoi(file.path().filename().string().substr(1, 1));
+            for (PatternLoop& pattern_loop : result) {
+                if (pattern_loop.track_number == track) {
+                    throw OstrostrojException(fmt::format("PRJKT pattern contains multiple samples for the same track! [track={},dir={}]", track, dir.c_str()));
+                }
+            }
 #if SPDLOG_ACTIVE_LEVEL < 2
             PatternLoop& inserted = result.emplace_back(PatternLoop(file.path(), track, {}));
             SPDLOG_DEBUG("PRJKT loop initialized [name={},track={}]", inserted.loop.filename().string(), inserted.track_number);

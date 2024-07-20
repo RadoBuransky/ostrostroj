@@ -65,3 +65,7 @@ ClipBlock& Clip::get_head() const {
 size_t Clip::get_mem_size_bytes() const {
     return mem_size_bytes;
 }
+
+bool Clip::is_warp_enabled() const {
+    return path.filename().string().ends_with("_warp");
+}

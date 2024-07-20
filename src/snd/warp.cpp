@@ -51,7 +51,8 @@ Warp::Warp(size_t _channels, uint8_t _track_number):
     random_engine(random()),
     target_change_dist(1, (uint)(96000 * _channels * TARGET_CHANGE_PERIOD_SEC / input_samples.size())), // Yeah, hardcoded sampling rate
     step_dist(-MAX_STEP, MAX_STEP),
-    step_size(generate_step_size()) {
+    step_size(generate_step_size()),
+    bypass(false) {
     if (channels*2 > input_samples.size()) {
         throw OstrostrojException(fmt::format("WARP{} we need to fit at least 2 frames in input buffer! [channels={}]", _track_number, channels));
     }
@@ -76,6 +77,12 @@ Warp::~Warp() {
 bool Warp::pushnpop(float &sample) {
     if (output_samples_gen > 0) {
         throw OstrostrojException(fmt::format("WARP illegal push! [output_samples_gen={}]", output_samples_gen));
+    }
+    if (bypass) {
+        src_data.data_out = output_samples.data();
+        *src_data.data_out = sample;
+        output_samples_gen = 1;
+        return pop(sample);
     }
     *input_samples_pos = sample;
     input_samples_pos++;
@@ -109,7 +116,6 @@ bool Warp::pushnpop(float &sample) {
             }
         }
     }
-
     return pop(sample);
 }
 
@@ -121,4 +127,8 @@ bool Warp::pop(float &sample) {
         return true;
     }
     return false;
+}
+
+void Warp::set_bypass(bool _bypass) {
+    bypass = _bypass;
 }

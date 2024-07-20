@@ -40,6 +40,7 @@ class Engine {
         std::unique_ptr<Session> session;
         std::unique_ptr<PatternLearn> pattern_learn;
         EngineExit exit_code;
+        snd_pcm_uframes_t last_computed_latency;
         bool handle_midi_event(snd_seq_event_t& midi_event, snd_pcm_state_t state, PcmEvent& result);
         void note(uint8_t channel, uint8_t note, bool on, unsigned int clock, bool running);
         void exit(EngineExit _exit_code);
@@ -49,7 +50,7 @@ class Engine {
         void learn(unsigned int param, signed int value, unsigned int clock);
         snd_pcm_uframes_t compute_latency(uint8_t mul, uint8_t clock_interval);
         void program_changed(bool running, snd_pcm_uframes_t predelay);
-        void add_one_shot_clip();
+        void add_one_shot_clip(snd_pcm_uframes_t latency);
         void add_loop_clips(bool running, snd_pcm_uframes_t predelay);
         void clear_loop_clips(bool running);
         void lock_worker_tracks();
