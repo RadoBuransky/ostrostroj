@@ -55,28 +55,31 @@ Create following directory structure and copy (`scp`) audio files to it:
 #### 2. Initialize New Project in Elektron Syntakt
 1. Create new project
 1. `Settings -> MIDI Config -> Sync`: enable Clock, Transport and Program Change send.
+    1. Note that `Settings -> MIDI Config -> Channels -> PROG CHG OUT CH` is set to `AUTO` which is set to `14`. You'll need this to setup Model:Cycles.
+1. Initialize MIDI Track 8 For a New Pattern
+    1. Switch to a (new) pattern (`A01` by default)
+    1. Switch to Track 8
+        1. Machine: MIDI
+        1. SYN PAGE (MIDI Source): Channel 8
+        1. FLT PAGE (CC Value): enable all by setting them to 0 (zero) by pressing FUNC + encoder
+        1. AMP PAGE (CC Select):
+            1. Loops (unmute + saturation):
+                1. CC1 Select=CC #111
+                1. CC2 Select=CC #112
+                1. CC3 Select=CC #113
+                1. CC4 Select=CC #114
+                1. CC5 Select=CC #115
+                1. CC6 Select=CC #116
+            1. One-shot:
+                1. CC8 Select=CC #119
+1. Initialize Keyboard for Track 8
+    1. KB SCALE = CHRO
+    1. ROOT NOTE = C4
+    1. KB FOLD = ON
 
-#### 3. Initialize MIDI Track 8 For a New Pattern
-1. Switch to a (new) pattern (`A01` by default)
-1. Switch to Track 8
-    1. Machine: MIDI
-    1. SYN PAGE (MIDI Source): Channel 8
-    1. FLT PAGE (CC Value): enable all by setting them to 0 (zero) by pressing FUNC + encoder
-    1. AMP PAGE (CC Select):
-        1. Loops (unmute + saturation):
-            1. CC1 Select=CC #111
-            1. CC2 Select=CC #112
-            1. CC3 Select=CC #113
-            1. CC4 Select=CC #114
-            1. CC5 Select=CC #115
-            1. CC6 Select=CC #116
-        1. One-shot:
-            1. CC8 Select=CC #119
-
-#### 4. Initialize Keyboard for Track 8
-1. KB SCALE = CHRO
-1. ROOT NOTE = C4
-1. KB FOLD = ON
+#### 3. Initialize New Project in Elektron Model:Cycles
+1. Set `Settings -> MIDI -> Sync -> PCH IN` to `ON`.
+1. Set `Settings -> MIDI -> In Chan -> Auto In` to `14`. Check that `PCH In` is set to `AUT`.
 
 ### Display
 
