@@ -26,7 +26,7 @@ class AlsaMidi {
         bool poll_in(std::vector<pollfd>& poll_descriptors);
         void run();
         friend void* run_midi(void* context);
-        std::vector<pollfd> create_poll_descriptors(snd_rawmidi_t *handle);
+        pollfd create_poll_descriptors(snd_rawmidi_t *handle);
         std::vector<snd_rawmidi_t*> open_midi_ins();
         snd_rawmidi_t* open_midi_out(const std::string& device_name);
     public:
