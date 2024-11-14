@@ -115,7 +115,6 @@ size_t AlsaMidi::read(snd_rawmidi_t* handle_in, unsigned char* raw, size_t size)
 bool AlsaMidi::poll_in(std::vector<pollfd>& poll_descriptors) {
     unsigned short revents;
     int res = poll(poll_descriptors.data(), poll_descriptors.size(), POLL_TIMEOUT_MS);
-    int res = poll(poll_descriptors.data(), poll_descriptors.size(), POLL_TIMEOUT_MS);
     if (res < 0) {
         if (errno == EINTR) {
             throw OstrostrojException("AMIDI poll interrupted.");
@@ -125,9 +124,6 @@ bool AlsaMidi::poll_in(std::vector<pollfd>& poll_descriptors) {
     if (res == 0) {
         return false;
     }
-    for (size_t i = 0; i < handle_ins.size(); i++) {
-        snd_rawmidi_t* handle_in = handle_ins.at(i);
-        if ((res = snd_rawmidi_poll_descriptors_revents(handle_in, &poll_descriptors.at(i), 1, &revents)) < 0) {
     for (size_t i = 0; i < handle_ins.size(); i++) {
         snd_rawmidi_t* handle_in = handle_ins.at(i);
         if ((res = snd_rawmidi_poll_descriptors_revents(handle_in, &poll_descriptors.at(i), 1, &revents)) < 0) {
@@ -149,9 +145,7 @@ void AlsaMidi::run() {
         std::vector<pollfd> poll_descriptors = std::vector<pollfd>();
         for (snd_rawmidi_t* handle_in : handle_ins) {
             poll_descriptors.push_back(create_poll_descriptors(handle_in));
-        }        
-            poll_descriptors.push_back(create_poll_descriptors(handle_in));
-        }        
+        }       
         SPDLOG_INFO("AMIDI started. [{} devices, {} poll descriptors]", handle_ins.size(), poll_descriptors.size());
         while (!stop) {
             if (poll_in(poll_descriptors)) {
@@ -176,24 +170,17 @@ void* run_midi(void* context) {
 
 pollfd AlsaMidi::create_poll_descriptors(snd_rawmidi_t *handle) {
     pollfd result;
-pollfd AlsaMidi::create_poll_descriptors(snd_rawmidi_t *handle) {
-    pollfd result;
     int count = snd_rawmidi_poll_descriptors_count(handle);
     if (count != 1) {
         throw OstrostrojException(fmt::format("AMIDI One descriptor expected! [count={}]", count));
-    if (count != 1) {
-        throw OstrostrojException(fmt::format("AMIDI One descriptor expected! [count={}]", count));
     }
-    int filled = snd_rawmidi_poll_descriptors(handle, &result, 1);
     int filled = snd_rawmidi_poll_descriptors(handle, &result, 1);
     if (filled < 0) {
         throw OstrostrojException(fmt::format("AMIDI snd_rawmidi_poll_descriptors failed! [err={}]", snd_strerror(filled)));
     }
     if (filled != count) {
-    if (filled != count) {
         throw OstrostrojException(fmt::format("AMIDI poll descriptor init failed! [filled={}]", filled));
     }
-    return result;
     return result;
 }
 
@@ -214,13 +201,10 @@ std::vector<snd_rawmidi_t*> AlsaMidi::open_midi_ins() {
             if (std::string(device_name).starts_with("hw:")) {
                 snd_rawmidi_t* rawmidi_handle;
                 err = snd_rawmidi_open(&rawmidi_handle, NULL, device_name, SND_RAWMIDI_NONBLOCK);
-                err = snd_rawmidi_open(&rawmidi_handle, NULL, device_name, SND_RAWMIDI_NONBLOCK);
                 if (err) {
-                    throw OstrostrojException(fmt::format("AMIDI snd_rawmidi_open {} failed! [err={}]", device_name, snd_strerror(err)));
                     throw OstrostrojException(fmt::format("AMIDI snd_rawmidi_open {} failed! [err={}]", device_name, snd_strerror(err)));
                 }
                 result.push_back(rawmidi_handle);
-                SPDLOG_INFO("AMIDI input open. [{}]", device_name);
                 SPDLOG_INFO("AMIDI input open. [{}]", device_name);
             }
             free(device_name);

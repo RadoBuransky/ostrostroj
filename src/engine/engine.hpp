@@ -32,7 +32,7 @@ class Engine {
         CommandController command_controller;
         std::atomic_flag midi_flag;
         std::atomic_bool stop;
-        std::array<std::unique_ptr<Track>, ENGINE_LOOP_TRACKS> loop_tracks; // 0-3 mono, 4-5 stereo
+        std::array<std::unique_ptr<Track>, ENGINE_LOOP_TRACKS> loop_tracks; // 0-4 mono, 5 stereo
         Track one_shots_track;
         std::array<InterleavedFifo*, PCM_OUT_CHANNELS> track_fifos;
         useconds_t worker_sleep_time;
