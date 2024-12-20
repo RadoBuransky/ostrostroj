@@ -346,8 +346,7 @@ void Engine::init_display() {
     display.tick(true);
 }
 
-Engine::Engine(Workspace& _workspace, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm, Display& _display, std::atomic_flag& _running_flag):
-    workspace(_workspace),
+Engine::Engine(Project& _project, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm, Display& _display, std::atomic_flag& _running_flag):
     alsa_midi(_alsa_midi),
     alsa_pcm(_alsa_pcm),
     display(_display),
@@ -372,7 +371,7 @@ Engine::Engine(Workspace& _workspace, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm, 
     pattern_learn(),
     exit_code(EngineExit::ENGINE_EXIT_NOOP),
     last_computed_latency(0) {
-    session = std::make_unique<Session>(workspace.get_projects().at(0), display, alsa_pcm.get_sample_rate(), loop_tracks.size());
+    session = std::make_unique<Session>(_project, display, alsa_pcm.get_sample_rate(), loop_tracks.size());
     init_display();
 }
 

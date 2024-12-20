@@ -2,7 +2,6 @@
 
 #include "alsamidi.hpp"
 #include "alsapcm.hpp"
-#include "workspace.hpp"
 #include "project.hpp"
 #include "track.hpp"
 #include "engineworker.hpp"
@@ -22,7 +21,6 @@ enum EngineExit {
 
 class Engine {
     private:
-        Workspace& workspace;
         AlsaMidi& alsa_midi;
         AlsaPcm& alsa_pcm;
         Display& display;
@@ -62,7 +60,7 @@ class Engine {
         std::array<InterleavedFifo*, PCM_OUT_CHANNELS> init_track_fifos();
         void init_display();
     public:
-        Engine(Workspace& _workspace, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm, Display& _display, std::atomic_flag& _running_flag);
+        Engine(Project& _project, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm, Display& _display, std::atomic_flag& _running_flag);
         virtual ~Engine();
 
         void shutdown();

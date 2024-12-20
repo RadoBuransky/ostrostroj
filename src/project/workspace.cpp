@@ -2,6 +2,7 @@
 #define SPDLOG_ACTIVE_LEVEL 2
 #include <spdlog/spdlog.h>
 #include "workspace.hpp"
+#include "alsamidi.hpp"
 
 std::vector<Project> Workspace::init_projects(std::filesystem::path dir) {
     std::vector<Project> result;
@@ -19,9 +20,9 @@ std::vector<Project> Workspace::init_projects(std::filesystem::path dir) {
 Workspace::Workspace(std::filesystem::path dir):
     projects(init_projects(dir)) {
     if (projects.empty()) {
-        throw OstrostrojException(fmt::format("PRJKT no projects found! [dir={}]", dir.c_str()));
+        throw OstrostrojException(fmt::format("WRKSP no projects found! [dir={}]", dir.c_str()));
     }
-    SPDLOG_DEBUG("PRJKT workspace initialized [projects={}]", projects.size());
+    SPDLOG_DEBUG("WRKSP initialized [projects={}]", projects.size());
 }
 
 std::vector<Project>& Workspace::get_projects() {
