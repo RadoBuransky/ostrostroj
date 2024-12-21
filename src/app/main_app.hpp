@@ -11,7 +11,7 @@ class MainApp {
         Engine engine;
         void waitForSignal();
     public:
-        MainApp(Project& _project, Display& _display, AlsaMidi& _alsa_midi);
+        MainApp(Project& _project, Display& _display);
         virtual ~MainApp();
         EngineExit run();
 };

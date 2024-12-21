@@ -8,7 +8,6 @@ class OstrostrojApp {
     private:
         Workspace workspace;
         Display display;
-        AlsaMidi alsa_midi;
         Project& select_project();
         EngineExit main_app(Project& project);
     public:

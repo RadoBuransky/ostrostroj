@@ -3,10 +3,59 @@
 #include <spdlog/spdlog.h>
 #include "project_selection.hpp"
 
-ProjectSelection::ProjectSelection(Workspace& _workspace, Display &_display, AlsaMidi &_alsa_midi):
+ProjectSelectionScreen::ProjectSelectionScreen(size_t _project_count):
+    project_count(_project_count),
+    selected_project(0) {
+}
+
+bool ProjectSelectionScreen::draw(unicorn_hat_mini_canvas& canvas) {
+    for (size_t i = 0; i < project_count; i++) {
+        RGB color;
+        if (i == selected_project) {
+            color = palette_red;
+        } else {
+            color = palette_blue;
+        }
+        canvas.at(i).at(0) =  color;
+    }
+    return true;
+}
+
+void ProjectSelectionScreen::set_selected_project(size_t index) {
+    selected_project = index;
+}
+
+void ProjectSelection::set_selected_project(size_t index) {
+    if (index >= workspace.get_projects().size()) {
+        return;
+    }
+    selected_project = index;
+    screen.set_selected_project(index);
+    display.tick(true);
+}
+
+void ProjectSelection::midi_callback() {
+    snd_seq_event_t midi_event;
+    if (!alsa_midi.get_fifo_in().pop(midi_event)) {
+        return;
+    }
+    if (midi_event.type == SND_SEQ_EVENT_NOTEON) {
+        size_t octave = midi_event.data.note.note / 12;
+        if (octave == 4) {
+            set_selected_project(midi_event.data.note.note % 12);
+        }
+    }
+}
+
+ProjectSelection::ProjectSelection(Workspace& _workspace, Display &_display):
     workspace(_workspace),
     display(_display),
-    alsa_midi(_alsa_midi) {
+    alsa_midi(),
+    screen(workspace.get_projects().size()),
+    selected_project(0),
+    done_flag(false) {
+    display.set_active_screen(screen);
+    alsa_midi.start(std::bind(&ProjectSelection::midi_callback, this));
 }
 
 ProjectSelection::~ProjectSelection() {
@@ -14,6 +63,14 @@ ProjectSelection::~ProjectSelection() {
 }
 
 Project& ProjectSelection::selectProject() {
-    // TODO: Implement
-    return workspace.get_projects().back();
+    if (workspace.get_projects().size() == 1) {
+        return workspace.get_projects().at(0);
+    }
+    if (workspace.get_projects().size() > UNICORN_HAT_MINI_COLS) {
+        throw OstrostrojException("WRKSP Too many projects in workspace!");
+    }
+    set_selected_project(0);
+    SPDLOG_INFO("WRKSP Waiting for project selection...");
+    done_flag.wait(false);
+    return workspace.get_projects().at(selected_project);
 }

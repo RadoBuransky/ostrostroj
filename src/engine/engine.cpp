@@ -346,8 +346,13 @@ void Engine::init_display() {
     display.tick(true);
 }
 
-Engine::Engine(Project& _project, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm, Display& _display, std::atomic_flag& _running_flag):
-    alsa_midi(_alsa_midi),
+void Engine::midi_callback() {
+    midi_flag.clear();
+    midi_flag.notify_one();
+}
+
+Engine::Engine(Project& _project, AlsaPcm& _alsa_pcm, Display& _display, std::atomic_flag& _running_flag):
+    alsa_midi(),
     alsa_pcm(_alsa_pcm),
     display(_display),
     running_flag(_running_flag),
@@ -373,6 +378,7 @@ Engine::Engine(Project& _project, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm, Disp
     last_computed_latency(0) {
     session = std::make_unique<Session>(_project, display, alsa_pcm.get_sample_rate(), loop_tracks.size());
     init_display();
+    alsa_midi.start(std::bind(&Engine::midi_callback, this));
 }
 
 Engine::~Engine() {
@@ -430,11 +436,6 @@ void Engine::pcm_callback(PcmFrame_s24_3le& frame) {
         track_fifo++;
     }
     session->draw();
-}
-
-void Engine::midi_callback() {
-    midi_flag.clear();
-    midi_flag.notify_one();
 }
 
 int Engine::get_loop_track_count() const {

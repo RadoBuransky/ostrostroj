@@ -21,7 +21,7 @@ enum EngineExit {
 
 class Engine {
     private:
-        AlsaMidi& alsa_midi;
+        AlsaMidi alsa_midi;
         AlsaPcm& alsa_pcm;
         Display& display;
         std::atomic_flag& running_flag;
@@ -59,8 +59,9 @@ class Engine {
         std::vector<std::unique_ptr<EngineWorker>> create_workers();
         std::array<InterleavedFifo*, PCM_OUT_CHANNELS> init_track_fifos();
         void init_display();
+        void midi_callback();
     public:
-        Engine(Project& _project, AlsaMidi& _alsa_midi, AlsaPcm& _alsa_pcm, Display& _display, std::atomic_flag& _running_flag);
+        Engine(Project& _project, AlsaPcm& _alsa_pcm, Display& _display, std::atomic_flag& _running_flag);
         virtual ~Engine();
 
         void shutdown();
@@ -68,9 +69,6 @@ class Engine {
         // pcm_* callbacks are called from ALSA PCM thread (never called concerruntly!)
         bool pcm_event_callback(PcmEvent& event, snd_pcm_state_t state, bool sync);
         void pcm_callback(PcmFrame_s24_3le& frame);
-
-        // Called from ALSA MIDI thread
-        void midi_callback();
 
         int get_loop_track_count() const;
         EngineExit get_exit_code() const;

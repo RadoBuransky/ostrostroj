@@ -4,13 +4,29 @@
 #include "alsamidi.hpp"
 #include "project.hpp"
 
+class ProjectSelectionScreen : public Screen {
+    private:
+        size_t project_count;
+        size_t selected_project;
+    public:
+        ProjectSelectionScreen(size_t _project_count);
+        virtual ~ProjectSelectionScreen() = default;
+        virtual bool draw(unicorn_hat_mini_canvas& canvas);
+        void set_selected_project(size_t index);
+};
+
 class ProjectSelection {
     private:
         Workspace &workspace;
         Display &display;
-        AlsaMidi &alsa_midi;
+        AlsaMidi alsa_midi;
+        ProjectSelectionScreen screen;
+        size_t selected_project;
+        std::atomic_flag done_flag;
+        void set_selected_project(size_t index);
+        void midi_callback();
     public:
-        ProjectSelection(Workspace& _workspace, Display &_display, AlsaMidi &_alsa_midi);
+        ProjectSelection(Workspace& _workspace, Display &_display);
         virtual ~ProjectSelection();
         Project& selectProject();
 };
