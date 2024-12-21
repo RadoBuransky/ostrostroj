@@ -73,7 +73,7 @@ void AlsaPcm::alsa_snd_pcm_drop() {
     }
 }
  
-int AlsaPcm::set_hwparams(snd_pcm_t* handle, snd_pcm_hw_params_t* params) {
+int AlsaPcm::set_hwparams(snd_pcm_t* handle, snd_pcm_hw_params_t* params, snd_pcm_uframes_t sample_rate) {
     unsigned int rrate;
     snd_pcm_uframes_t size;
     int err, dir;
@@ -117,15 +117,15 @@ int AlsaPcm::set_hwparams(snd_pcm_t* handle, snd_pcm_hw_params_t* params) {
     if (err < 0) {
         throw OstrostrojException(fmt::format("APCM  channels count ({}) not available for playbacks: {}", PCM_OUT_CHANNELS, snd_strerror(err)));
     }
-    rrate = get_sample_rate();
+    rrate = sample_rate;
     err = snd_pcm_hw_params_set_rate_near(handle, params, &rrate, 0);
     if (err < 0) {
-        throw OstrostrojException(fmt::format("APCM  rate {}Hz not available for playback: {}", get_sample_rate(), snd_strerror(err)));
+        throw OstrostrojException(fmt::format("APCM  rate {}Hz not available for playback: {}", sample_rate, snd_strerror(err)));
     }
-    if (rrate != get_sample_rate()) {
-        throw OstrostrojException(fmt::format("APCM  rate doesn't match (requested {}Hz, get {}Hz)", get_sample_rate(), err));
+    if (rrate != sample_rate) {
+        throw OstrostrojException(fmt::format("APCM  rate doesn't match (requested {}Hz, get {}Hz)", sample_rate, err));
     }
-    size = PCM_OUT_PERIOD_TIME.count() * get_sample_rate() / 1000;
+    size = PCM_OUT_PERIOD_TIME.count() * sample_rate / 1000;
     period_size = 1;
     while (period_size < size) {
         period_size *= 2;
@@ -142,7 +142,7 @@ int AlsaPcm::set_hwparams(snd_pcm_t* handle, snd_pcm_hw_params_t* params) {
     if (err < 0) {
         throw OstrostrojException(fmt::format("APCM  snd_pcm_hw_params_get_period_size failed = {}", snd_strerror(err)));
     }
-    period_time = std::chrono::milliseconds((1000 * period_size) / get_sample_rate());
+    period_time = std::chrono::milliseconds((1000 * period_size) / sample_rate);
 
     err = snd_pcm_hw_params_set_buffer_size(handle, params, period_size * PCM_OUT_BUFFER_PERIODS);
     if (err < 0) {
@@ -230,7 +230,7 @@ void AlsaPcm::wait_for_device(const std::string& pcm_out_name) {
     }
 }
 
-snd_pcm_t* AlsaPcm::open_pcm_out(const std::string& pcm_out_name) {
+snd_pcm_t* AlsaPcm::open_pcm_out(const std::string& pcm_out_name, snd_pcm_uframes_t sample_rate) {
     wait_for_device(pcm_out_name);
     snd_pcm_t* result;
     int err = snd_pcm_open(&result, pcm_out_name.c_str(), SND_PCM_STREAM_PLAYBACK, 0);
@@ -239,7 +239,7 @@ snd_pcm_t* AlsaPcm::open_pcm_out(const std::string& pcm_out_name) {
     }
     snd_pcm_hw_params_t *hwparams;
     snd_pcm_hw_params_alloca(&hwparams);
-    err = set_hwparams(result, hwparams);
+    err = set_hwparams(result, hwparams, sample_rate);
     if (err < 0) {
         throw OstrostrojException(fmt::format("APCM  setting of hwparams failed: {}", snd_strerror(err)));
     }

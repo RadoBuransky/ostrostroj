@@ -51,16 +51,15 @@ class AlsaPcm {
         void alsa_snd_pcm_pause();
         void alsa_snd_pcm_resume();
         void alsa_snd_pcm_drop();
-        int set_hwparams(snd_pcm_t* handle, snd_pcm_hw_params_t* params);
+        int set_hwparams(snd_pcm_t* handle, snd_pcm_hw_params_t* params, snd_pcm_uframes_t sample_rate);
         int set_swparams(snd_pcm_t* handle, snd_pcm_sw_params_t* swparams);
         void wait_for_device(const std::string& pcm_out_name);
-        snd_pcm_t* open_pcm_out(const std::string& pcm_out_name);
+        snd_pcm_t* open_pcm_out(const std::string& pcm_out_name, snd_pcm_uframes_t sample_rate);
     public:
-        AlsaPcm();
+        AlsaPcm(snd_pcm_uframes_t sample_rate);
         virtual ~AlsaPcm();
         void start(std::function<bool(PcmEvent&, snd_pcm_state_t, bool)> _pcm_event_callback, std::function<void(PcmFrame_s24_3le&)> _pcm_callback);
         void shutdown();
-        snd_pcm_uframes_t get_sample_rate() const;
         int get_channels() const;
         std::chrono::milliseconds get_period_time();
         snd_pcm_uframes_t get_period_size();

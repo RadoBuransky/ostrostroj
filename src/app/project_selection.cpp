@@ -5,7 +5,7 @@
 
 ProjectSelectionScreen::ProjectSelectionScreen(size_t _project_count):
     project_count(_project_count),
-    selected_project(0) {
+    selected_project(-1) {
 }
 
 bool ProjectSelectionScreen::draw(unicorn_hat_mini_canvas& canvas) {
@@ -21,12 +21,18 @@ bool ProjectSelectionScreen::draw(unicorn_hat_mini_canvas& canvas) {
     return true;
 }
 
-void ProjectSelectionScreen::set_selected_project(size_t index) {
+void ProjectSelectionScreen::set_selected_project(int index) {
     selected_project = index;
 }
 
-void ProjectSelection::set_selected_project(size_t index) {
+void ProjectSelection::set_selected_project(int index) {
     if (index >= workspace.get_projects().size()) {
+        return;
+    }
+    if (index >= 0 && index == selected_project) {        
+        selected_project = index;
+        done_flag.test_and_set();
+        done_flag.notify_all();
         return;
     }
     selected_project = index;
@@ -52,7 +58,7 @@ ProjectSelection::ProjectSelection(Workspace& _workspace, Display &_display):
     display(_display),
     alsa_midi(),
     screen(workspace.get_projects().size()),
-    selected_project(0),
+    selected_project(-1),
     done_flag(false) {
     display.set_active_screen(screen);
     alsa_midi.start(std::bind(&ProjectSelection::midi_callback, this));
@@ -69,7 +75,7 @@ Project& ProjectSelection::selectProject() {
     if (workspace.get_projects().size() > UNICORN_HAT_MINI_COLS) {
         throw OstrostrojException("WRKSP Too many projects in workspace!");
     }
-    set_selected_project(0);
+    set_selected_project(-1);
     SPDLOG_INFO("WRKSP Waiting for project selection...");
     done_flag.wait(false);
     return workspace.get_projects().at(selected_project);

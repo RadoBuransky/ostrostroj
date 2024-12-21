@@ -15,15 +15,16 @@ class Session {
         std::chrono::steady_clock::duration pattern_duration;
         std::chrono::steady_clock::time_point started_timestamp;
         size_t mem_size_bytes;
+        snd_pcm_uframes_t sample_rate;
         void set_pattern(Song& song, Pattern& pattern, bool running);
         void update_display();
         void update_durations();
         void inc_pattern_play_counters(Song& song, Pattern& pattern);
         size_t get_seq_index();
-        size_t load_clip(std::filesystem::path path, int expected_sample_rate, int expected_channels);
-        size_t load_all_clips(int expected_sample_rate, int loop_track_count);
+        size_t load_clip(std::filesystem::path path, int expected_channels);
+        size_t load_all_clips(int loop_track_count);
     public:
-        Session(Project& _project, Display& _display, int expected_sample_rate, int loop_track_count);
+        Session(Project& _project, Display& _display, int loop_track_count);
         virtual ~Session() = default;
         bool change_program(BankPattern target_pattern, bool running);
         Project& get_project();
@@ -38,4 +39,5 @@ class Session {
         void draw();
         void step_learned();
         size_t get_mem_size_bytes() const;
+        snd_pcm_uframes_t get_sample_rate();
 };

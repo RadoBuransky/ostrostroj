@@ -22,6 +22,7 @@ enum EngineExit {
 class Engine {
     private:
         AlsaMidi alsa_midi;
+        Session session;
         AlsaPcm& alsa_pcm;
         Display& display;
         std::atomic_flag& running_flag;
@@ -35,7 +36,6 @@ class Engine {
         std::array<InterleavedFifo*, PCM_OUT_CHANNELS> track_fifos;
         useconds_t worker_sleep_time;
         std::vector<std::unique_ptr<EngineWorker>> workers;
-        std::unique_ptr<Session> session;
         std::unique_ptr<PatternLearn> pattern_learn;
         EngineExit exit_code;
         snd_pcm_uframes_t last_computed_latency;

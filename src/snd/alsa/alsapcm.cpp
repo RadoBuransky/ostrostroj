@@ -8,7 +8,6 @@
 // #define TEST_PARAMS
 
 static constexpr std::string PCM_OUT_NAME = "hw:UMC1820";
-static constexpr snd_pcm_uframes_t PCM_OUT_RATE = 96000;
 static constexpr int THREAD_PRIORITY = 80;
 
 PcmSample_s24_3le::PcmSample_s24_3le(float sample) {
@@ -135,8 +134,8 @@ void AlsaPcm::write_to_mmap(PcmFrame_s24_3le* buffer, snd_pcm_uframes_t frames_t
     }
 }
 
-AlsaPcm::AlsaPcm():
-    pcm_out(open_pcm_out(PCM_OUT_NAME)),
+AlsaPcm::AlsaPcm(snd_pcm_uframes_t sample_rate):
+    pcm_out(open_pcm_out(PCM_OUT_NAME, sample_rate)),
     stop(false),
     pcm_event_callback(0),
     pcm_callback(0),
@@ -149,10 +148,6 @@ AlsaPcm::~AlsaPcm() {
         snd_pcm_close(pcm_out);
         pcm_out = nullptr;
     }
-}
-
-snd_pcm_uframes_t AlsaPcm::get_sample_rate() const {
-    return PCM_OUT_RATE;
 }
 
 int AlsaPcm::get_channels() const {
