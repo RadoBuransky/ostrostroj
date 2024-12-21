@@ -9,7 +9,7 @@ ProjectSelectionScreen::ProjectSelectionScreen(size_t _project_count):
 }
 
 bool ProjectSelectionScreen::draw(unicorn_hat_mini_canvas& canvas) {
-    for (size_t i = 0; i < project_count; i++) {
+    for (int i = 0; i < project_count; i++) {
         RGB color;
         if (i == selected_project) {
             color = palette_red;
@@ -26,7 +26,7 @@ void ProjectSelectionScreen::set_selected_project(int index) {
 }
 
 void ProjectSelection::set_selected_project(int index) {
-    if (index >= workspace.get_projects().size()) {
+    if (index >= (int) workspace.get_projects().size()) {
         return;
     }
     if (index >= 0 && index == selected_project) {        

@@ -24,16 +24,7 @@ void MainApp::waitForSignal() {
 }
 
 MainApp::MainApp(Project& _project, Display& _display):
-    alsa_pcm(),
-    engine(_project, alsa_pcm, _display, running_flag) {
-    try {
-        alsa_pcm.start(
-            std::bind(&Engine::pcm_event_callback, &engine, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
-            std::bind(&Engine::pcm_callback, &engine, std::placeholders::_1));
-    } catch (std::exception const &ex) {
-        SPDLOG_ERROR(ex.what());
-        throw;
-    }
+    engine(_project, _display, running_flag) {
 }
 
 MainApp::~MainApp() {

@@ -23,7 +23,7 @@ class Engine {
     private:
         AlsaMidi alsa_midi;
         Session session;
-        AlsaPcm& alsa_pcm;
+        AlsaPcm alsa_pcm;
         Display& display;
         std::atomic_flag& running_flag;
         std::unique_ptr<ModelCycles> model_cycles;
@@ -61,7 +61,7 @@ class Engine {
         void init_display();
         void midi_callback();
     public:
-        Engine(Project& _project, AlsaPcm& _alsa_pcm, Display& _display, std::atomic_flag& _running_flag);
+        Engine(Project& _project, Display& _display, std::atomic_flag& _running_flag);
         virtual ~Engine();
 
         void shutdown();

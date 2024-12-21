@@ -39,5 +39,5 @@ class Session {
         void draw();
         void step_learned();
         size_t get_mem_size_bytes() const;
-        snd_pcm_uframes_t get_sample_rate();
+        snd_pcm_uframes_t get_sample_rate() const;
 };

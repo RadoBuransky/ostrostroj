@@ -44,14 +44,14 @@ SF_INFO& Clip::get_info() {
 }
 
 void Clip::assert_format(const int expected_sample_rate, const int expected_channels) const {
-    if (expected_sample_rate != info.samplerate) {
+    if (expected_sample_rate > 0 && expected_sample_rate != info.samplerate) {
         throw OstrostrojException(fmt::format("FCLIP {}Hz sample rate expected! [{}Hz, {}]", expected_sample_rate, info.samplerate, path.string()));
     }
     if ((info.format & SF_FORMAT_WAV) == 0) {
         throw OstrostrojException(fmt::format("FCLIP WAV file expected! [0x{:x}, {}]", info.format, path.string()));
     }
-    if ((info.format & SF_FORMAT_FLOAT) == 0) {
-        throw OstrostrojException(fmt::format("FCLIP 32-bit float expected! [0x{:x}, {}]", info.format, path.string()));
+    if ((info.format & SF_FORMAT_PCM_16) == 0) {
+        throw OstrostrojException(fmt::format("FCLIP 16-bit short expected! [0x{:x}, {}]", info.format, path.string()));
     }
     if (info.channels != expected_channels) {
         throw OstrostrojException(fmt::format("FCLIP {} channels expected! [{}, {}]", expected_channels, info.channels, path.string()));

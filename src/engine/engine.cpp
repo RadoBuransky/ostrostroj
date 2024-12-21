@@ -190,7 +190,7 @@ void Engine::learn(unsigned int param, signed int value, unsigned int clock) {
 }
 
 snd_pcm_uframes_t Engine::compute_latency(uint8_t mul, uint8_t clock_interval) {
-    last_computed_latency = ((snd_pcm_uframes_t)mul * (snd_pcm_uframes_t)clock_interval * alsa_pcm.get_sample_rate()) / 1000;
+    last_computed_latency = ((snd_pcm_uframes_t)mul * (snd_pcm_uframes_t)clock_interval * session.get_sample_rate()) / 1000;
     return last_computed_latency;
 }
 
@@ -351,10 +351,10 @@ void Engine::midi_callback() {
     midi_flag.notify_one();
 }
 
-Engine::Engine(Project& _project, AlsaPcm& _alsa_pcm, Display& _display, std::atomic_flag& _running_flag):
+Engine::Engine(Project& _project, Display& _display, std::atomic_flag& _running_flag):
     alsa_midi(),
     session(_project, display, ENGINE_LOOP_TRACKS),
-    alsa_pcm(_alsa_pcm),
+    alsa_pcm(session.get_sample_rate()),
     display(_display),
     running_flag(_running_flag),
     model_cycles(std::make_unique<ModelCycles>()),
@@ -363,22 +363,30 @@ Engine::Engine(Project& _project, AlsaPcm& _alsa_pcm, Display& _display, std::at
     midi_flag(ATOMIC_FLAG_INIT),
     stop(false),
     loop_tracks {
-        std::make_unique<Track>(1, 1, _alsa_pcm.get_period_size(), _alsa_pcm.get_periods(), true),
-        std::make_unique<Track>(2, 1, _alsa_pcm.get_period_size(), _alsa_pcm.get_periods(), true),
-        std::make_unique<Track>(3, 1, _alsa_pcm.get_period_size(), _alsa_pcm.get_periods(), true),
-        std::make_unique<Track>(4, 1, _alsa_pcm.get_period_size(), _alsa_pcm.get_periods(), true),
-        std::make_unique<Track>(5, 1, _alsa_pcm.get_period_size(), _alsa_pcm.get_periods(), true),
-        std::make_unique<Track>(6, 2, _alsa_pcm.get_period_size(), _alsa_pcm.get_periods(), true),
+        std::make_unique<Track>(1, 1, alsa_pcm.get_period_size(), alsa_pcm.get_periods(), true),
+        std::make_unique<Track>(2, 1, alsa_pcm.get_period_size(), alsa_pcm.get_periods(), true),
+        std::make_unique<Track>(3, 1, alsa_pcm.get_period_size(), alsa_pcm.get_periods(), true),
+        std::make_unique<Track>(4, 1, alsa_pcm.get_period_size(), alsa_pcm.get_periods(), true),
+        std::make_unique<Track>(5, 1, alsa_pcm.get_period_size(), alsa_pcm.get_periods(), true),
+        std::make_unique<Track>(6, 2, alsa_pcm.get_period_size(), alsa_pcm.get_periods(), true),
     },
-    one_shots_track(Track(7, 2, _alsa_pcm.get_period_size(), _alsa_pcm.get_periods(), false)),
+    one_shots_track(Track(7, 2, alsa_pcm.get_period_size(), alsa_pcm.get_periods(), false)),
     track_fifos(init_track_fifos()),
-    worker_sleep_time(std::chrono::microseconds(_alsa_pcm.get_period_time()).count() / 2),
+    worker_sleep_time(std::chrono::microseconds(alsa_pcm.get_period_time()).count() / 2),
     workers(create_workers()),
     pattern_learn(),
     exit_code(EngineExit::ENGINE_EXIT_NOOP),
     last_computed_latency(0) {
     init_display();
     alsa_midi.start(std::bind(&Engine::midi_callback, this));
+    try {
+        alsa_pcm.start(
+            std::bind(&Engine::pcm_event_callback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
+            std::bind(&Engine::pcm_callback, this, std::placeholders::_1));
+    } catch (std::exception const &ex) {
+        SPDLOG_ERROR(ex.what());
+        throw;
+    }
 }
 
 Engine::~Engine() {

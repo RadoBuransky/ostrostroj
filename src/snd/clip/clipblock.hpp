@@ -4,8 +4,7 @@
 
 class Clip;
 
-// 683ms
-typedef std::array<float, 8*8192> clip_buffer;
+typedef std::array<short, 8*8192> clip_buffer;
 
 class ClipBlock {
     public:

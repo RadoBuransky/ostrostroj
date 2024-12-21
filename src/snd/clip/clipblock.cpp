@@ -12,7 +12,7 @@ long ClipBlock::get_total_frames() {
 }
 
 void FileClipBlock::read_buffer() {
-    buffer_frames = sf_readf_float(snd_file, buffer.data(), buffer_capacity_frames);  
+    buffer_frames = sf_readf_short(snd_file, buffer.data(), buffer_capacity_frames);  
     Profiler::get().clip_total_frames_read += buffer_frames;
     if (buffer_frames != buffer_capacity_frames) {
         SPDLOG_TRACE("{} frames read. [capacity={}]", buffer_frames, buffer_capacity_frames);

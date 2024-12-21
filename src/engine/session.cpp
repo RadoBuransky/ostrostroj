@@ -86,7 +86,10 @@ size_t Session::load_clip(std::filesystem::path path, int expected_channels) {
     }
     auto inserted = clips.emplace(path, std::make_unique<Clip>(path));
     if (inserted.second) {
-        inserted.first->second->assert_format(expected_channels);
+        inserted.first->second->assert_format(sample_rate, expected_channels);
+        if (sample_rate == 0) {
+            sample_rate = inserted.first->second->get_info().samplerate;
+        }
         return inserted.first->second->get_mem_size_bytes();
     }
     return 0;
@@ -119,9 +122,9 @@ Session::Session(Project& _project, Display& _display, int loop_track_count):
     pattern_play_counters(),
     song_duration(0),
     pattern_duration(0),
-    started_timestamp(std::chrono::steady_clock::time_point::min()) {
+    started_timestamp(std::chrono::steady_clock::time_point::min()),
+    sample_rate(0) {
     mem_size_bytes = load_all_clips(loop_track_count);
-    sample_rate = 123; // TODO:
     set_pattern(active_song, active_pattern, false);
 }
 
@@ -217,6 +220,6 @@ size_t Session::get_mem_size_bytes() const {
     return mem_size_bytes;
 }
 
-snd_pcm_uframes_t Session::get_sample_rate() {
+snd_pcm_uframes_t Session::get_sample_rate() const {
     return sample_rate;
 }
