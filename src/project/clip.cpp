@@ -1,5 +1,5 @@
 #include "common.hpp"
-#define SPDLOG_ACTIVE_LEVEL 2
+#define SPDLOG_ACTIVE_LEVEL 1
 #include <spdlog/spdlog.h>
 #include "clip.hpp"
 
@@ -24,7 +24,7 @@ Clip::Clip(const std::filesystem::path _path) :
     }
     head = std::make_unique<FileClipBlock>(snd_file, info.channels, 0);
     mem_size_bytes = load();
-    SPDLOG_TRACE(std::format("FCLIP loaded. [{},{}Hz,{}ch,{:x}]", _path.c_str(), info.samplerate, info.channels, info.format));
+    SPDLOG_DEBUG(fmt::format("FCLIP loaded. [{},{}Hz,{}ch,{:x}]", _path.c_str(), info.samplerate, info.channels, info.format));
 };
 
 Clip::~Clip() {

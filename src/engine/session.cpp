@@ -126,6 +126,10 @@ Session::Session(Project& _project, Display& _display, int loop_track_count):
     sample_rate(0) {
     mem_size_bytes = load_all_clips(loop_track_count);
     set_pattern(active_song, active_pattern, false);
+    if (clips.empty()) {
+        throw OstrostrojException("SESSN project contains no clips!");
+    }
+    SPDLOG_INFO("SESSN initialized [clips={},sample_rate={}Hz]", clips.size(), sample_rate);
 }
 
 bool Session::change_program(BankPattern target_pattern, bool running) {
