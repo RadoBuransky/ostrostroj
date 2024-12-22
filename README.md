@@ -20,16 +20,24 @@
     - `sudo service ostrostroj start`
     - `sudo service ostrostroj stop`
 
-## Logs
-
-- `journalctl -u ostrostroj`
-- `service ostrostroj status`
-
 ## Development
 
 - For faster deployment cycle:
     - `sudo chown rado:rado /usr/local/bin/ostrostroj`
     - `scp .\build\src\ostrostroj ostrostroj:/usr/local/bin/ostrostroj`
+
+## Logs
+
+- `journalctl -u ostrostroj -n 20`
+- `service ostrostroj status`
+
+## Debugging
+
+- `gdb -ex=run -ex=bt -ex=exit --args /usr/local/bin/ostrostroj /srv/ostrostroj`
+- Remote debugging:
+    - `gdbserver :1234 ./ostrostroj`
+    - Attach VSCode to `ostrostroj:1234`
+
 
 ## Users Guide
 

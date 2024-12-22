@@ -9,14 +9,14 @@ ProjectSelectionScreen::ProjectSelectionScreen(size_t _project_count):
 }
 
 bool ProjectSelectionScreen::draw(unicorn_hat_mini_canvas& canvas) {
-    for (int i = 0; i < project_count; i++) {
+    for (size_t i = 0; i < project_count; i++) {
         RGB color;
-        if (i == selected_project) {
+        if ((int) i == selected_project) {
             color = palette_red;
         } else {
             color = palette_blue;
         }
-        canvas.at(i).at(0) =  color;
+        canvas.at(i).at(0) = color;
     }
     return true;
 }
@@ -66,6 +66,7 @@ ProjectSelection::ProjectSelection(Workspace& _workspace, Display &_display):
 
 ProjectSelection::~ProjectSelection() {
     alsa_midi.shutdown();
+    display.set_active_screen(display.get_system_screen());
 }
 
 Project& ProjectSelection::selectProject() {
@@ -78,5 +79,7 @@ Project& ProjectSelection::selectProject() {
     set_selected_project(-1);
     SPDLOG_INFO("WRKSP Waiting for project selection...");
     done_flag.wait(false);
-    return workspace.get_projects().at(selected_project);
+    Project& result = workspace.get_projects().at(selected_project);
+    SPDLOG_INFO("WRKSP Project selected [name={}]", result.get_name());
+    return result;
 }

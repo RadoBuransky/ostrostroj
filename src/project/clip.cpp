@@ -67,5 +67,5 @@ size_t Clip::get_mem_size_bytes() const {
 }
 
 bool Clip::is_warp_enabled() const {
-    return path.filename().string().find("_nowarp") == std::string::npos;
+    return path.filename().string().find("_w.") != std::string::npos;
 }

@@ -18,6 +18,9 @@ size_t Pattern::parse_pattern_offset(std::filesystem::path dir) {
 }
 
 std::string Pattern::parse_name(std::filesystem::path dir) {
+    if (dir.filename().string().length() <= 3) {
+        return "";
+    }
     return dir.filename().string().substr(3);
 }
 

@@ -36,7 +36,8 @@ gpiod_line* UnicornHatMini::open_out_line(int pin_number) {
 UnicornHatMini::UnicornHatMini():
     gpio(open_gpio("/dev/gpiochip4")),
     chip0("/dev/spidev0.0", open_out_line(24), 0),
-    chip1("/dev/spidev0.1", open_out_line(26), HOLTEK_MAGIC_NUM) {
+    chip1("/dev/spidev0.1", open_out_line(26), HOLTEK_MAGIC_NUM),
+    canvas() {
     SPDLOG_DEBUG("UHATM initialized");
 }
 
@@ -51,6 +52,10 @@ UnicornHatMini::~UnicornHatMini() {
 
 unicorn_hat_mini_canvas& UnicornHatMini::get_canvas() {
     return canvas;
+}
+
+void UnicornHatMini::clear() {
+    canvas.fill({0,0,0});
 }
 
 void UnicornHatMini::show() {

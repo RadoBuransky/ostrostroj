@@ -19,5 +19,6 @@ class UnicornHatMini {
         virtual ~UnicornHatMini();
 
         unicorn_hat_mini_canvas& get_canvas();
+        void clear();
         void show();
 };

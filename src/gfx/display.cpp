@@ -197,7 +197,6 @@ SystemScreen::SystemScreen():
 }
 
 bool SystemScreen::draw(unicorn_hat_mini_canvas& canvas) {    
-    canvas.fill({0,0,0});
     if (init) {
         canvas.at(0).at(0) = palette_red;
         canvas.at(1).at(0) = palette_red;
@@ -246,4 +245,5 @@ SystemScreen& Display::get_system_screen() {
 
 void Display::set_active_screen(Screen& _screen) {
     active_screen = _screen;
+    unicorn_hat_mini.clear();
 }

@@ -353,7 +353,7 @@ void Engine::midi_callback() {
 
 Engine::Engine(Project& _project, Display& _display, std::atomic_flag& _running_flag):
     alsa_midi(),
-    session(_project, display, ENGINE_LOOP_TRACKS),
+    session(_project, _display, ENGINE_LOOP_TRACKS),
     alsa_pcm(session.get_sample_rate()),
     display(_display),
     running_flag(_running_flag),
