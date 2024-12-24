@@ -14,12 +14,11 @@ class ClipPlayer {
         const short* end_frame;
         long position;
         bool draining;
-        bool muted;
         void update_pointers(ClipBlock& _block);
         void fade_out();
         void fade_in();
     public:
-        ClipPlayer(Clip& _clip, bool _loop, snd_pcm_uframes_t _latency_frames, bool predelay, bool _muted);
+        ClipPlayer(Clip& _clip, bool _loop, snd_pcm_uframes_t _latency_frames, bool predelay);
         virtual ~ClipPlayer() = default;
         inline bool pop(float& sample) {
             if (fade > fade_samples) {
@@ -49,9 +48,6 @@ class ClipPlayer {
                 }
                 current_frame++;
                 position++;
-                if (muted) {
-                    sample = 0.0;
-                }
                 return true;        
             }
             if (block.get().has_next()) {
@@ -67,7 +63,5 @@ class ClipPlayer {
             return pop(sample);
         }
         void drain();
-        void set_muted(bool _muted);
-        bool get_muted();
         Clip& get_clip();
 };

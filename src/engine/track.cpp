@@ -86,13 +86,13 @@ int Track::get_channels() const {
 /**
  * Not thread safe!
 */
-void Track::add_clip(Clip& clip, snd_pcm_uframes_t latency, bool predelay, bool muted) {
+void Track::add_clip(Clip& clip, snd_pcm_uframes_t latency, bool predelay) {
     if (loop) {
         clear(false);
     }
     // Magic number measured experimentally. Needs to be updated whenever we change period, period size, ...
     snd_pcm_uframes_t compensated_latency = std::max(((float)latency - (((float)periods + 2.9) * (float)period_size)), 0.0);
-    clip_players.push_back(std::make_unique<ClipPlayer>(clip, loop, compensated_latency, predelay, muted));
+    clip_players.push_back(std::make_unique<ClipPlayer>(clip, loop, compensated_latency, predelay));
     bool warp_enabled = clip.is_warp_enabled();
     warp.set_bypass(!warp_enabled);
     SPDLOG_DEBUG("TRAK{} clip added [compensated_latency={},predelay={},warp_enabled={}]", track_number, compensated_latency, predelay, warp_enabled);
@@ -113,16 +113,6 @@ void Track::clear(bool drop) {
     for (auto& clip_player: clip_players) {
         clip_player->drain();
     }
-}
-
-void Track::set_clip_mute(std::filesystem::path& clip_path, bool muted) {
-    for (std::unique_ptr<ClipPlayer>& clip_player: clip_players) {
-        if (clip_player->get_clip().get_path() == clip_path) {
-            clip_player->set_muted(muted);
-            return;
-        }
-    }
-    SPDLOG_WARN("TRAK{} clip not found for mute [clip_path={}]", track_number, clip_path.c_str());
 }
 
 void Track::set_saturation(float _saturation) {

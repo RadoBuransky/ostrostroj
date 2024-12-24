@@ -30,5 +30,4 @@ class Song {
         std::vector<Pattern>& get_patterns();
         std::vector<SongOneShot>& get_one_shots();
         std::optional<std::reference_wrapper<SongOneShot>> get_one_shot(uint8_t one_shot_number);
-        void unlearn();
 };

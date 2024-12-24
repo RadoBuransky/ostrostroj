@@ -37,7 +37,7 @@ void ClipPlayer::fade_in() {
     }
 }
 
-ClipPlayer::ClipPlayer(Clip& _clip, bool _loop, snd_pcm_uframes_t _latency_frames, bool predelay, bool _muted):
+ClipPlayer::ClipPlayer(Clip& _clip, bool _loop, snd_pcm_uframes_t _latency_frames, bool predelay):
     clip(_clip),
     loop(_loop),
     latency_samples(_latency_frames * _clip.get_head().get_channels()),
@@ -47,8 +47,7 @@ ClipPlayer::ClipPlayer(Clip& _clip, bool _loop, snd_pcm_uframes_t _latency_frame
     current_frame(nullptr),
     end_frame(nullptr),
     position(0),
-    draining(false),
-    muted(_muted) {
+    draining(false) {
     update_pointers(block.get());
     if (fade_samples > latency_samples) {
         throw OstrostrojException(fmt::format("CLIP  fade is too long! [fade_samples={},latency_samples={}]", fade_samples, latency_samples));
@@ -59,23 +58,6 @@ void ClipPlayer::drain() {
     draining = true;
     // Magic number because this is called as a reaction to PC MIDI message which comes before actual change
     fade = -(fade_samples / 2) -latency_samples;
-}
-
-void ClipPlayer::set_muted(bool _muted) {
-    if (_muted != muted) {
-        if (!_muted) {
-            SPDLOG_DEBUG("CLIPP unmuted. [clip={}]", clip.get_path().c_str());
-            fade_out();
-        } else {
-            SPDLOG_DEBUG("CLIPP muted. [clip={}]", clip.get_path().c_str());
-            fade_in();
-        }
-    }
-    muted = _muted;
-}
-
-bool ClipPlayer::get_muted() {
-    return muted;
 }
 
 Clip& ClipPlayer::get_clip() {

@@ -3,16 +3,6 @@
 #include <spdlog/spdlog.h>
 #include "pattern.hpp"
 
-PatternLoopSeq PatternLoop::get_or_default(size_t seq_index) {
-    if (seq_index >= seq.size()) {
-        SPDLOG_DEBUG("PRJKT pattern loop seq not found [track_number={},seq_index={}]", track_number, seq_index);
-        return PatternLoopSeq();
-    }
-    SPDLOG_DEBUG("PRJKT pattern loop seq found [track_number={},seq_index={},muted={},saturation={}]", track_number, seq_index,
-        seq.at(seq_index).muted, seq.at(seq_index).saturation);
-    return seq.at(seq_index);
-}
-
 size_t Pattern::parse_pattern_offset(std::filesystem::path dir) {
     return stoi(dir.filename().string().substr(0, 2));
 }
@@ -38,7 +28,7 @@ std::vector<PatternLoop> Pattern::init_loops(std::filesystem::path dir) {
             PatternLoop& inserted = result.emplace_back(PatternLoop(file.path(), track, {}));
             SPDLOG_DEBUG("PRJKT loop initialized [name={},track={}]", inserted.loop.filename().string(), inserted.track_number);
 #else
-            result.emplace_back(PatternLoop(file.path(), track, {}));
+            result.emplace_back(PatternLoop(file.path(), track));
 #endif
         }
     }
@@ -50,10 +40,7 @@ Pattern::Pattern(BankPattern root_bank_pattern, std::filesystem::path dir):
     name(parse_name(dir)),
     pattern_number(0),
     loops(init_loops(dir)),
-    mutes(),
-    one_shots(),
-    learned(false),
-    seq_count(0) { 
+    one_shots() { 
     SPDLOG_DEBUG("PRJKT pattern initialized [bank_pattern={},name={},loops={}]", bank_pattern.get_pattern(), name, loops.size());
 }
 
@@ -77,77 +64,6 @@ std::vector<PatternLoop>& Pattern::get_loops() {
     return loops;
 }
 
-std::array<std::vector<bool>, ModelCycles::MODEL_CYCLES_TRACK_COUNT>& Pattern::get_mutes() {
-    return mutes;
-}
-
 std::vector<uint8_t>& Pattern::get_one_shots() {
     return one_shots;
-}
-
-void Pattern::set_learned() {
-#ifndef NDEBUG
-    SPDLOG_DEBUG("PRJKT pattern learned:");
-    for (size_t i = 0; i < loops.size(); i++) {
-        PatternLoop& loop = loops.at(i);
-        std::string s = std::to_string(loop.track_number);
-        for (size_t j = 0; j < loop.seq.size(); j++) {
-            PatternLoopSeq& seq = loop.seq.at(j);
-            if (seq.muted) {
-                s.append("-");
-            } else {
-                s.append(std::to_string((int)(seq.saturation * 9.9) % 10));
-            }
-        }
-        SPDLOG_DEBUG("L{}", s);
-    }
-    for (size_t i = 0; i < mutes.size(); i++) {
-        std::string s;
-        std::vector<bool>& m = mutes.at(i);
-        for (size_t j = 0; j < m.size(); j++) {
-            s.append(m.at(j) ? "-" : "|");
-        }
-        SPDLOG_DEBUG("T{}{}", i + 1, s);
-    }
-#endif
-    learned = true;
-}
-
-bool Pattern::get_learned() {
-    return learned;
-}
-
-void Pattern::unlearn() {
-    for (PatternLoop& loop : loops) {
-        loop.seq.clear();
-    }
-    mutes.fill({});
-    one_shots.clear();
-    seq_count = 0;
-    learned = false;
-    SPDLOG_DEBUG("PRJKT pattern unlearned");
-}
-
-void Pattern::update_seq_count() {
-    seq_count = 0;    
-    for (auto& mute : mutes) {
-        size_t s = mute.size();
-        if (s > seq_count) {
-            seq_count = s;
-        }
-    }
-    for (auto& loop : loops) {
-        size_t s = loop.seq.size();
-        if (s > seq_count) {
-            seq_count = s;
-        }
-    }
-    if (one_shots.size() > seq_count) {
-        seq_count = one_shots.size();
-    }
-    SPDLOG_DEBUG("PRJKT pattern update_seq_count[number={},seq_count={}]", pattern_number, seq_count);
-}
-
-size_t Pattern::get_seq_count() {
-    return seq_count;
 }

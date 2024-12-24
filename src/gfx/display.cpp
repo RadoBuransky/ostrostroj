@@ -34,16 +34,16 @@ void MainScreen::draw_loop(Point pos, LoopState loop, unicorn_hat_mini_canvas& c
         {10,1}
     }};
     RGB color;
-    float compensated_saturation = std::max(loop.seq.saturation, (float)0.1);
+    float compensated_saturation = std::max(loop.saturation, (float)0.1);
     RGB point_color;
-    if (loop.seq.muted) {
+    if (loop.muted) {
         color = palette_muted;
         point_color = palette_muted;
     } else {        
         color = (loop.grabbed ? palette_white : palette_playing) * compensated_saturation;
         point_color = (loop.grabbed ? palette_magenta : palette_yellow) * compensated_saturation;
     }
-    uint8_t yellow_pos = std::min((uint8_t)3, (uint8_t)(loop.seq.saturation * 4.0));
+    uint8_t yellow_pos = std::min((uint8_t)3, (uint8_t)(loop.saturation * 4.0));
     for (size_t pixel = 0; pixel < shape.size(); pixel++) {
         const std::array<uint8_t, 2>& xy = shape.at(pixel);
         canvas.at(xy.at(0) + pos.x).at(xy.at(1) + pos.y) = (yellow_pos == pixel) ? point_color : color;
@@ -89,23 +89,13 @@ void MainScreen::draw_patterns(unicorn_hat_mini_canvas& canvas) {
     SPDLOG_DEBUG("DSPLY draw_patterns[pattern_count={},pattern_index={}]", pattern_count, pattern_index);
 }
 
-void MainScreen::draw_pattern_seq(unicorn_hat_mini_canvas& canvas) {
-    uint count = std::min(pattern_seq_count, (uint)8);
-    for (uint i = 0; i < count; i++) {
-        canvas.at((UNICORN_HAT_MINI_COLS - count) + i).at(6) = (i <= pattern_seq_index) ? palette_playing : palette_cyan;
-    }
-    SPDLOG_DEBUG("DSPLY draw_pattern_seq[pattern_seq_count={},pattern_seq_index={}]", pattern_seq_count, pattern_seq_index);
-}
-
 MainScreen::MainScreen():
     changed(true),
     song_duration(0),
     pattern_duration(0),
     loops(),
-    one_shots(),
-    pattern_seq_count(0),
-    pattern_seq_index(0) {
-    loops.fill({{}, false});
+    one_shots() {
+    loops.fill({false, 0.0, false});
     one_shots.fill(Off);
 }
 
@@ -120,7 +110,6 @@ bool MainScreen::draw(unicorn_hat_mini_canvas& canvas) {
     draw_songs(canvas);
     draw_one_shots(canvas);
     draw_patterns(canvas);
-    draw_pattern_seq(canvas);
     return true;
 }
 
@@ -134,9 +123,11 @@ void MainScreen::set_pattern_duration(std::chrono::steady_clock::duration _patte
     changed = true;
 }
 
-void MainScreen::set_loop_state(size_t loop_index, PatternLoopSeq state) {
+void MainScreen::set_loop_state(size_t loop_index, bool muted, float saturation) {
     if (loop_index < loops.size()) {
-        loops.at(loop_index).seq = state;
+        LoopState& loopState = loops.at(loop_index);
+        loopState.muted = muted;
+        loopState.saturation = saturation;
         changed = true;
     }
 }
@@ -147,7 +138,7 @@ void MainScreen::set_loop_grabbed(size_t loop_index, bool grabbed) {
 }
 
 void MainScreen::all_loops_off() {
-    loops.fill({{}, false});
+    loops.fill({false, 0.0, false});
 }
 
 void MainScreen::set_one_shot_state(size_t one_shot_index, TrackState state) {
@@ -178,16 +169,6 @@ void MainScreen::set_pattern_count(uint _pattern_count) {
 
 void MainScreen::set_pattern_index(uint _pattern_index) {
     pattern_index = _pattern_index;
-    changed = true;
-}
-
-void MainScreen::set_pattern_seq_count(uint _count) {    
-    pattern_seq_count = _count;
-    changed = true;
-}
-
-void MainScreen::set_pattern_seq_index(uint _index) {
-    pattern_seq_index = _index;
     changed = true;
 }
 

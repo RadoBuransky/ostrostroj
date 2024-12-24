@@ -86,9 +86,3 @@ std::optional<std::reference_wrapper<SongOneShot>> Song::get_one_shot(uint8_t on
     }
     return std::nullopt;
 }
-
-void Song::unlearn() {
-    for (Pattern& pattern : patterns) {
-        pattern.unlearn();
-    }
-}

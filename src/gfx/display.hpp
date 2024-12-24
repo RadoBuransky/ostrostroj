@@ -13,7 +13,8 @@ constexpr RGB palette_magenta = {RGB_MAX, 0, RGB_01};
 constexpr RGB palette_cyan = {0, RGB_05, RGB_05};
 
 struct LoopState {
-    PatternLoopSeq seq;
+    bool muted;
+    float saturation;
     bool grabbed;
 };
 
@@ -53,16 +54,12 @@ class MainScreen : public Screen {
         uint pattern_count;
         uint pattern_index;
 
-        uint pattern_seq_count;
-        uint pattern_seq_index;
-
         void draw_song_and_pattern_duration(unicorn_hat_mini_canvas& canvas);
         void draw_loops(unicorn_hat_mini_canvas& canvas);
         void draw_loop(Point pos, LoopState loop, unicorn_hat_mini_canvas& canvas);
         void draw_one_shots(unicorn_hat_mini_canvas& canvas);
         void draw_songs(unicorn_hat_mini_canvas& canvas);
         void draw_patterns(unicorn_hat_mini_canvas& canvas);
-        void draw_pattern_seq(unicorn_hat_mini_canvas& canvas);
     public:
         MainScreen();
         virtual ~MainScreen() = default;
@@ -72,7 +69,7 @@ class MainScreen : public Screen {
         void set_song_duration(std::chrono::steady_clock::duration _song_duration);
         void set_pattern_duration(std::chrono::steady_clock::duration _pattern_duration);
 
-        void set_loop_state(size_t loop_index, PatternLoopSeq state);
+        void set_loop_state(size_t loop_index, bool muted, float saturation);
         void set_loop_grabbed(size_t loop_index, bool grabbed);
         void all_loops_off();
 
@@ -84,9 +81,6 @@ class MainScreen : public Screen {
 
         void set_pattern_count(uint _pattern_count);
         void set_pattern_index(uint _pattern_index);
-
-        void set_pattern_seq_count(uint _count);
-        void set_pattern_seq_index(uint _index);
 };
 
 class SystemScreen : public Screen {

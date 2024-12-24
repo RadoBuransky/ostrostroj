@@ -4,16 +4,9 @@
 #include "clip.hpp"
 #include "model_cycles.hpp"
 
-struct PatternLoopSeq {
-    bool muted = true;
-    float saturation = 0.0;  // 0.0 - 1.0
-};
-
 struct PatternLoop {
     std::filesystem::path loop;
     uint8_t track_number; // 1 - 6
-    std::vector<PatternLoopSeq> seq;
-    PatternLoopSeq get_or_default(size_t seq_index);
 };
 
 class Pattern {
@@ -22,10 +15,7 @@ class Pattern {
         std::string name;
         size_t pattern_number;
         std::vector<PatternLoop> loops;
-        std::array<std::vector<bool>, ModelCycles::MODEL_CYCLES_TRACK_COUNT> mutes;
         std::vector<uint8_t> one_shots; // One-shot number 1, 2, 3, ... 0 means no one-shot to be played.
-        bool learned;
-        size_t seq_count;
         size_t parse_pattern_offset(std::filesystem::path dir);
         std::string parse_name(std::filesystem::path dir);
         std::vector<PatternLoop> init_loops(std::filesystem::path dir);
@@ -37,11 +27,5 @@ class Pattern {
         void set_number(size_t _number);
         size_t get_number();
         std::vector<PatternLoop>& get_loops();
-        std::array<std::vector<bool>, ModelCycles::MODEL_CYCLES_TRACK_COUNT>& get_mutes();
         std::vector<uint8_t>& get_one_shots();
-        void set_learned();
-        bool get_learned();
-        void unlearn();
-        void update_seq_count();
-        size_t get_seq_count();
 };

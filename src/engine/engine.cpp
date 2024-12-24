@@ -40,7 +40,7 @@ bool Engine::handle_midi_event(snd_seq_event_t& midi_event, snd_pcm_state_t stat
             clock_interval_ms = midi_event.data.control.unused[1];
             SPDLOG_INFO("ENGIN MIDI PROGRAM CHANGE [param={},value={},mul={},clock_interval_ms={}]", midi_event.data.control.param,
                 midi_event.data.control.value, mul, clock_interval_ms);
-            if (session.change_program(BankPattern(midi_event.data.control.value + 1), state == SND_PCM_STATE_RUNNING)) {
+            if (session.change_program(BankPattern(midi_event.data.control.value + 1))) {
                 program_changed(state == SND_PCM_STATE_RUNNING, compute_latency(mul, clock_interval_ms));
             }
             result = ALSA_PCM_PROGRAM_CHANGE;
@@ -54,8 +54,7 @@ bool Engine::handle_midi_event(snd_seq_event_t& midi_event, snd_pcm_state_t stat
                 midi_event.time.tick, state == SND_PCM_STATE_RUNNING);
             return false;
         case SND_SEQ_EVENT_CONTROLLER:
-            controller(midi_event.data.control.channel, midi_event.data.control.param, midi_event.data.control.value,
-                midi_event.time.tick, state == SND_PCM_STATE_RUNNING);
+            controller(midi_event.data.control.channel, midi_event.data.control.param, midi_event.data.control.value, state == SND_PCM_STATE_RUNNING);
             return false;
         default:
             SPDLOG_WARN("ENGIN ignored engine MIDI event. [{}]", (int)midi_event.type);
@@ -78,14 +77,6 @@ void Engine::note(uint8_t channel, uint8_t note, bool on, unsigned int clock, bo
             break;
     }
     if (channel != SOURCE_MIDI_CHANNEL || !running) {
-        return;
-    }
-    if (pattern_learn->valid_note(note)) {
-        if (!session.get_pattern().get_learned()) {
-            pattern_learn->note(note, on, clock);
-            session.step_learned();
-            un_mute_mc_tracks();
-        }
         return;
     }
     one_shot_note(note, on);
@@ -118,7 +109,7 @@ void Engine::one_shot_note(uint8_t note, bool on) {
     std::optional<std::reference_wrapper<SongOneShot>> one_shot_maybe = session.get_song().get_one_shot(one_shot_number);
     if (one_shot_maybe.has_value()) {
         lock_worker_tracks();
-        one_shots_track.add_clip(session.get_clip(one_shot_maybe.value().get().one_shot), 0, false, false);
+        one_shots_track.add_clip(session.get_clip(one_shot_maybe.value().get().one_shot), 0, false);
         unlock_worker_tracks();
         SPDLOG_DEBUG("ENGIN one shot added [one_shot_number={}]", one_shot_number);
         return;
@@ -129,12 +120,8 @@ void Engine::one_shot_note(uint8_t note, bool on) {
     SPDLOG_DEBUG("ENGIN one shot not found [one_shot_number={}]", one_shot_number);
 }
 
-void Engine::controller(uint8_t channel, unsigned int param, signed int value, unsigned int clock, bool running) {
+void Engine::controller(uint8_t channel, unsigned int param, signed int value, bool running) {
     if (channel != SOURCE_MIDI_CHANNEL || !running) {
-        return;
-    }
-    if (pattern_learn->valid_controller(param) && !session.get_pattern().get_learned()) {
-        learn(param, value, clock);
         return;
     }
     ssize_t track_number;
@@ -150,9 +137,7 @@ void Engine::update_saturation(ssize_t track_number) {
             MidiEncoder& encoder = loop_encoders.get_encoder(track_number);
             if (encoder.is_grabbed()) {
                 track->set_saturation(encoder.get_percentage());
-                PatternLoopSeq loop_seq = session.get_current_loop_seq(track_number);
-                loop_seq.saturation = track->get_saturation();
-                display.get_main_screen().set_loop_state(track_number - 1, loop_seq);
+                display.get_main_screen().set_loop_state(track_number - 1, true, track->get_saturation());
                 display.get_main_screen().set_loop_grabbed(track_number - 1, true);
                 display.tick(true);
             }
@@ -161,56 +146,17 @@ void Engine::update_saturation(ssize_t track_number) {
     }
 }
 
-void Engine::learn(unsigned int param, signed int value, unsigned int clock) {
-    bool had_one_shot_clip = session.get_current_one_shot_clip().has_value();
-    pattern_learn->controller(param, value, clock);
-    session.step_learned();            
-    for (PatternLoop& pattern_loop : session.get_pattern().get_loops()) {
-        PatternLoopSeq loop_seq = session.get_current_loop_seq(pattern_loop.track_number);
-        if (!loop_seq.muted) {
-            EngineWorker& worker = get_worker(pattern_loop.track_number);
-            worker.lock_tracks();
-            auto& track = loop_tracks.at(pattern_loop.track_number - 1);
-            track->set_clip_mute(pattern_loop.loop, false);
-            track->set_saturation(loop_seq.saturation);
-            loop_encoders.get_encoder(track->get_track_number()).set_percentage(loop_seq.saturation);
-            worker.unlock_tracks();
-            SPDLOG_DEBUG("ENGIN loop unmuted [track_number={},loop={}]", pattern_loop.track_number, pattern_loop.loop.c_str());
-        }
-    }
-    if (!had_one_shot_clip && session.get_current_one_shot_clip().has_value()) {
-        // We just learned about one-shot, so let's add it
-        EngineWorker& worker = get_worker(one_shots_track.get_track_number());
-        worker.lock_tracks();
-        add_one_shot_clip(last_computed_latency);
-        worker.unlock_tracks();
-        SPDLOG_DEBUG("ENGIN learned one-shot added");
-    }
-    SPDLOG_DEBUG("ENGIN controller learned [param={}]", param);
-}
-
 snd_pcm_uframes_t Engine::compute_latency(uint8_t mul, uint8_t clock_interval) {
     last_computed_latency = ((snd_pcm_uframes_t)mul * (snd_pcm_uframes_t)clock_interval * session.get_sample_rate()) / 1000;
     return last_computed_latency;
 }
 
 void Engine::program_changed(bool running, snd_pcm_uframes_t latency) {
-    pattern_learn = std::make_unique<PatternLearn>(session.get_pattern());
     lock_worker_tracks();
     clear_loop_clips(running);
     add_loop_clips(running, latency);
-    add_one_shot_clip(latency);
     unlock_worker_tracks();
-    un_mute_mc_tracks();
     SPDLOG_INFO("ENGIN program set={}", session.get_pattern().get_bank_pattern().get_pattern());
-}
-
-void Engine::add_one_shot_clip(snd_pcm_uframes_t latency) {
-    std::optional<std::reference_wrapper<Clip>> clip = session.get_current_one_shot_clip();
-    if (clip.has_value()) {
-        one_shots_track.add_clip(clip.value(), latency, true, false);
-        SPDLOG_DEBUG("ENGIN one-shot added[clip={}]", clip.value().get().get_path().c_str());
-    }
 }
 
 void Engine::add_loop_clips(bool running, snd_pcm_uframes_t latency) {
@@ -219,12 +165,11 @@ void Engine::add_loop_clips(bool running, snd_pcm_uframes_t latency) {
         if (track_index >= ENGINE_LOOP_TRACKS) {
             throw OstrostrojException(fmt::format("Invalid track index! [track_index={},loop={}]", track_index, pattern_loop.loop.filename().string()));
         }
-        PatternLoopSeq loop_seq = session.get_current_loop_seq(pattern_loop.track_number);
         auto& track = loop_tracks.at(track_index);
-        track->add_clip(session.get_clip(pattern_loop.loop), latency, running, loop_seq.muted);
-        track->set_saturation(loop_seq.saturation);
-        loop_encoders.get_encoder(track->get_track_number()).set_percentage(loop_seq.saturation);
-        SPDLOG_DEBUG("ENGIN clip added [track_index={},loop={},muted={},saturation={}]", track_index, pattern_loop.loop.c_str(), loop_seq.muted, loop_seq.saturation);
+        track->add_clip(session.get_clip(pattern_loop.loop), latency, running);
+        track->set_saturation(0.0);
+        loop_encoders.get_encoder(track->get_track_number()).set_percentage(0.0);
+        SPDLOG_DEBUG("ENGIN clip added [track_index={},loop={}]", track_index, pattern_loop.loop.c_str());
     }
 }
 
@@ -244,13 +189,6 @@ void Engine::lock_worker_tracks() {
 void Engine::unlock_worker_tracks() {
     for (std::unique_ptr<EngineWorker>& worker: workers) {
         worker->unlock_tracks();
-    }
-}
-
-void Engine::un_mute_mc_tracks() {
-    for (size_t mc_track_number = 1; mc_track_number <= ModelCycles::MODEL_CYCLES_TRACK_COUNT; mc_track_number++) {
-        snd_seq_event_t event = model_cycles->mute_track(mc_track_number, session.get_current_mute(mc_track_number));
-        alsa_midi.write(event);
     }
 }
 
@@ -374,7 +312,6 @@ Engine::Engine(Project& _project, Display& _display, std::atomic_flag& _running_
     track_fifos(init_track_fifos()),
     worker_sleep_time(std::chrono::microseconds(alsa_pcm.get_period_time()).count() / 2),
     workers(create_workers()),
-    pattern_learn(),
     exit_code(EngineExit::ENGINE_EXIT_NOOP),
     last_computed_latency(0) {
     init_display();

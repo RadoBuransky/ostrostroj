@@ -10,34 +10,27 @@ class Session {
         std::map<std::filesystem::path, std::unique_ptr<Clip>> clips;
         std::reference_wrapper<Song> active_song;
         std::reference_wrapper<Pattern> active_pattern;
-        std::map<uint8_t, uint8_t> pattern_play_counters; // Pattern index -> Number of times it was started to played
         std::chrono::steady_clock::duration song_duration;
         std::chrono::steady_clock::duration pattern_duration;
         std::chrono::steady_clock::time_point started_timestamp;
         size_t mem_size_bytes;
         snd_pcm_uframes_t sample_rate;
-        void set_pattern(Song& song, Pattern& pattern, bool running);
+        void set_pattern(Song& song, Pattern& pattern);
         void update_display();
         void update_durations();
-        void inc_pattern_play_counters(Song& song, Pattern& pattern);
-        size_t get_seq_index();
         size_t load_clip(std::filesystem::path path, int expected_channels);
         size_t load_all_clips(int loop_track_count);
     public:
         Session(Project& _project, Display& _display, int loop_track_count);
         virtual ~Session() = default;
-        bool change_program(BankPattern target_pattern, bool running);
+        bool change_program(BankPattern target_pattern);
         Project& get_project();
         Song& get_song();
         Pattern& get_pattern();
-        PatternLoopSeq get_current_loop_seq(uint8_t track_number);
-        bool get_current_mute(uint8_t mc_track_number);
         Clip& get_clip(std::filesystem::path clip_path);
-        std::optional<std::reference_wrapper<Clip>> get_current_one_shot_clip();
         void start();
         void pause();
         void draw();
-        void step_learned();
         size_t get_mem_size_bytes() const;
         snd_pcm_uframes_t get_sample_rate() const;
 };
