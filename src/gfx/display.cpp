@@ -95,7 +95,7 @@ MainScreen::MainScreen():
     pattern_duration(0),
     loops(),
     one_shots() {
-    loops.fill({false, 0.0, false});
+    loops.fill({true, 0.0, false});
     one_shots.fill(Off);
 }
 
@@ -138,7 +138,7 @@ void MainScreen::set_loop_grabbed(size_t loop_index, bool grabbed) {
 }
 
 void MainScreen::all_loops_off() {
-    loops.fill({false, 0.0, false});
+    loops.fill({true, 0.0, false});
 }
 
 void MainScreen::set_one_shot_state(size_t one_shot_index, TrackState state) {
