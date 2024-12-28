@@ -15,6 +15,7 @@ class AlsaMidi {
         std::atomic_bool stop;
         AlsaMidiFifo fifo_in;
         snd_seq_tick_time_t clock_counter;
+        snd_seq_tick_time_t quarter_note_counter;
         std::chrono::steady_clock::time_point last_clock;
         std::chrono::steady_clock::duration clock_interval;
         pthread_t thru_thread;

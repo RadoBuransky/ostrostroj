@@ -6,16 +6,19 @@
 size_t Clip::load() {
     ClipBlock* last = head.get();
     size_t result = last->get_buffer().size();
+    frames = last->get_buffer_frames();
     while (last->has_next()) {
         last = &last->get_next();
         result += last->get_buffer().size();
+        frames += last->get_buffer_frames();
     }
-    return result*sizeof(float);
+    return result*sizeof(last->get_buffer().at(0));
 }
 
 Clip::Clip(const std::filesystem::path _path) :
     path(_path),
-    snd_file(sf_open(_path.c_str(), SFM_READ, &info)) {
+    snd_file(sf_open(_path.c_str(), SFM_READ, &info)),
+    frames(0) {
     if (snd_file == nullptr) {
         throw OstrostrojException(fmt::format("FCLIP can't open file! [{}]", _path.c_str()));   
     }
@@ -69,4 +72,8 @@ size_t Clip::get_mem_size_bytes() const {
 
 bool Clip::is_warp_enabled() const {
     return path.filename().string().find("_w.") != std::string::npos;
+}
+
+snd_pcm_uframes_t Clip::get_frames() const {
+    return frames;
 }

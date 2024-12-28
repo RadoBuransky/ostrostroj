@@ -10,14 +10,11 @@ class Session {
         std::map<std::filesystem::path, std::unique_ptr<Clip>> clips;
         std::reference_wrapper<Song> active_song;
         std::reference_wrapper<Pattern> active_pattern;
-        std::chrono::steady_clock::duration song_duration;
-        std::chrono::steady_clock::duration pattern_duration;
         std::chrono::steady_clock::time_point started_timestamp;
         size_t mem_size_bytes;
         snd_pcm_uframes_t sample_rate;
         void set_pattern(Song& song, Pattern& pattern);
         void update_display();
-        void update_durations();
         size_t load_clip(std::filesystem::path path, int expected_channels);
         size_t load_all_clips(int loop_track_count);
     public:

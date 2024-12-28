@@ -30,10 +30,10 @@ bool AlsaMidi::process(snd_seq_event_t& event) {
         SPDLOG_TRACE("AMIDI clock [queue={}, 0={},1={}]", event.data.queue.queue, event.data.queue.param.d32[0], event.data.queue.param.d32[1]);
     }
 
-    bool pass = true;
     bool push = false;
     switch (event.type) {
         case SND_SEQ_EVENT_START:
+            quarter_note_counter = 0;
             push = true;
             event.data.control.param = 0;
             event.data.control.value = 0;
@@ -58,6 +58,13 @@ bool AlsaMidi::process(snd_seq_event_t& event) {
         case SND_SEQ_EVENT_CONTROLLER:
             push = true;
             break;
+        case SND_SEQ_EVENT_CLOCK:
+            // 24 events per quarter note (MIDI specification)
+            quarter_note_counter = (quarter_note_counter + 1) % 24;
+            if (quarter_note_counter == 0) {
+                push = true;
+            }
+            break;
     }
     if (push) {
         if (!fifo_in.push(std::move(event))) {
@@ -65,7 +72,7 @@ bool AlsaMidi::process(snd_seq_event_t& event) {
         }
         callback();
     }
-    return pass;
+    return true;
 }
 
 void AlsaMidi::write(unsigned char* raw, size_t size) {
@@ -270,6 +277,7 @@ AlsaMidi::AlsaMidi():
     stop(false),
     fifo_in(AlsaMidiFifo(256)),
     clock_counter(0),
+    quarter_note_counter(0),
     last_clock(std::chrono::steady_clock::now()),
     clock_interval(std::chrono::steady_clock::duration::min()),
     thru_thread(0),

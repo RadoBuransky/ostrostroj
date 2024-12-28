@@ -63,3 +63,7 @@ void ClipPlayer::drain() {
 Clip& ClipPlayer::get_clip() {
     return clip;
 }
+
+size_t ClipPlayer::get_position() {
+    return position;
+}

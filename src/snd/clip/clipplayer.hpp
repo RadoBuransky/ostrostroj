@@ -12,7 +12,7 @@ class ClipPlayer {
         std::reference_wrapper<ClipBlock> block;
         const short* current_frame;
         const short* end_frame;
-        long position;
+        size_t position;
         bool draining;
         void update_pointers(ClipBlock& _block);
         void fade_out();
@@ -64,4 +64,5 @@ class ClipPlayer {
         }
         void drain();
         Clip& get_clip();
+        size_t get_position();
 };

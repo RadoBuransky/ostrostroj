@@ -9,6 +9,7 @@ class Clip {
         SF_INFO info;
         std::unique_ptr<FileClipBlock> head;
         size_t mem_size_bytes;
+        snd_pcm_uframes_t frames;
         size_t load();
     public:
         Clip(const std::filesystem::path _path);
@@ -19,4 +20,5 @@ class Clip {
         ClipBlock& get_head() const;
         size_t get_mem_size_bytes() const;
         bool is_warp_enabled() const;
+        snd_pcm_uframes_t get_frames() const;
 };

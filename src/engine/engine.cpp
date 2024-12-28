@@ -56,6 +56,10 @@ bool Engine::handle_midi_event(snd_seq_event_t& midi_event, snd_pcm_state_t stat
         case SND_SEQ_EVENT_CONTROLLER:
             controller(midi_event.data.control.channel, midi_event.data.control.param, midi_event.data.control.value, state == SND_PCM_STATE_RUNNING);
             return false;
+        case SND_SEQ_EVENT_CLOCK:
+            display.get_main_screen().blink_clock();
+            display.tick(true);
+            return false;
         default:
             SPDLOG_WARN("ENGIN ignored engine MIDI event. [{}]", (int)midi_event.type);
             return false;

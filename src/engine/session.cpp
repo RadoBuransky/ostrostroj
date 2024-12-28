@@ -16,12 +16,6 @@ void Session::set_pattern(Song& song, Pattern& pattern) {
 void Session::update_display() {
     MainScreen& main_screen = display.get_main_screen();
 
-    song_duration = std::chrono::steady_clock::duration::zero();
-    main_screen.set_song_duration(song_duration);
-
-    pattern_duration = std::chrono::steady_clock::duration::zero();
-    main_screen.set_pattern_duration(pattern_duration);
-
     main_screen.all_loops_off();
     for (PatternLoop& loop : active_pattern.get().get_loops()) {        
         main_screen.set_loop_state(loop.track_number - 1, false, 0.0);
@@ -38,23 +32,10 @@ void Session::update_display() {
     main_screen.set_pattern_count(active_song.get().get_patterns().size());    
     main_screen.set_pattern_index(active_pattern.get().get_number() - 1);
 
+    main_screen.set_pattern_frames(0); // TODO:
+    main_screen.set_pattern_position(0);
+
     display.tick(true);
-}
-
-void Session::update_durations() {
-    if (started_timestamp != std::chrono::steady_clock::time_point::min()) {
-        std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
-        std::chrono::steady_clock::duration d = now - started_timestamp;
-        if (d > std::chrono::seconds(1)) {
-            song_duration += d;
-            pattern_duration += d;
-            started_timestamp = now;
-
-            MainScreen& main_screen = display.get_main_screen();
-            main_screen.set_song_duration(song_duration);
-            main_screen.set_pattern_duration(pattern_duration);
-        }
-    }
 }
 
 size_t Session::load_clip(std::filesystem::path path, int expected_channels) {
@@ -96,8 +77,6 @@ Session::Session(Project& _project, Display& _display, int loop_track_count):
     clips(),
     active_song(_project.get_songs().at(0)),
     active_pattern(_project.get_songs().at(0).get_patterns().at(0)),
-    song_duration(0),
-    pattern_duration(0),
     started_timestamp(std::chrono::steady_clock::time_point::min()),
     sample_rate(0) {
     mem_size_bytes = load_all_clips(loop_track_count);
@@ -146,12 +125,12 @@ void Session::start() {
 }
 
 void Session::pause() {
-    update_durations();
     started_timestamp = std::chrono::steady_clock::time_point::min();
 }
 
 void Session::draw() {
-    update_durations();
+    MainScreen& main_screen = display.get_main_screen();
+    main_screen.set_pattern_position(0); // TODO:
     display.tick(false);
 }
 
