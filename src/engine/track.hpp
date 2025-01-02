@@ -20,7 +20,7 @@ class Track {
         uint8_t periods;
         const bool loop;
         std::unique_ptr<InterleavedFifo> fifo;
-        std::vector<std::unique_ptr<ClipPlayer>> clip_players;
+        std::vector<std::unique_ptr<ClipPlayer>> clip_players; 
         PcmSample_s24_3le sample;
         bool sample_pending;
         Warp warp;
@@ -37,4 +37,5 @@ class Track {
         void clear(bool drop);
         void set_saturation(float _saturation);
         float get_saturation();
+        float get_position(std::filesystem::path& clip_path);
 };

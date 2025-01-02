@@ -48,28 +48,6 @@ void MainScreen::draw_songs(unicorn_hat_mini_canvas& canvas) {
     SPDLOG_DEBUG("DSPLY draw_songs[song_count={},song_index={}]", song_count, song_index);
 }
 
-void MainScreen::draw_one_shots(unicorn_hat_mini_canvas& canvas) {
-    const size_t row_one_shots = ONE_SHOT_COUNT / 2;
-    for (uint i = 0; i < one_shots.size(); i++) {
-        size_t x = (i % row_one_shots) * 2;
-        size_t y = (UNICORN_HAT_MINI_ROWS - 1) - ((i / row_one_shots) * 2);
-        RGB color;
-        switch (one_shots[i]) {
-            case Muted:
-                color = palette_cyan;
-                break;
-            case Playing:
-                color = palette_playing;
-                break;
-            default:
-                color = palette_off;
-                break;
-        }
-        canvas.at(x).at(y) = color;
-        SPDLOG_DEBUG("DSPLY draw_one_shots[i={},one_shots[i]={}]", i, one_shots[i]);
-    }
-}
-
 void MainScreen::draw_patterns(unicorn_hat_mini_canvas& canvas) {
     uint count = std::min(pattern_count, (uint)8);
     for (uint i = 0; i < count; i++) {
@@ -81,12 +59,9 @@ void MainScreen::draw_patterns(unicorn_hat_mini_canvas& canvas) {
 MainScreen::MainScreen():
     changed(true),
     loops(),
-    one_shots(),
-    pattern_frames(0),
-    pattern_position(0),
+    pattern_position(0.0),
     clock_on(false) {
     loops.fill({true, 0.0, false});
-    one_shots.fill(Off);
 }
 
 bool MainScreen::draw(unicorn_hat_mini_canvas& canvas) {
@@ -118,17 +93,6 @@ void MainScreen::all_loops_off() {
     loops.fill({true, 0.0, false});
 }
 
-void MainScreen::set_one_shot_state(size_t one_shot_index, TrackState state) {
-    if (one_shot_index < one_shots.size()) {
-        one_shots.at(one_shot_index) = state;
-        changed = true;
-    }
-}
-
-void MainScreen::all_one_shots_off() {
-    one_shots.fill(Off);
-}
-
 void MainScreen::set_song_count(uint _song_count) {
     song_count = _song_count;
     changed = true;
@@ -149,11 +113,7 @@ void MainScreen::set_pattern_index(uint _pattern_index) {
     changed = true;
 }
 
-void MainScreen::set_pattern_frames(snd_pcm_uframes_t _pattern_frames) {
-    pattern_frames = _pattern_frames;
-}
-
-void MainScreen::set_pattern_position(snd_pcm_uframes_t _pattern_position) {
+void MainScreen::set_pattern_position(float _pattern_position) {
     pattern_position = _pattern_position;
 }
 

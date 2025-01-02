@@ -16,14 +16,10 @@ enum TrackState {
 };
 
 class MainScreen : public Screen {
-    public:
-        static const size_t ONE_SHOT_COUNT = 10;
-
     private:
         std::atomic_bool changed;
 
         std::array<LoopState, 6> loops;
-        std::array<TrackState, ONE_SHOT_COUNT> one_shots;
 
         uint song_count;
         uint song_index;
@@ -31,14 +27,13 @@ class MainScreen : public Screen {
         uint pattern_count;
         uint pattern_index;
 
-        snd_pcm_uframes_t pattern_frames;
-        snd_pcm_uframes_t pattern_position;
+        // Percentage 0.0 - 1.0
+        float pattern_position;
 
         bool clock_on;
 
         void draw_loops(unicorn_hat_mini_canvas& canvas);
         void draw_loop(Point pos, LoopState loop, unicorn_hat_mini_canvas& canvas);
-        void draw_one_shots(unicorn_hat_mini_canvas& canvas);
         void draw_songs(unicorn_hat_mini_canvas& canvas);
         void draw_patterns(unicorn_hat_mini_canvas& canvas);
     public:
@@ -51,17 +46,13 @@ class MainScreen : public Screen {
         void set_loop_grabbed(size_t loop_index, bool grabbed);
         void all_loops_off();
 
-        void set_one_shot_state(size_t one_shot_index, TrackState state);
-        void all_one_shots_off();
-
         void set_song_count(uint _song_count);
         void set_song_index(uint _song_index);
 
         void set_pattern_count(uint _pattern_count);
         void set_pattern_index(uint _pattern_index);
 
-        void set_pattern_frames(snd_pcm_uframes_t _pattern_frames);
-        void set_pattern_position(snd_pcm_uframes_t _pattern_position);
+        void set_pattern_position(float _pattern_position);
 
         void blink_clock();
 };

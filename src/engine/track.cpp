@@ -22,8 +22,9 @@ bool Track::pop(float& _sample) {
                 _sample += saturation.saturate(clip_sample);
                 it++;
             } else {
-                SPDLOG_DEBUG("TRAK{} clip removed", track_number);
-                it = clip_players.erase(it);
+                // TODO: Don't modify the vector!
+                // SPDLOG_DEBUG("TRAK{} clip removed", track_number);
+                // it = clip_players.erase(it);
             }
         }
         // Brickwall limitter
@@ -122,4 +123,16 @@ void Track::set_saturation(float _saturation) {
 
 float Track::get_saturation() {
     return saturation.get_dry_wet();
+}
+
+float Track::get_position(std::filesystem::path& clip_path) {
+    if (clip_players.size() == 1) {
+        return clip_players.at(0)->get_position();
+    }
+    for (auto& clip_player: clip_players) {
+        if (clip_player->get_clip().get_path().compare(clip_path) == 0) {
+            return clip_player->get_position();
+        }
+    }
+    return 0.0;
 }

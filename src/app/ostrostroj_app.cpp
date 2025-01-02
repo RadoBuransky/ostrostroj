@@ -17,7 +17,7 @@ EngineExit OstrostrojApp::main_app(Project& project) {
 
 OstrostrojApp::OstrostrojApp(std::string workspace_dir):
     workspace(workspace_dir),
-    display(std::chrono::seconds(1)) {            
+    display(std::chrono::milliseconds(100)) {            
 }
 
 EngineExit OstrostrojApp::main() {

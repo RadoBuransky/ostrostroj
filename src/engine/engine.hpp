@@ -7,7 +7,6 @@
 #include "engineworker.hpp"
 #include "session.hpp"
 #include "display.hpp"
-#include "model_cycles.hpp"
 #include "loop_encoders.hpp"
 #include "command_controller.hpp"
 
@@ -25,13 +24,13 @@ class Engine {
         AlsaPcm alsa_pcm;
         Display& display;
         std::atomic_flag& running_flag;
-        std::unique_ptr<ModelCycles> model_cycles;
+        // TODO: Remove unused code (M:C, one shots, PC change while running)
+        // TODO: It's all just loops
         LoopEncoders loop_encoders;
         CommandController command_controller;
         std::atomic_flag midi_flag;
         std::atomic_bool stop;
         std::array<std::unique_ptr<Track>, ENGINE_LOOP_TRACKS> loop_tracks; // 0-4 mono, 5 stereo
-        Track one_shots_track;
         std::array<InterleavedFifo*, PCM_OUT_CHANNELS> track_fifos;
         useconds_t worker_sleep_time;
         std::vector<std::unique_ptr<EngineWorker>> workers;
@@ -40,8 +39,8 @@ class Engine {
         bool handle_midi_event(snd_seq_event_t& midi_event, snd_pcm_state_t state, PcmEvent& result);
         void note(uint8_t channel, uint8_t note, bool on, unsigned int clock, bool running);
         void exit(EngineExit _exit_code);
-        void one_shot_note(uint8_t note, bool on);
-        void controller(uint8_t channel, unsigned int param, signed int value, bool running);
+        void on_clock();
+        void on_controller(uint8_t channel, unsigned int param, signed int value, bool running);
         void update_saturation(ssize_t track_number);
         snd_pcm_uframes_t compute_latency(uint8_t mul, uint8_t clock_interval);
         void program_changed(bool running, snd_pcm_uframes_t predelay);

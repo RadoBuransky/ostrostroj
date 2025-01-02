@@ -21,18 +21,12 @@ void Session::update_display() {
         main_screen.set_loop_state(loop.track_number - 1, false, 0.0);
     }
 
-    main_screen.all_one_shots_off();
-    for (SongOneShot& one_shot : active_song.get().get_one_shots()) {
-        main_screen.set_one_shot_state(one_shot.number - 1, Muted);
-    }
-
-    main_screen.set_song_count(project.get_songs().size());    
+    main_screen.set_song_count(project.get_songs().size());
     main_screen.set_song_index(active_song.get().get_number() - 1);
 
     main_screen.set_pattern_count(active_song.get().get_patterns().size());    
     main_screen.set_pattern_index(active_pattern.get().get_number() - 1);
 
-    main_screen.set_pattern_frames(0); // TODO:
     main_screen.set_pattern_position(0);
 
     display.tick(true);
@@ -56,9 +50,6 @@ size_t Session::load_clip(std::filesystem::path path, int expected_channels) {
 size_t Session::load_all_clips(int loop_track_count) {
     size_t result = 0;
     for (Song& song: project.get_songs()) {
-        for (SongOneShot& song_one_shot: song.get_one_shots()) {
-            result += load_clip(song_one_shot.one_shot, 2);
-        }
         for (Pattern& pattern: song.get_patterns()) {
             for (PatternLoop& pattern_loop: pattern.get_loops()) {    
                 if (pattern_loop.track_number > loop_track_count) {
@@ -128,9 +119,10 @@ void Session::pause() {
     started_timestamp = std::chrono::steady_clock::time_point::min();
 }
 
-void Session::draw() {
+void Session::on_clock(float pattern_position) {
     MainScreen& main_screen = display.get_main_screen();
-    main_screen.set_pattern_position(0); // TODO:
+    main_screen.blink_clock();
+    main_screen.set_pattern_position(pattern_position);
     display.tick(false);
 }
 

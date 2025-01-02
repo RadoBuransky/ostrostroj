@@ -31,27 +31,15 @@ std::vector<Pattern> Song::init_patterns(std::filesystem::path dir) {
     return result; 
 }
 
-std::vector<SongOneShot> Song::init_one_shots(std::filesystem::path dir) {   
-    std::vector<SongOneShot> result;
-    for (auto const& file : std::filesystem::directory_iterator(dir)) {
-        if (file.is_regular_file() && file.path().filename().string().starts_with('S')) {
-            result.emplace_back(SongOneShot(file.path(), stoi(file.path().filename().string().substr(1, 1))));
-        }
-    }
-    return result;   
-}
-
 Song::Song(std::filesystem::path dir):
     root_bank_pattern(parse_root_bank_pattern(dir)),
     name(parse_name(dir)),
     number(0),
-    patterns(init_patterns(dir)),
-    one_shots(init_one_shots(dir)) {
+    patterns(init_patterns(dir)) {
     if (patterns.empty()) {
         throw OstrostrojException(fmt::format("PRJKT no patterns found! [dir={}]", dir.c_str()));
     }
-    SPDLOG_INFO("PRJKT song initialized [root_bank_pattern={},name={},patterns={},one_shots={}]", root_bank_pattern.get_pattern(),
-        name, patterns.size(), one_shots.size());
+    SPDLOG_INFO("PRJKT song initialized [root_bank_pattern={},name={},patterns={}]", root_bank_pattern.get_pattern(), name, patterns.size());
 }
 
 BankPattern Song::get_root_bank_pattern() {
@@ -72,17 +60,4 @@ size_t Song::get_number() {
 
 std::vector<Pattern>& Song::get_patterns() {
     return patterns;
-}
-
-std::vector<SongOneShot>& Song::get_one_shots() {    
-    return one_shots;
-}
-
-std::optional<std::reference_wrapper<SongOneShot>> Song::get_one_shot(uint8_t one_shot_number) {
-    for (SongOneShot& one_shot : one_shots) {
-        if (one_shot.number == one_shot_number) {
-            return std::ref(one_shot);
-        }
-    }
-    return std::nullopt;
 }

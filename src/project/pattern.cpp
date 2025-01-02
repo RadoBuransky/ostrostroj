@@ -32,6 +32,9 @@ std::vector<PatternLoop> Pattern::init_loops(std::filesystem::path dir) {
 #endif
         }
     }
+    std::sort(result.begin(), result.end(), [](PatternLoop& a, PatternLoop& b) {
+        return a.track_number < b.track_number;
+    });
     return result;   
 }
 
@@ -39,8 +42,7 @@ Pattern::Pattern(BankPattern root_bank_pattern, std::filesystem::path dir):
     bank_pattern(root_bank_pattern.get_program() + parse_pattern_offset(dir)),
     name(parse_name(dir)),
     pattern_number(0),
-    loops(init_loops(dir)),
-    one_shots() { 
+    loops(init_loops(dir)) { 
     SPDLOG_DEBUG("PRJKT pattern initialized [bank_pattern={},name={},loops={}]", bank_pattern.get_pattern(), name, loops.size());
 }
 
@@ -62,8 +64,4 @@ std::string Pattern::get_name() {
 
 std::vector<PatternLoop>& Pattern::get_loops() {
     return loops;
-}
-
-std::vector<uint8_t>& Pattern::get_one_shots() {
-    return one_shots;
 }

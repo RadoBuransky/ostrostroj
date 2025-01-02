@@ -54,11 +54,10 @@ bool Engine::handle_midi_event(snd_seq_event_t& midi_event, snd_pcm_state_t stat
                 midi_event.time.tick, state == SND_PCM_STATE_RUNNING);
             return false;
         case SND_SEQ_EVENT_CONTROLLER:
-            controller(midi_event.data.control.channel, midi_event.data.control.param, midi_event.data.control.value, state == SND_PCM_STATE_RUNNING);
+            on_controller(midi_event.data.control.channel, midi_event.data.control.param, midi_event.data.control.value, state == SND_PCM_STATE_RUNNING);
             return false;
         case SND_SEQ_EVENT_CLOCK:
-            display.get_main_screen().blink_clock();
-            display.tick(true);
+            on_clock();
             return false;
         default:
             SPDLOG_WARN("ENGIN ignored engine MIDI event. [{}]", (int)midi_event.type);
@@ -80,10 +79,6 @@ void Engine::note(uint8_t channel, uint8_t note, bool on, unsigned int clock, bo
         case Command::NOOP:
             break;
     }
-    if (channel != SOURCE_MIDI_CHANNEL || !running) {
-        return;
-    }
-    one_shot_note(note, on);
 }
 
 void Engine::exit(EngineExit _exit_code) {
@@ -93,38 +88,13 @@ void Engine::exit(EngineExit _exit_code) {
     running_flag.notify_all();    
 }
 
-void Engine::one_shot_note(uint8_t note, bool on) {
-    size_t octave = note / 12;
-    // 4th octave + C5
-    if (((octave != 4) && (note != 5*12)) || !on) {
-        return;
-    }
-    note -= 4 * 12;
-    size_t one_shot_number = INT_MAX;
-    // The following logic is because how notes are layed out in two rows on Syntakt's keyboard (chromatic, folded)
-    if (note < MainScreen::ONE_SHOT_COUNT / 2) {
-        one_shot_number = 1 + note;
-    } else {
-        // Because Syntakt has 8 triggers in single row
-        if (note >= 8) {
-            one_shot_number = 1 + note - (8 - (MainScreen::ONE_SHOT_COUNT / 2));
-        }
-    }
-    std::optional<std::reference_wrapper<SongOneShot>> one_shot_maybe = session.get_song().get_one_shot(one_shot_number);
-    if (one_shot_maybe.has_value()) {
-        lock_worker_tracks();
-        one_shots_track.add_clip(session.get_clip(one_shot_maybe.value().get().one_shot), 0, false);
-        unlock_worker_tracks();
-        SPDLOG_DEBUG("ENGIN one shot added [one_shot_number={}]", one_shot_number);
-        return;
-    }
-    lock_worker_tracks();
-    one_shots_track.clear(false);
-    unlock_worker_tracks();
-    SPDLOG_DEBUG("ENGIN one shot not found [one_shot_number={}]", one_shot_number);
+void Engine::on_clock() {
+    Pattern& pattern = session.get_pattern();
+    PatternLoop& last_loop = pattern.get_loops().back();
+    session.on_clock(loop_tracks.at(last_loop.track_number - 1)->get_position(last_loop.loop));
 }
 
-void Engine::controller(uint8_t channel, unsigned int param, signed int value, bool running) {
+void Engine::on_controller(uint8_t channel, unsigned int param, signed int value, bool running) {
     if (channel != SOURCE_MIDI_CHANNEL || !running) {
         return;
     }
@@ -181,7 +151,6 @@ void Engine::clear_loop_clips(bool running) {
     for (size_t i = 0; i < loop_tracks.size(); i++) {
         loop_tracks.at(i)->clear(!running);
     }
-    one_shots_track.clear(!running);
 }
 
 void Engine::lock_worker_tracks() {
@@ -240,9 +209,6 @@ std::vector<std::unique_ptr<EngineWorker>> Engine::create_workers() {
         add_worker_track(worker_tracks, *loop_tracks.at(mono_loop_track));
     }
 
-    // Assign one-shots track (stereo)
-    add_worker_track(worker_tracks, one_shots_track);
-
     std::vector<std::unique_ptr<EngineWorker>> result;
     for (size_t i = 0; i < std::thread::hardware_concurrency(); i++) {
         result.emplace_back(std::make_unique<EngineWorker>(worker_tracks.at(i), i, worker_sleep_time));
@@ -270,10 +236,6 @@ std::array<InterleavedFifo*, PCM_OUT_CHANNELS> Engine::init_track_fifos() {
         }
     }
 
-    // One-shots track is stereo interleaved
-    result.at(fifo_index++) = &one_shots_track.get_fifo();
-    result.at(fifo_index++) = &one_shots_track.get_fifo();
-
     return result;
 }
 
@@ -299,7 +261,6 @@ Engine::Engine(Project& _project, Display& _display, std::atomic_flag& _running_
     alsa_pcm(session.get_sample_rate()),
     display(_display),
     running_flag(_running_flag),
-    model_cycles(std::make_unique<ModelCycles>()),
     loop_encoders(SOURCE_MIDI_CHANNEL, L1_PARAM),
     command_controller(SOURCE_MIDI_CHANNEL),
     midi_flag(ATOMIC_FLAG_INIT),
@@ -312,7 +273,6 @@ Engine::Engine(Project& _project, Display& _display, std::atomic_flag& _running_
         std::make_unique<Track>(5, 1, alsa_pcm.get_period_size(), alsa_pcm.get_periods(), true),
         std::make_unique<Track>(6, 2, alsa_pcm.get_period_size(), alsa_pcm.get_periods(), true),
     },
-    one_shots_track(Track(7, 2, alsa_pcm.get_period_size(), alsa_pcm.get_periods(), false)),
     track_fifos(init_track_fifos()),
     worker_sleep_time(std::chrono::microseconds(alsa_pcm.get_period_time()).count() / 2),
     workers(create_workers()),
@@ -384,7 +344,6 @@ void Engine::pcm_callback(PcmFrame_s24_3le& frame) {
         sample++;
         track_fifo++;
     }
-    session.draw();
 }
 
 int Engine::get_loop_track_count() const {
