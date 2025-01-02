@@ -16,15 +16,9 @@ bool Track::pop(float& _sample) {
     do {
         float clip_sample;
         _sample = 0.0;
-        std::vector<std::unique_ptr<ClipPlayer>>::iterator it = clip_players.begin();
-        while (it != clip_players.end()) {
-            if ((*it)->pop(clip_sample)) {
+        for (auto& clip_player: clip_players) {
+            if (clip_player->pop(clip_sample)) {
                 _sample += saturation.saturate(clip_sample);
-                it++;
-            } else {
-                // TODO: Don't modify the vector!
-                // SPDLOG_DEBUG("TRAK{} clip removed", track_number);
-                // it = clip_players.erase(it);
             }
         }
         // Brickwall limitter

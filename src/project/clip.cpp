@@ -28,6 +28,9 @@ Clip::Clip(const std::filesystem::path _path) :
     sf_command(snd_file, SFC_SET_SCALE_FLOAT_INT_READ, nullptr, SF_TRUE);
     head = std::make_unique<FileClipBlock>(snd_file, info.channels, 0);
     mem_size_bytes = load();
+    if (frames == 0) {
+        throw OstrostrojException(fmt::format("FCLIP file error! [{}]", _path.c_str()));   
+    }
     SPDLOG_DEBUG(fmt::format("FCLIP loaded. [{},{}Hz,{}ch,{:x}]", _path.c_str(), info.samplerate, info.channels, info.format));
 };
 

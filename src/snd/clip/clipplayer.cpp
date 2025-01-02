@@ -64,6 +64,6 @@ Clip& ClipPlayer::get_clip() {
     return clip;
 }
 
-size_t ClipPlayer::get_position() {
-    return position;
+float ClipPlayer::get_position() {
+    return (float) position / (float) clip.get_frames();
 }
