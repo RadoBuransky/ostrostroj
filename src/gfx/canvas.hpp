@@ -19,6 +19,8 @@ class Canvas {
     public:
         Canvas(size_t _cols, size_t _rows);
         virtual ~Canvas() = default;
+        size_t get_cols() const;
+        size_t get_rows() const;
         void clear();
         void point(size_t col, size_t row, RGB color);
         void hline(size_t start_col, size_t end_col, size_t row, RGB color);

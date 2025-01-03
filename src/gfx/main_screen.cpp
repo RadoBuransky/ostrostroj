@@ -19,8 +19,14 @@ bool MainScreen::draw(Canvas& canvas) {
         return false;
     }
     changed = false;
-    canvas.clear();    
-    canvas.point(0, UNICORN_HAT_MINI_ROWS - 1, (clock_on) ? palette_green : palette_off);
+    canvas.clear();
+
+    // Pattern position
+    size_t end_col = std::max(0, (int) std::round((float) canvas.get_cols() * pattern_position) - 1);
+    canvas.hline(0, end_col, canvas.get_rows() - 1, palette_red);
+
+    // MIDI clock
+    canvas.point(0, canvas.get_rows() - 1, (clock_on) ? palette_green : palette_off);
     return true;
 }
 
@@ -64,6 +70,7 @@ void MainScreen::set_pattern_index(uint _pattern_index) {
 
 void MainScreen::set_pattern_position(float _pattern_position) {
     pattern_position = _pattern_position;
+    changed = true;
 }
 
 void MainScreen::blink_clock() {
