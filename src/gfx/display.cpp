@@ -8,17 +8,17 @@ SystemScreen::SystemScreen():
     mem_usage(0) {    
 }
 
-bool SystemScreen::draw(unicorn_hat_mini_canvas& canvas) {    
+bool SystemScreen::draw(Canvas& canvas) {    
     if (init) {
-        canvas.at(0).at(0) = palette_red;
-        canvas.at(1).at(0) = palette_red;
-        canvas.at(2).at(0) = palette_red;
+        canvas.point(0, 0, palette_red);
+        canvas.point(1, 0, palette_red);
+        canvas.point(2, 0, palette_red);
         init = false;
         return true;
     }
     size_t mem_usage_cols = std::ceil(mem_usage*UNICORN_HAT_MINI_COLS);
     for (size_t x = 0; x < mem_usage_cols; x++) {
-        canvas.at(x).at(0) = palette_cyan;
+        canvas.point(x, 0, palette_cyan);
     }
     return true;
 }
@@ -42,7 +42,7 @@ void Display::tick(bool force) {
         return;
     }
     next_refresh = std::chrono::steady_clock::now() + refresh;
-    if (active_screen.get().draw(unicorn_hat_mini.get_canvas())) {
+    if (active_screen.get().draw(unicorn_hat_mini)) {
         unicorn_hat_mini.show();
     }
 }

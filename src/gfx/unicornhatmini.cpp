@@ -34,10 +34,10 @@ gpiod_line* UnicornHatMini::open_out_line(int pin_number) {
 }
 
 UnicornHatMini::UnicornHatMini():
+    Canvas(UNICORN_HAT_MINI_COLS, UNICORN_HAT_MINI_ROWS),
     gpio(open_gpio("/dev/gpiochip4")),
     chip0("/dev/spidev0.0", open_out_line(24), 0),
-    chip1("/dev/spidev0.1", open_out_line(26), HOLTEK_MAGIC_NUM),
-    canvas() {
+    chip1("/dev/spidev0.1", open_out_line(26), HOLTEK_MAGIC_NUM) {
     SPDLOG_DEBUG("UHATM initialized");
 }
 
@@ -50,21 +50,13 @@ UnicornHatMini::~UnicornHatMini() {
     }
 }
 
-unicorn_hat_mini_canvas& UnicornHatMini::get_canvas() {
-    return canvas;
-}
-
-void UnicornHatMini::clear() {
-    canvas.fill({0,0,0});
-}
-
 void UnicornHatMini::show() {
     uint8_t* chip0_buffer = chip0.get_display_data_buffer();
     uint8_t* chip1_buffer = chip1.get_display_data_buffer();
     for (size_t row = 0; row < UNICORN_HAT_MINI_ROWS; row++) {
         for (size_t col = 0; col < UNICORN_HAT_MINI_COLS; col++) {
             const std::array<uint, 3>& irgb = LUT[row + col * UNICORN_HAT_MINI_ROWS];
-            const RGB& rgb = canvas[col][row];
+            const RGB& rgb = canvas.at(col + (row * UNICORN_HAT_MINI_COLS));
             if (irgb[0] < HOLTEK_MAGIC_NUM) {
                 chip0_buffer[irgb[0]] = rgb.r;
             } else {

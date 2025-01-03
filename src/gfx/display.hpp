@@ -12,7 +12,7 @@ class SystemScreen : public Screen {
     public:
         SystemScreen();
         virtual ~SystemScreen() = default;
-        virtual bool draw(unicorn_hat_mini_canvas& canvas);
+        virtual bool draw(Canvas& canvas);
         void set_mem_usage(float _mem_usage);
 };
 

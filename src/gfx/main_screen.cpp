@@ -6,56 +6,6 @@
 constexpr RGB palette_playing = palette_red;
 constexpr RGB palette_muted = palette_blue;
 
-void MainScreen::draw_loops(unicorn_hat_mini_canvas& canvas) {
-    draw_loop({0, 0}, loops[0], canvas);
-    draw_loop({2, 0}, loops[1], canvas);
-    draw_loop({4, 0}, loops[2], canvas);
-    draw_loop({6, 0}, loops[3], canvas);
-    draw_loop({0, 2}, loops[4], canvas);
-    draw_loop({2, 2}, loops[5], canvas);
-}
-
-void MainScreen::draw_loop(Point pos, LoopState loop, unicorn_hat_mini_canvas& canvas) {
-    static const std::array<std::array<uint8_t, 2>, 4> shape = {{
-        {9,1},
-        {9,0},
-        {10,0},
-        {10,1}
-    }};
-    RGB color;
-    float compensated_saturation = std::max(loop.saturation, (float)0.1);
-    RGB point_color;
-    if (loop.muted) {
-        color = palette_muted;
-        point_color = palette_muted;
-    } else {        
-        color = (loop.grabbed ? palette_white : palette_playing) * compensated_saturation;
-        point_color = (loop.grabbed ? palette_magenta : palette_yellow) * compensated_saturation;
-    }
-    uint8_t yellow_pos = std::min((uint8_t)3, (uint8_t)(loop.saturation * 4.0));
-    for (size_t pixel = 0; pixel < shape.size(); pixel++) {
-        const std::array<uint8_t, 2>& xy = shape.at(pixel);
-        canvas.at(xy.at(0) + pos.x).at(xy.at(1) + pos.y) = (yellow_pos == pixel) ? point_color : color;
-    }
-    SPDLOG_DEBUG("DSPLY draw_loop[track_state={}]", track_state);
-}
-
-void MainScreen::draw_songs(unicorn_hat_mini_canvas& canvas) {
-    uint count = std::min(song_count, (uint)2*9);
-    for (uint i = 0; i < count; i++) {
-        canvas.at(i % 9).at(1 + (i / 9)) = i <= song_index ? palette_magenta : palette_cyan;
-    }
-    SPDLOG_DEBUG("DSPLY draw_songs[song_count={},song_index={}]", song_count, song_index);
-}
-
-void MainScreen::draw_patterns(unicorn_hat_mini_canvas& canvas) {
-    uint count = std::min(pattern_count, (uint)8);
-    for (uint i = 0; i < count; i++) {
-        canvas.at((UNICORN_HAT_MINI_COLS - count) + i).at(5) = (i == pattern_index) ? palette_playing : palette_cyan;
-    }
-    SPDLOG_DEBUG("DSPLY draw_patterns[pattern_count={},pattern_index={}]", pattern_count, pattern_index);
-}
-
 MainScreen::MainScreen():
     changed(true),
     loops(),
@@ -64,14 +14,13 @@ MainScreen::MainScreen():
     loops.fill({true, 0.0, false});
 }
 
-bool MainScreen::draw(unicorn_hat_mini_canvas& canvas) {
+bool MainScreen::draw(Canvas& canvas) {
     if (!changed) {
         return false;
     }
     changed = false;
-    canvas.fill({0,0,0});
-    // TODO: Draw pattern position
-    canvas.at(0).at(UNICORN_HAT_MINI_ROWS - 1) = (clock_on) ? palette_green : palette_off;
+    canvas.clear();    
+    canvas.point(0, UNICORN_HAT_MINI_ROWS - 1, (clock_on) ? palette_green : palette_off);
     return true;
 }
 

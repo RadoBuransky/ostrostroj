@@ -31,16 +31,11 @@ class MainScreen : public Screen {
         float pattern_position;
 
         bool clock_on;
-
-        void draw_loops(unicorn_hat_mini_canvas& canvas);
-        void draw_loop(Point pos, LoopState loop, unicorn_hat_mini_canvas& canvas);
-        void draw_songs(unicorn_hat_mini_canvas& canvas);
-        void draw_patterns(unicorn_hat_mini_canvas& canvas);
     public:
         MainScreen();
         virtual ~MainScreen() = default;
 
-        virtual bool draw(unicorn_hat_mini_canvas& canvas);
+        virtual bool draw(Canvas& canvas);
 
         void set_loop_state(size_t loop_index, bool muted, float saturation);
         void set_loop_grabbed(size_t loop_index, bool grabbed);

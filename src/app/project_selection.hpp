@@ -11,7 +11,7 @@ class ProjectSelectionScreen : public Screen {
     public:
         ProjectSelectionScreen(size_t _project_count);
         virtual ~ProjectSelectionScreen() = default;
-        virtual bool draw(unicorn_hat_mini_canvas& canvas);
+        virtual bool draw(Canvas& canvas);
         void set_selected_project(int index);
 };
 

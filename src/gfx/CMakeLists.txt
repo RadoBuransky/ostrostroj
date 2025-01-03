@@ -1,5 +1,6 @@
 target_sources(ostrostroj
     PRIVATE
+        ${CMAKE_CURRENT_LIST_DIR}/canvas.cpp
         ${CMAKE_CURRENT_LIST_DIR}/display.cpp
         ${CMAKE_CURRENT_LIST_DIR}/holtek16d35a.cpp
         ${CMAKE_CURRENT_LIST_DIR}/unicornhatmini.cpp

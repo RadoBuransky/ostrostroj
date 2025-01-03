@@ -8,7 +8,7 @@ ProjectSelectionScreen::ProjectSelectionScreen(size_t _project_count):
     selected_project(-1) {
 }
 
-bool ProjectSelectionScreen::draw(unicorn_hat_mini_canvas& canvas) {
+bool ProjectSelectionScreen::draw(Canvas& canvas) {
     for (size_t i = 0; i < project_count; i++) {
         RGB color;
         if ((int) i == selected_project) {
@@ -16,7 +16,7 @@ bool ProjectSelectionScreen::draw(unicorn_hat_mini_canvas& canvas) {
         } else {
             color = palette_blue;
         }
-        canvas.at(i).at(0) = color;
+        canvas.point(i, 0, color);
     }
     return true;
 }
