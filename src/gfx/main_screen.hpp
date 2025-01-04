@@ -27,15 +27,14 @@ class MainScreen : public Screen {
         uint pattern_count;
         uint pattern_index;
 
-        // Percentage 0.0 - 1.0
-        float pattern_position;
+        uint pattern_position;
 
         bool clock_on;
     public:
-        MainScreen();
+        MainScreen(Canvas& _canvas);
         virtual ~MainScreen() = default;
 
-        virtual bool draw(Canvas& canvas);
+        virtual bool draw();
 
         void set_loop_state(size_t loop_index, bool muted, float saturation);
         void set_loop_grabbed(size_t loop_index, bool grabbed);

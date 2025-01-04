@@ -3,12 +3,13 @@
 #include <spdlog/spdlog.h>
 #include "display.hpp"
 
-SystemScreen::SystemScreen():
+SystemScreen::SystemScreen(Canvas& _canvas):
+    Screen(_canvas),
     init(true),
     mem_usage(0) {    
 }
 
-bool SystemScreen::draw(Canvas& canvas) {    
+bool SystemScreen::draw() {    
     if (init) {
         canvas.point(0, 0, palette_red);
         canvas.point(1, 0, palette_red);
@@ -30,8 +31,8 @@ void SystemScreen::set_mem_usage(float _mem_usage) {
 Display::Display(std::chrono::milliseconds _refresh):
     refresh(_refresh),
     unicorn_hat_mini(),
-    main_screen(),
-    system_screen(),
+    main_screen(unicorn_hat_mini),
+    system_screen(unicorn_hat_mini),
     active_screen(system_screen),
     next_refresh() {
     tick(true);
@@ -42,7 +43,7 @@ void Display::tick(bool force) {
         return;
     }
     next_refresh = std::chrono::steady_clock::now() + refresh;
-    if (active_screen.get().draw(unicorn_hat_mini)) {
+    if (active_screen.get().draw()) {
         unicorn_hat_mini.show();
     }
 }
@@ -58,4 +59,8 @@ SystemScreen& Display::get_system_screen() {
 void Display::set_active_screen(Screen& _screen) {
     active_screen = _screen;
     unicorn_hat_mini.clear();
+}
+
+Canvas& Display::get_canvas() {
+    return unicorn_hat_mini;
 }

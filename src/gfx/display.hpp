@@ -10,9 +10,9 @@ class SystemScreen : public Screen {
         bool init;
         float mem_usage;
     public:
-        SystemScreen();
+        SystemScreen(Canvas& _canvas);
         virtual ~SystemScreen() = default;
-        virtual bool draw(Canvas& canvas);
+        virtual bool draw();
         void set_mem_usage(float _mem_usage);
 };
 
@@ -37,4 +37,5 @@ class Display {
         MainScreen& get_main_screen();
         SystemScreen& get_system_screen();
         void set_active_screen(Screen& _screen);
+        Canvas& get_canvas();
 };

@@ -57,7 +57,7 @@ bool Engine::handle_midi_event(snd_seq_event_t& midi_event, snd_pcm_state_t stat
             on_controller(midi_event.data.control.channel, midi_event.data.control.param, midi_event.data.control.value, state == SND_PCM_STATE_RUNNING);
             return false;
         case SND_SEQ_EVENT_CLOCK:
-            on_clock();
+            on_clock(midi_event.data.queue.unused[0]);
             return false;
         default:
             SPDLOG_WARN("ENGIN ignored engine MIDI event. [{}]", (int)midi_event.type);
@@ -88,10 +88,10 @@ void Engine::exit(EngineExit _exit_code) {
     running_flag.notify_all();    
 }
 
-void Engine::on_clock() {
+void Engine::on_clock(uint8_t quarter_note_fraction) {
     Pattern& pattern = session.get_pattern();
     PatternLoop& last_loop = pattern.get_loops().back();
-    session.on_clock(loop_tracks.at(last_loop.track_number - 1)->get_position(last_loop.loop));
+    session.on_clock(quarter_note_fraction, loop_tracks.at(last_loop.track_number - 1)->get_position(last_loop.loop));
 }
 
 void Engine::on_controller(uint8_t channel, unsigned int param, signed int value, bool running) {

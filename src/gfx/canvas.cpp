@@ -15,8 +15,16 @@ size_t Canvas::get_cols() const {
     return cols;
 }
 
+size_t Canvas::get_last_col() const {
+    return cols - 1;
+}
+
 size_t Canvas::get_rows() const {
     return rows;
+}
+
+size_t Canvas::get_last_row() const {
+    return rows - 1;
 }
 
 void Canvas::clear() {
@@ -25,7 +33,7 @@ void Canvas::clear() {
 }
 
 void Canvas::point(size_t col, size_t row, RGB color) {
-    canvas.at(col + (row * cols)) = color;
+    canvas.at(std::min(col, cols - 1) + (std::min(row, rows - 1) * cols)) = color;
 }
 
 void Canvas::hline(size_t start_col, size_t end_col, size_t row, RGB color) {

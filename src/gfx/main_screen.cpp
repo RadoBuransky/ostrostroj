@@ -6,7 +6,8 @@
 constexpr RGB palette_playing = palette_red;
 constexpr RGB palette_muted = palette_blue;
 
-MainScreen::MainScreen():
+MainScreen::MainScreen(Canvas& _canvas):
+    Screen(_canvas),
     changed(true),
     loops(),
     pattern_position(0.0),
@@ -14,19 +15,18 @@ MainScreen::MainScreen():
     loops.fill({true, 0.0, false});
 }
 
-bool MainScreen::draw(Canvas& canvas) {
+bool MainScreen::draw() {
     if (!changed) {
         return false;
     }
     changed = false;
     canvas.clear();
+    
+    // MIDI clock
+    canvas.point(canvas.get_last_col(), canvas.get_last_row(), (clock_on) ? palette_red : palette_off);
 
     // Pattern position
-    size_t end_col = std::max(0, (int) std::round((float) canvas.get_cols() * pattern_position) - 1);
-    canvas.hline(0, end_col, canvas.get_rows() - 1, palette_red);
-
-    // MIDI clock
-    canvas.point(0, canvas.get_rows() - 1, (clock_on) ? palette_green : palette_off);
+    canvas.hline(0, pattern_position, canvas.get_last_row(), palette_white);
     return true;
 }
 
@@ -69,7 +69,11 @@ void MainScreen::set_pattern_index(uint _pattern_index) {
 }
 
 void MainScreen::set_pattern_position(float _pattern_position) {
-    pattern_position = _pattern_position;
+    size_t new_pattern_position = std::max(0, (int) std::round((float) canvas.get_last_col() * std::min(_pattern_position, 1.0f)));
+    if (new_pattern_position == pattern_position) {
+        return;
+    }
+    pattern_position = new_pattern_position;
     changed = true;
 }
 

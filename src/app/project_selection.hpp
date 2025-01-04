@@ -9,9 +9,9 @@ class ProjectSelectionScreen : public Screen {
         size_t project_count;
         int selected_project;
     public:
-        ProjectSelectionScreen(size_t _project_count);
+        ProjectSelectionScreen(Canvas& _canvas, size_t _project_count);
         virtual ~ProjectSelectionScreen() = default;
-        virtual bool draw(Canvas& canvas);
+        virtual bool draw();
         void set_selected_project(int index);
 };
 
@@ -26,7 +26,7 @@ class ProjectSelection {
         void set_selected_project(int index);
         void midi_callback();
     public:
-        ProjectSelection(Workspace& _workspace, Display &_display);
+        ProjectSelection(Workspace& _workspace, Display& _display);
         virtual ~ProjectSelection();
         Project& selectProject();
 };

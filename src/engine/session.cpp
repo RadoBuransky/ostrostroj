@@ -119,9 +119,11 @@ void Session::pause() {
     started_timestamp = std::chrono::steady_clock::time_point::min();
 }
 
-void Session::on_clock(float pattern_position) {
+void Session::on_clock(uint8_t quarter_note_fraction, float pattern_position) {
     MainScreen& main_screen = display.get_main_screen();
-    main_screen.blink_clock();
+    if (quarter_note_fraction == 0) {
+        main_screen.blink_clock();
+    }
     main_screen.set_pattern_position(pattern_position);
     display.tick(false);
 }

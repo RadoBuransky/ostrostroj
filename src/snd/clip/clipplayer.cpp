@@ -7,8 +7,8 @@
 static constexpr snd_pcm_uframes_t FADE_FRAMES = 30 * 96;
 
 void ClipPlayer::update_pointers(ClipBlock& _block) {
-    current_frame = _block.get_buffer().data();
-    end_frame = current_frame + (_block.get_buffer_frames() * _block.get_channels());
+    current_sample = _block.get_buffer().data();
+    end_sample = current_sample + (_block.get_buffer_frames() * _block.get_channels());
 }
 
 void ClipPlayer::fade_out() {
@@ -44,8 +44,8 @@ ClipPlayer::ClipPlayer(Clip& _clip, bool _loop, snd_pcm_uframes_t _latency_frame
     fade_samples(_loop ? (FADE_FRAMES * _clip.get_head().get_channels()) : 0),
     fade((_loop ? fade_samples : 0) + (predelay ? latency_samples : 0)),
     block(_clip.get_head()),
-    current_frame(nullptr),
-    end_frame(nullptr),
+    current_sample(nullptr),
+    end_sample(nullptr),
     position(0),
     draining(false) {
     update_pointers(block.get());
@@ -65,5 +65,5 @@ Clip& ClipPlayer::get_clip() {
 }
 
 float ClipPlayer::get_position() {
-    return (float) position / (float) clip.get_frames();
+    return std::min(1.0f, (float) position / (float) (clip.get_frames() * clip.get_info().channels));
 }

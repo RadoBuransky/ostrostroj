@@ -30,7 +30,7 @@ class Session {
         Clip& get_clip(std::filesystem::path clip_path);
         void start();
         void pause();
-        void on_clock(float pattern_position);
+        void on_clock(uint8_t quarter_note_fraction, float pattern_position);
         size_t get_mem_size_bytes() const;
         snd_pcm_uframes_t get_sample_rate() const;
 };

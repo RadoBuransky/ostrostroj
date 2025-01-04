@@ -10,9 +10,9 @@ class ClipPlayer {
         const int32_t fade_samples;
         int32_t fade;
         std::reference_wrapper<ClipBlock> block;
-        const short* current_frame;
-        const short* end_frame;
-        snd_pcm_uframes_t position;
+        const short* current_sample;
+        const short* end_sample;
+        uint32_t position;
         bool draining;
         void update_pointers(ClipBlock& _block);
         void fade_out();
@@ -27,8 +27,8 @@ class ClipPlayer {
                 sample = 0.0;
                 return true;
             }
-            if (current_frame < end_frame) {
-                sample = ((float)*current_frame / (float)SHRT_MAX);
+            if (current_sample < end_sample) {
+                sample = ((float)*current_sample / (float)SHRT_MAX);
                 if (fade != 0) {
                     if (fade > 0) {
                         // Fade in
@@ -46,7 +46,7 @@ class ClipPlayer {
                         }
                     }                    
                 }
-                current_frame++;
+                current_sample++;
                 position++;
                 return true;        
             }

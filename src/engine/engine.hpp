@@ -39,7 +39,7 @@ class Engine {
         bool handle_midi_event(snd_seq_event_t& midi_event, snd_pcm_state_t state, PcmEvent& result);
         void note(uint8_t channel, uint8_t note, bool on, unsigned int clock, bool running);
         void exit(EngineExit _exit_code);
-        void on_clock();
+        void on_clock(uint8_t quarter_note_fraction);
         void on_controller(uint8_t channel, unsigned int param, signed int value, bool running);
         void update_saturation(ssize_t track_number);
         snd_pcm_uframes_t compute_latency(uint8_t mul, uint8_t clock_interval);

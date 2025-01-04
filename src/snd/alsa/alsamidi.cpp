@@ -58,12 +58,11 @@ bool AlsaMidi::process(snd_seq_event_t& event) {
         case SND_SEQ_EVENT_CONTROLLER:
             push = true;
             break;
-        case SND_SEQ_EVENT_CLOCK:
+        case SND_SEQ_EVENT_CLOCK:            
             // 24 events per quarter note (MIDI specification)
             quarter_note_counter = (quarter_note_counter + 1) % 24;
-            if (quarter_note_counter == 0) {
-                push = true;
-            }
+            event.data.queue.unused[0] = quarter_note_counter;
+            push = true;
             break;
     }
     if (push) {

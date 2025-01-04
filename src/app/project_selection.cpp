@@ -3,12 +3,13 @@
 #include <spdlog/spdlog.h>
 #include "project_selection.hpp"
 
-ProjectSelectionScreen::ProjectSelectionScreen(size_t _project_count):
+ProjectSelectionScreen::ProjectSelectionScreen(Canvas& _canvas, size_t _project_count):
+    Screen(_canvas),
     project_count(_project_count),
     selected_project(-1) {
 }
 
-bool ProjectSelectionScreen::draw(Canvas& canvas) {
+bool ProjectSelectionScreen::draw() {
     for (size_t i = 0; i < project_count; i++) {
         RGB color;
         if ((int) i == selected_project) {
@@ -53,11 +54,11 @@ void ProjectSelection::midi_callback() {
     }
 }
 
-ProjectSelection::ProjectSelection(Workspace& _workspace, Display &_display):
+ProjectSelection::ProjectSelection(Workspace& _workspace, Display& _display):
     workspace(_workspace),
     display(_display),
     alsa_midi(),
-    screen(workspace.get_projects().size()),
+    screen(_display.get_canvas(), workspace.get_projects().size()),
     selected_project(-1),
     done_flag(false) {
     display.set_active_screen(screen);
