@@ -2,6 +2,7 @@ target_sources(ostrostroj
     PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}/engine.cpp
         ${CMAKE_CURRENT_LIST_DIR}/engineworker.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/program_change.cpp
         ${CMAKE_CURRENT_LIST_DIR}/session.cpp
         ${CMAKE_CURRENT_LIST_DIR}/track.cpp)
 

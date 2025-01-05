@@ -9,6 +9,7 @@
 #include "display.hpp"
 #include "loop_encoders.hpp"
 #include "command_controller.hpp"
+#include "program_change.hpp"
 
 enum EngineExit {
     ENGINE_EXIT_NOOP = 0,
@@ -18,16 +19,16 @@ enum EngineExit {
 };
 
 class Engine {
+    friend class ProgramChange;
     private:
         AlsaMidi alsa_midi;
         Session session;
         AlsaPcm alsa_pcm;
         Display& display;
         std::atomic_flag& running_flag;
-        // TODO: Remove unused code (M:C, one shots, PC change while running)
-        // TODO: It's all just loops
         LoopEncoders loop_encoders;
         CommandController command_controller;
+        std::unique_ptr<ProgramChange> program_change;
         std::atomic_flag midi_flag;
         std::atomic_bool stop;
         std::array<std::unique_ptr<Track>, ENGINE_LOOP_TRACKS> loop_tracks; // 0-4 mono, 5 stereo

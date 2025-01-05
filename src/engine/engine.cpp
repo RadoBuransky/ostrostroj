@@ -36,15 +36,18 @@ bool Engine::handle_midi_event(snd_seq_event_t& midi_event, snd_pcm_state_t stat
             }
             return false;
         case SND_SEQ_EVENT_PGMCHANGE:
-            mul = midi_event.data.control.unused[0];
-            clock_interval_ms = midi_event.data.control.unused[1];
-            SPDLOG_INFO("ENGIN MIDI PROGRAM CHANGE [param={},value={},mul={},clock_interval_ms={}]", midi_event.data.control.param,
-                midi_event.data.control.value, mul, clock_interval_ms);
-            if (session.change_program(BankPattern(midi_event.data.control.value + 1))) {
-                program_changed(state == SND_PCM_STATE_RUNNING, compute_latency(mul, clock_interval_ms));
+            if (state != SND_PCM_STATE_RUNNING) {
+                mul = midi_event.data.control.unused[0];
+                clock_interval_ms = midi_event.data.control.unused[1];
+                SPDLOG_INFO("ENGIN MIDI PROGRAM CHANGE [param={},value={},mul={},clock_interval_ms={}]", midi_event.data.control.param,
+                    midi_event.data.control.value, mul, clock_interval_ms);
+                if (session.change_program(BankPattern(midi_event.data.control.value + 1))) {
+                    program_changed(state == SND_PCM_STATE_RUNNING, compute_latency(mul, clock_interval_ms));
+                }
+                result = ALSA_PCM_PROGRAM_CHANGE;
+                return true;
             }
-            result = ALSA_PCM_PROGRAM_CHANGE;
-            return true;
+            return false;
         case SND_SEQ_EVENT_NOTEON:
             note(midi_event.data.note.channel, midi_event.data.note.note, midi_event.data.note.velocity > 0,
                 midi_event.time.tick, state == SND_PCM_STATE_RUNNING);
@@ -75,6 +78,16 @@ void Engine::note(uint8_t channel, uint8_t note, bool on, unsigned int clock, bo
             return;
         case Command::RESTART_SERVICE:
             exit(EngineExit::ENGINE_EXIT_RESTART_SERVICE);
+            return;
+        case Command::PC_NEXT:
+            program_change->on_change_selection(1);
+            return;
+        case Command::PC_PREV:
+            program_change->on_change_selection(-1);
+            return;
+        case Command::PC_DONE:
+            // TODO: mix encoder value
+            program_change.on_done();
             return;
         case Command::NOOP:
             break;
@@ -130,6 +143,7 @@ void Engine::program_changed(bool running, snd_pcm_uframes_t latency) {
     clear_loop_clips(running);
     add_loop_clips(running, latency);
     unlock_worker_tracks();
+    program_change->on_program_changed();
     SPDLOG_INFO("ENGIN program set={}", session.get_pattern().get_bank_pattern().get_pattern());
 }
 
@@ -288,6 +302,7 @@ Engine::Engine(Project& _project, Display& _display, std::atomic_flag& _running_
         SPDLOG_ERROR(ex.what());
         throw;
     }
+    program_change = std::make_unique<ProgramChange>(*this);
 }
 
 Engine::~Engine() {

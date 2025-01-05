@@ -11,8 +11,6 @@ class Session {
         std::map<std::filesystem::path, std::unique_ptr<Clip>> clips;
         std::reference_wrapper<Song> active_song;
         std::reference_wrapper<Pattern> active_pattern;
-        // TODO: Which clip player do we use to show current position (the last one?)
-        // TODO: Who handles transition process? Maybe a standalone class?
         std::chrono::steady_clock::time_point started_timestamp;
         size_t mem_size_bytes;
         snd_pcm_uframes_t sample_rate;

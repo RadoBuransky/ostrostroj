@@ -6,12 +6,15 @@ enum Command {
     NOOP = 0,
     RESTART_DEVICE,
     SHUTDOWN_DEVICE,
-    RESTART_SERVICE
+    RESTART_SERVICE,
+    PC_NEXT,
+    PC_PREV,
+    PC_DONE
 };
 
 class CommandController {
     private:
-        std::array<CommandSeq, 3> commands;
+        std::array<CommandSeq, 6> commands;
     public:
         CommandController(uint8_t channel);
         virtual ~CommandController() = default;
