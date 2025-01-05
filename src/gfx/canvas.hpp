@@ -20,11 +20,11 @@ class Canvas {
         Canvas(size_t _cols, size_t _rows);
         virtual ~Canvas() = default;
         size_t get_cols() const;
-        size_t get_last_col() const;
+        uint8_t get_last_col() const;
         size_t get_rows() const;
-        size_t get_last_row() const;
+        uint8_t get_last_row() const;
         void clear();
-        void point(size_t col, size_t row, RGB color);
-        void hline(size_t start_col, size_t end_col, size_t row, RGB color);
-        void vline(size_t col, size_t start_row, size_t end_row, RGB color);
+        void point(uint8_t col, uint8_t row, RGB color);
+        void line(uint8_t start_col, uint8_t end_col, uint8_t row, RGB color);
+        void progress(uint8_t row, size_t count, uint8_t index, RGB color);
 };

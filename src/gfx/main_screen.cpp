@@ -26,7 +26,12 @@ bool MainScreen::draw() {
     canvas.point(canvas.get_last_col(), canvas.get_last_row(), (clock_on) ? palette_red : palette_off);
 
     // Pattern position
-    canvas.hline(0, pattern_position, canvas.get_last_row(), palette_white);
+    canvas.line(0, pattern_position, canvas.get_last_row(), palette_white);
+
+    // Active song/pattern
+    canvas.progress(3, song_count, song_index, palette_white);
+    canvas.progress(4, pattern_count, pattern_index, palette_white);
+
     return true;
 }
 
