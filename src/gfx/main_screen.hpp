@@ -22,10 +22,12 @@ class MainScreen : public Screen {
         std::array<LoopState, 6> loops;
 
         uint song_count;
-        uint song_index;
+        uint active_song_index;
+        uint selected_song_index;
 
         uint pattern_count;
-        uint pattern_index;
+        uint active_pattern_index;
+        uint selected_pattern_index;
 
         uint pattern_position;
 
@@ -41,10 +43,12 @@ class MainScreen : public Screen {
         void all_loops_off();
 
         void set_song_count(uint _song_count);
-        void set_song_index(uint _song_index);
+        void set_active_song_index(uint _song_index);
+        void set_selected_song_index(uint _song_index);
 
         void set_pattern_count(uint _pattern_count);
-        void set_pattern_index(uint _pattern_index);
+        void set_active_pattern_index(uint _pattern_index);
+        void set_selected_pattern_index(uint _pattern_index);
 
         void set_pattern_position(float _pattern_position);
 

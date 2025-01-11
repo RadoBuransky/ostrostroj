@@ -27,4 +27,5 @@ class Canvas {
         void point(uint8_t col, uint8_t row, RGB color);
         void line(uint8_t start_col, uint8_t end_col, uint8_t row, RGB color);
         void progress(uint8_t row, size_t count, uint8_t index, RGB color);
+        uint8_t get_progress_point_col(size_t count, uint8_t index);
 };

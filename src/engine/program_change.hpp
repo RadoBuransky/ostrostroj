@@ -1,17 +1,21 @@
 #pragma once
 
-#include "engine.hpp"
+#include "song.hpp"
+#include "pattern.hpp"
+
+class Engine;
 
 class ProgramChange {
     private:
         Engine& engine;
-        std::reference_wrapper<Song> selected_song;
-        std::reference_wrapper<Pattern> selected_pattern;
-
+        uint8_t selected_song_index;
+        uint8_t selected_pattern_index;
+        void update_display();
     public:
         ProgramChange(Engine& _engine);
         virtual ~ProgramChange() = default;
-        void on_change_selection(int delta);
+        void select_next();
+        void select_prev();
         void on_fader(float mix);
         void on_program_changed();
 

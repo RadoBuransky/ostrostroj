@@ -8,13 +8,12 @@ enum Command {
     SHUTDOWN_DEVICE,
     RESTART_SERVICE,
     PC_NEXT,
-    PC_PREV,
-    PC_DONE
+    PC_PREV
 };
 
 class CommandController {
     private:
-        std::array<CommandSeq, 6> commands;
+        std::array<CommandSeq, 3> commands;
     public:
         CommandController(uint8_t channel);
         virtual ~CommandController() = default;

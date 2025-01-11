@@ -29,9 +29,16 @@ bool MainScreen::draw() {
     canvas.line(0, pattern_position, canvas.get_last_row(), palette_white);
 
     // Active song/pattern
-    canvas.progress(3, song_count, song_index, palette_white);
-    canvas.progress(4, pattern_count, pattern_index, palette_white);
+    canvas.progress(3, song_count, active_song_index, palette_white);
+    canvas.progress(4, pattern_count, active_pattern_index, palette_white);
 
+    // Selected song/pattern
+    if (selected_song_index != active_song_index) {
+        canvas.point(canvas.get_progress_point_col(song_count, selected_song_index), 3, palette_red);
+    }
+    if (selected_pattern_index != active_pattern_index || selected_song_index != active_song_index) {
+        canvas.point(canvas.get_progress_point_col(pattern_count, selected_pattern_index), 4, palette_red);
+    }
     return true;
 }
 
@@ -58,8 +65,13 @@ void MainScreen::set_song_count(uint _song_count) {
     changed = true;
 }
 
-void MainScreen::set_song_index(uint _song_index) {
-    song_index = _song_index;
+void MainScreen::set_active_song_index(uint _song_index) {
+    active_song_index = _song_index;
+    changed = true;
+}
+
+void MainScreen::set_selected_song_index(uint _song_index) {
+    selected_song_index = _song_index;
     changed = true;
 }
 
@@ -68,8 +80,13 @@ void MainScreen::set_pattern_count(uint _pattern_count) {
     changed = true;
 }
 
-void MainScreen::set_pattern_index(uint _pattern_index) {
-    pattern_index = _pattern_index;
+void MainScreen::set_active_pattern_index(uint _pattern_index) {
+    active_pattern_index = _pattern_index;
+    changed = true;
+}
+
+void MainScreen::set_selected_pattern_index(uint _pattern_index) {
+    selected_pattern_index = _pattern_index;
     changed = true;
 }
 

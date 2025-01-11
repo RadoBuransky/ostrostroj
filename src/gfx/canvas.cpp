@@ -48,6 +48,13 @@ void Canvas::progress(uint8_t row, size_t count, uint8_t index, RGB color) {
     }
     point(0, row, index == 0 ? color : palette_blue);
     for (uint8_t i = 1; i < count; i++) {
-        point((cols-1)*i/(count-1), row, i == index ? color : palette_blue);
+        point(get_progress_point_col(count, i), row, i == index ? color : palette_blue);
     }
+}
+
+uint8_t Canvas::get_progress_point_col(size_t count, uint8_t index) {
+    if (index == 0) {
+        return 0;
+    }
+    return (cols-1)*index/(count-1);
 }

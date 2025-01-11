@@ -80,14 +80,10 @@ void Engine::note(uint8_t channel, uint8_t note, bool on, unsigned int clock, bo
             exit(EngineExit::ENGINE_EXIT_RESTART_SERVICE);
             return;
         case Command::PC_NEXT:
-            program_change->on_change_selection(1);
+            program_change->select_next();
             return;
         case Command::PC_PREV:
-            program_change->on_change_selection(-1);
-            return;
-        case Command::PC_DONE:
-            // TODO: mix encoder value
-            program_change.on_done();
+            program_change->select_prev();
             return;
         case Command::NOOP:
             break;
