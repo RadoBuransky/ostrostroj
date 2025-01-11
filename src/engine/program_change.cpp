@@ -6,12 +6,18 @@
 #include "engine.hpp"
 
 ProgramChange::ProgramChange(Engine& _engine):
-    engine(_engine) {
+    engine(_engine),
+    selected_song_index(0),
+    selected_pattern_index(0) {
     on_program_changed();
 }
 
 void ProgramChange::update_display() {    
     MainScreen& main_screen = engine.display.get_main_screen();
+    Project& project = engine.session.get_project();
+    Song& selected_song = project.get_songs().at(selected_song_index);
+    main_screen.set_song_count(project.get_songs().size());
+    main_screen.set_pattern_count(selected_song.get_patterns().size());
     main_screen.set_active_song_index(engine.session.get_song().get_number() - 1);
     main_screen.set_selected_song_index(selected_song_index);
     main_screen.set_active_pattern_index(engine.session.get_pattern().get_number() - 1);

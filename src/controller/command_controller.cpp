@@ -7,8 +7,8 @@
 static const std::vector<MidiNote> RESTART_DEVICE_SEQ = {{MidiNote(F, 4), MidiNote(D, 5), MidiNote(G, 4)}};
 static const std::vector<MidiNote> SHUTDOWN_DEVICE_SEQ = {{MidiNote(C_, 5), MidiNote(F_, 4), MidiNote(D_, 5)}};
 static const std::vector<MidiNote> RESTART_SERVICE_SEQ = {{MidiNote(F, 4), MidiNote(F_, 4), MidiNote(G, 4)}};
-static const MidiNote PC_NEXT_NOTE = MidiNote(C, 4);
-static const MidiNote PC_PREV_NOTE = MidiNote(C_, 4);
+static const MidiNote PC_PREV_NOTE = MidiNote(C, 4);
+static const MidiNote PC_NEXT_NOTE = MidiNote(C_, 4);
 
 CommandController::CommandController(uint8_t channel):
     commands({

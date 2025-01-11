@@ -19,8 +19,8 @@ void Session::update_display() {
     for (PatternLoop& loop : active_pattern.get().get_loops()) {        
         main_screen.set_loop_state(loop.track_number - 1, false, 0.0);
     }
-    main_screen.set_song_count(project.get_songs().size());
-    main_screen.set_pattern_count(active_song.get().get_patterns().size());
+    // main_screen.set_song_count(project.get_songs().size());
+    // main_screen.set_pattern_count(active_song.get().get_patterns().size());
     main_screen.set_pattern_position(0);
     display.tick(true);
 }

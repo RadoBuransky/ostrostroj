@@ -10,6 +10,12 @@ MainScreen::MainScreen(Canvas& _canvas):
     Screen(_canvas),
     changed(true),
     loops(),
+    song_count(0),
+    active_song_index(0),
+    selected_song_index(0),
+    pattern_count(0),
+    active_pattern_index(0),
+    selected_pattern_index(0),
     pattern_position(0.0),
     clock_on(false) {
     loops.fill({true, 0.0, false});
@@ -28,16 +34,18 @@ bool MainScreen::draw() {
     // Pattern position
     canvas.line(0, pattern_position, canvas.get_last_row(), palette_white);
 
-    // Active song/pattern
-    canvas.progress(3, song_count, active_song_index, palette_white);
-    canvas.progress(4, pattern_count, active_pattern_index, palette_white);
+    if (song_count > 0 && pattern_count > 0) {
+        // Active song/pattern
+        canvas.progress(3, song_count, active_song_index, palette_white);
+        canvas.progress(4, pattern_count, active_pattern_index, palette_white);
 
-    // Selected song/pattern
-    if (selected_song_index != active_song_index) {
-        canvas.point(canvas.get_progress_point_col(song_count, selected_song_index), 3, palette_red);
-    }
-    if (selected_pattern_index != active_pattern_index || selected_song_index != active_song_index) {
-        canvas.point(canvas.get_progress_point_col(pattern_count, selected_pattern_index), 4, palette_red);
+        // Selected song/pattern
+        if (selected_song_index != active_song_index) {
+            canvas.point(canvas.get_progress_point_col(song_count, selected_song_index), 3, palette_red);
+        }
+        if (selected_pattern_index != active_pattern_index || selected_song_index != active_song_index) {
+            canvas.point(canvas.get_progress_point_col(pattern_count, selected_pattern_index), 4, palette_red);
+        }
     }
     return true;
 }
