@@ -16,8 +16,10 @@ MainScreen::MainScreen(Canvas& _canvas):
     pattern_count(0),
     active_pattern_index(0),
     selected_pattern_index(0),
+    pattern_fade_mix(-1.0),
     pattern_position(0.0),
-    clock_on(false) {
+    clock_on(false),
+    playing(false) {
     loops.fill({true, 0.0, false});
 }
 
@@ -29,7 +31,7 @@ bool MainScreen::draw() {
     canvas.clear();
     
     // MIDI clock
-    canvas.point(canvas.get_last_col(), canvas.get_last_row(), (clock_on) ? palette_red : palette_off);
+    canvas.point(canvas.get_last_col(), canvas.get_last_row(), (clock_on) ? (playing ? palette_red : palette_white) : palette_off);
 
     // Pattern position
     canvas.line(0, pattern_position, canvas.get_last_row(), palette_white);
@@ -46,6 +48,10 @@ bool MainScreen::draw() {
         if (selected_pattern_index != active_pattern_index || selected_song_index != active_song_index) {
             canvas.point(canvas.get_progress_point_col(pattern_count, selected_pattern_index), 4, palette_red);
         }
+    }
+
+    if (pattern_fade_mix >= 0.0) {
+        canvas.point(std::round(pattern_fade_mix * canvas.get_cols()), 5, palette_magenta);
     }
     return true;
 }
@@ -98,6 +104,11 @@ void MainScreen::set_selected_pattern_index(uint _pattern_index) {
     changed = true;
 }
 
+void MainScreen::set_pattern_fade(float _mix) {
+    pattern_fade_mix =_mix;
+    changed = true;
+}
+
 void MainScreen::set_pattern_position(float _pattern_position) {
     size_t new_pattern_position = std::max(0, (int) std::round((float) canvas.get_last_col() * std::min(_pattern_position, 1.0f)));
     if (new_pattern_position == pattern_position) {
@@ -109,5 +120,10 @@ void MainScreen::set_pattern_position(float _pattern_position) {
 
 void MainScreen::blink_clock() {
     clock_on = !clock_on;
+    changed = true;
+}
+
+void MainScreen::set_playing(bool _playing) {
+    playing = _playing;
     changed = true;
 }

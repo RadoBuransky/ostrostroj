@@ -20,6 +20,7 @@ void Session::update_display() {
         main_screen.set_loop_state(loop.track_number - 1, false, 0.0);
     }
     main_screen.set_pattern_position(0);
+    main_screen.set_playing(playing);
     display.tick(true);
 }
 
@@ -60,7 +61,8 @@ Session::Session(Project& _project, Display& _display, int loop_track_count):
     active_song(_project.get_songs().at(0)),
     active_pattern(_project.get_songs().at(0).get_patterns().at(0)),
     started_timestamp(std::chrono::steady_clock::time_point::min()),
-    sample_rate(0) {
+    sample_rate(0),
+    playing(false) {
     mem_size_bytes = load_all_clips(loop_track_count);
     set_pattern(active_song, active_pattern);
     if (clips.empty()) {
@@ -104,10 +106,12 @@ Clip& Session::get_clip(std::filesystem::path clip_path) {
 
 void Session::start() {    
     started_timestamp = std::chrono::steady_clock::now();
+    playing = true;
 }
 
 void Session::pause() {
     started_timestamp = std::chrono::steady_clock::time_point::min();
+    playing = false;
 }
 
 void Session::on_clock(uint8_t quarter_note_fraction, float pattern_position) {

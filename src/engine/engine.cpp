@@ -96,6 +96,9 @@ void Engine::on_clock(uint8_t quarter_note_fraction) {
     Pattern& pattern = session.get_pattern();
     PatternLoop& last_loop = pattern.get_loops().back();
     session.on_clock(quarter_note_fraction, loop_tracks.at(last_loop.track_number - 1)->get_position(last_loop.loop));
+    if (quarter_note_fraction == 0) {
+        program_change->on_quarter_note_clock();
+    }
 }
 
 void Engine::on_controller(uint8_t channel, unsigned int param, signed int value, bool running) {

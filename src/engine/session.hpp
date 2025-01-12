@@ -14,6 +14,7 @@ class Session {
         std::chrono::steady_clock::time_point started_timestamp;
         size_t mem_size_bytes;
         snd_pcm_uframes_t sample_rate;
+        bool playing;
         void set_pattern(Song& song, Pattern& pattern);
         void update_display();
         size_t load_clip(std::filesystem::path path, int expected_channels);
