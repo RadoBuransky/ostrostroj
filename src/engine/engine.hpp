@@ -27,6 +27,7 @@ class Engine {
         Display& display;
         std::atomic_flag& running_flag;
         LoopEncoders loop_encoders;
+        MidiEncoder fade_encoder;
         CommandController command_controller;
         std::unique_ptr<ProgramChange> program_change;
         std::atomic_flag midi_flag;
@@ -44,8 +45,9 @@ class Engine {
         void on_controller(uint8_t channel, unsigned int param, signed int value, bool running);
         void update_saturation(ssize_t track_number);
         snd_pcm_uframes_t compute_latency(uint8_t mul, uint8_t clock_interval);
-        void program_changed(bool running, snd_pcm_uframes_t predelay);
-        void add_loop_clips(bool running, snd_pcm_uframes_t predelay);
+        bool change_program(bool running, BankPattern bank_pattern);
+        std::vector<std::reference_wrapper<ClipPlayer>> add_loop_clips(Pattern& pattern);
+        void remove_clip_player(Clip& clip);
         void clear_loop_clips(bool running);
         void lock_worker_tracks();
         void unlock_worker_tracks();

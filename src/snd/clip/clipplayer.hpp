@@ -6,7 +6,6 @@ class ClipPlayer {
     private:
         Clip& clip;
         const bool loop;
-        const int32_t latency_samples;
         const int32_t fade_samples;
         int32_t fade;
         std::reference_wrapper<ClipBlock> block;
@@ -14,13 +13,19 @@ class ClipPlayer {
         const short* end_sample;
         uint32_t position;
         bool draining;
+        bool paused;
+        float gain;
         void update_pointers(ClipBlock& _block);
         void fade_out();
         void fade_in();
     public:
-        ClipPlayer(Clip& _clip, bool _loop, snd_pcm_uframes_t _latency_frames, bool predelay);
-        virtual ~ClipPlayer() = default;
+        ClipPlayer(Clip& _clip, bool _loop);
+        virtual ~ClipPlayer();
         inline bool pop(float& sample) {
+            if (paused) {
+                sample = 0.0;
+                return true;
+            }
             if (fade > fade_samples) {
                 // Predelay
                 fade--;
@@ -28,7 +33,7 @@ class ClipPlayer {
                 return true;
             }
             if (current_sample < end_sample) {
-                sample = ((float)*current_sample / (float)SHRT_MAX);
+                sample = gain * ((float)*current_sample / (float)SHRT_MAX);
                 if (fade != 0) {
                     if (fade > 0) {
                         // Fade in
@@ -65,4 +70,8 @@ class ClipPlayer {
         void drain();
         Clip& get_clip();
         float get_position();
+        void set_paused(bool _paused);
+        bool is_paused();
+        void set_gain(float _gain);
+        float get_gain();
 };

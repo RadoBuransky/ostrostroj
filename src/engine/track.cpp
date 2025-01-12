@@ -81,16 +81,30 @@ int Track::get_channels() const {
 /**
  * Not thread safe!
 */
-void Track::add_clip(Clip& clip, snd_pcm_uframes_t latency, bool predelay) {
+ClipPlayer& Track::add_clip(Clip& clip) {
     if (loop) {
         clear(false);
     }
     // Magic number measured experimentally. Needs to be updated whenever we change period, period size, ...
-    snd_pcm_uframes_t compensated_latency = std::max(((float)latency - (((float)periods + 2.9) * (float)period_size)), 0.0);
-    clip_players.push_back(std::make_unique<ClipPlayer>(clip, loop, compensated_latency, predelay));
+    std::unique_ptr<ClipPlayer>& clip_player = clip_players.emplace_back(std::make_unique<ClipPlayer>(clip, loop));
     bool warp_enabled = clip.is_warp_enabled();
     warp.set_bypass(!warp_enabled);
-    SPDLOG_DEBUG("TRAK{} clip added [compensated_latency={},predelay={},warp_enabled={}]", track_number, compensated_latency, predelay, warp_enabled);
+    SPDLOG_DEBUG("TRAK{} clip added [warp_enabled={}]", track_number, warp_enabled);
+    return *clip_player;
+}
+
+/**
+ * Not thread safe!
+*/
+void Track::remove_clip_player(Clip& clip) {
+    std::vector<std::unique_ptr<ClipPlayer>>::iterator it = clip_players.begin();
+    while (it != clip_players.end()) {
+        if ((*it)->get_clip().get_path().compare(clip.get_path()) == 0) {
+            it++;
+        } else {
+            it = clip_players.erase(it);
+        }
+    }
 }
 
 /**

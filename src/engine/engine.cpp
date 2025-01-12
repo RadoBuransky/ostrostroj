@@ -36,14 +36,9 @@ bool Engine::handle_midi_event(snd_seq_event_t& midi_event, snd_pcm_state_t stat
             }
             return false;
         case SND_SEQ_EVENT_PGMCHANGE:
-            if (state != SND_PCM_STATE_RUNNING) {
-                mul = midi_event.data.control.unused[0];
-                clock_interval_ms = midi_event.data.control.unused[1];
-                SPDLOG_INFO("ENGIN MIDI PROGRAM CHANGE [param={},value={},mul={},clock_interval_ms={}]", midi_event.data.control.param,
-                    midi_event.data.control.value, mul, clock_interval_ms);
-                if (session.change_program(BankPattern(midi_event.data.control.value + 1))) {
-                    program_changed(state == SND_PCM_STATE_RUNNING, compute_latency(mul, clock_interval_ms));
-                }
+            SPDLOG_INFO("ENGIN MIDI PROGRAM CHANGE [param={},value={},mul={},clock_interval_ms={}]", midi_event.data.control.param,
+                midi_event.data.control.value, mul, clock_interval_ms);
+            if (change_program(state == SND_PCM_STATE_RUNNING, BankPattern(midi_event.data.control.value + 1))) {
                 result = ALSA_PCM_PROGRAM_CHANGE;
                 return true;
             }
@@ -112,6 +107,10 @@ void Engine::on_controller(uint8_t channel, unsigned int param, signed int value
         update_saturation(track_number);
         return;
     }
+    if (fade_encoder.handle(channel, param, value)) {
+        program_change->on_fader(fade_encoder.get_percentage());
+        return;
+    }
 }
 
 void Engine::update_saturation(ssize_t track_number) {
@@ -134,26 +133,35 @@ snd_pcm_uframes_t Engine::compute_latency(uint8_t mul, uint8_t clock_interval) {
     return last_computed_latency;
 }
 
-void Engine::program_changed(bool running, snd_pcm_uframes_t latency) {
-    lock_worker_tracks();
-    clear_loop_clips(running);
-    add_loop_clips(running, latency);
-    unlock_worker_tracks();
-    program_change->on_program_changed();
-    SPDLOG_INFO("ENGIN program set={}", session.get_pattern().get_bank_pattern().get_pattern());
+bool Engine::change_program(bool running, BankPattern bank_pattern) {
+    if (running && session.change_program(bank_pattern)) {
+        program_change->on_program_changed(running);
+        SPDLOG_INFO("ENGIN program set={}", session.get_pattern().get_bank_pattern().get_pattern());    
+        return true;
+    }
+    return false;
 }
 
-void Engine::add_loop_clips(bool running, snd_pcm_uframes_t latency) {
-    for (PatternLoop& pattern_loop : session.get_pattern().get_loops()) {
+std::vector<std::reference_wrapper<ClipPlayer>> Engine::add_loop_clips(Pattern& pattern) {
+    std::vector<std::reference_wrapper<ClipPlayer>> result = std::vector<std::reference_wrapper<ClipPlayer>>();
+    for (PatternLoop& pattern_loop : pattern.get_loops()) {
         size_t track_index = pattern_loop.track_number - 1;
         if (track_index >= ENGINE_LOOP_TRACKS) {
             throw OstrostrojException(fmt::format("Invalid track index! [track_index={},loop={}]", track_index, pattern_loop.loop.filename().string()));
         }
         auto& track = loop_tracks.at(track_index);
-        track->add_clip(session.get_clip(pattern_loop.loop), latency, running);
+        ClipPlayer& clip_player = track->add_clip(session.get_clip(pattern_loop.loop));
+        result.push_back(clip_player);
         track->set_saturation(0.0);
         loop_encoders.get_encoder(track->get_track_number()).set_percentage(0.0);
         SPDLOG_DEBUG("ENGIN clip added [track_index={},loop={}]", track_index, pattern_loop.loop.c_str());
+    }
+    return result;
+}
+
+void Engine::remove_clip_player(Clip& clip) {
+    for (auto& track : loop_tracks) {
+        track->remove_clip_player(clip);
     }
 }
 
@@ -272,6 +280,7 @@ Engine::Engine(Project& _project, Display& _display, std::atomic_flag& _running_
     display(_display),
     running_flag(_running_flag),
     loop_encoders(SOURCE_MIDI_CHANNEL, L1_PARAM),
+    fade_encoder(MidiEncoder(SOURCE_MIDI_CHANNEL, 118, 0, 127)),
     command_controller(SOURCE_MIDI_CHANNEL),
     midi_flag(ATOMIC_FLAG_INIT),
     stop(false),

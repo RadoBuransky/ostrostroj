@@ -37,27 +37,27 @@ void ClipPlayer::fade_in() {
     }
 }
 
-ClipPlayer::ClipPlayer(Clip& _clip, bool _loop, snd_pcm_uframes_t _latency_frames, bool predelay):
+ClipPlayer::ClipPlayer(Clip& _clip, bool _loop):
     clip(_clip),
     loop(_loop),
-    latency_samples(_latency_frames * _clip.get_head().get_channels()),
     fade_samples(_loop ? (FADE_FRAMES * _clip.get_head().get_channels()) : 0),
-    fade((_loop ? fade_samples : 0) + (predelay ? latency_samples : 0)),
+    fade(_loop ? fade_samples : 0),
     block(_clip.get_head()),
     current_sample(nullptr),
     end_sample(nullptr),
     position(0),
-    draining(false) {
+    draining(false),
+    paused(true),
+    gain(1.0f) {
     update_pointers(block.get());
-    if (fade_samples > latency_samples) {
-        throw OstrostrojException(fmt::format("CLIP  fade is too long! [fade_samples={},latency_samples={}]", fade_samples, latency_samples));
-    }
+}
+
+ClipPlayer::~ClipPlayer() {    
 }
 
 void ClipPlayer::drain() {
     draining = true;
-    // Magic number because this is called as a reaction to PC MIDI message which comes before actual change
-    fade = -(fade_samples / 2) -latency_samples;
+    fade = -(fade_samples / 2);
 }
 
 Clip& ClipPlayer::get_clip() {
@@ -66,4 +66,20 @@ Clip& ClipPlayer::get_clip() {
 
 float ClipPlayer::get_position() {
     return std::min(1.0f, (float) position / (float) (clip.get_frames() * clip.get_info().channels));
+}
+
+void ClipPlayer::set_paused(bool _paused) {    
+    paused = _paused;
+}
+
+bool ClipPlayer::is_paused() {
+    return paused;
+}
+
+void ClipPlayer::set_gain(float _gain) {
+    gain = std::max(std::min(_gain, 1.0f), 0.0f);
+}
+
+float ClipPlayer::get_gain() {
+    return gain;
 }

@@ -33,7 +33,8 @@ class Track {
         InterleavedFifo& get_fifo() const;
         int get_track_number() const;
         int get_channels() const;
-        void add_clip(Clip& clip, snd_pcm_uframes_t latency, bool predelay);
+        ClipPlayer& add_clip(Clip& clip);
+        void remove_clip_player(Clip& clip);
         void clear(bool drop);
         void set_saturation(float _saturation);
         float get_saturation();
