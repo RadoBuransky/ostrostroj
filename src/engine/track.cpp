@@ -95,10 +95,12 @@ void Track::remove_clip_player(Clip& clip) {
     std::vector<std::unique_ptr<ClipPlayer>>::iterator it = clip_players.begin();
     while (it != clip_players.end()) {
         if ((*it)->get_clip().get_path().compare(clip.get_path()) == 0) {
-            it++;
-        } else {
+            ClipPlayer* to_remove = (*it).get();
             it = clip_players.erase(it);
-            SPDLOG_DEBUG("TRAK{} clip player removed [clip={},addr=0x{:x}]", track_number, clip.get_path().c_str(), (long) (*it).get());
+            SPDLOG_DEBUG("TRAK{} clip player removed [clip={},addr=0x{:x}]", track_number, clip.get_path().c_str(), (long) to_remove);
+            return;
+        } else {
+            it++;
         }
     }
 }

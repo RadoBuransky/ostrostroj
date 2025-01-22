@@ -35,6 +35,7 @@ void ProgramChange::set_gain(float gain, std::vector<std::reference_wrapper<Clip
 }
 
 void ProgramChange::select_next() {
+    SPDLOG_TRACE("PC    select_next[fading={}]", fading);
     if (fading) {
         return;
     }
@@ -53,6 +54,7 @@ void ProgramChange::select_next() {
 }
 
 void ProgramChange::select_prev() {
+    SPDLOG_TRACE("PC    select_prev[fading={}]", fading);
     if (fading) {
         return;
     }
@@ -71,6 +73,7 @@ void ProgramChange::select_prev() {
 }
 
 void ProgramChange::on_fader(float mix) {
+    SPDLOG_TRACE("PC    on_fader[mix={},fading={}]", mix, fading);
     if (!fading) {
         if (mix != 0.0f) {
             return;
@@ -89,9 +92,18 @@ void ProgramChange::on_fader(float mix) {
         return;
     }
     if (mix == 0.0f) {
-        // TODO: Cancel        
-    }
-    if (mix == 1.0f) {
+        engine.lock_worker_tracks();
+        for (ClipPlayer& clip_player : selected_clip_players) {
+            engine.remove_clip_player(clip_player.get_clip());
+        }
+        engine.unlock_worker_tracks();
+        selected_clip_players.clear();
+        set_gain(1.0f, active_clip_players);     
+        fading = false;
+        selected_song = engine.session.get_song();
+        selected_pattern = engine.session.get_pattern();
+        SPDLOG_DEBUG("PC    fading cancelled");
+    } else if (mix == 1.0f) {
         engine.lock_worker_tracks();
         engine.session.change_program(selected_pattern.get().get_bank_pattern());
         active_clip_players = selected_clip_players;
@@ -102,16 +114,15 @@ void ProgramChange::on_fader(float mix) {
         selected_clip_players.clear();
         set_gain(1.0f, active_clip_players);     
         fading = false;
-        update_display();
-        return;
+    } else {
+        set_gain(mix, selected_clip_players);
+        set_gain(1.0 - mix, active_clip_players);
     }
-    set_gain(mix, selected_clip_players);
-    set_gain(1.0 - mix, active_clip_players);
     update_display();
 }
 
 void ProgramChange::on_program_changed(bool running) {
-    SPDLOG_DEBUG("PC    on_program_changed[running={}]", running);
+    SPDLOG_TRACE("PC    on_program_changed[running={}]", running);
     if (running) {
         return;
     }

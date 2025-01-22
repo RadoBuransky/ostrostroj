@@ -49,11 +49,11 @@ ClipPlayer::ClipPlayer(Clip& _clip):
     paused(false),
     gain(1.0f) {
     update_pointers(block.get());
-    SPDLOG_TRACE("CLPPL constructed[addr=0x{:x}]", (long) this);
+    SPDLOG_TRACE("CLPPL constructed[clip={},addr=0x{:x}]", clip.get_path().c_str(), (long) this);
 }
 
 ClipPlayer::~ClipPlayer() {
-    SPDLOG_TRACE("CLPPL destructed[addr=0x{:x}]", (long) this);
+    SPDLOG_TRACE("CLPPL destructed[clip={},addr=0x{:x}]", clip.get_path().c_str(), (long) this);
 }
 
 void ClipPlayer::drain() {

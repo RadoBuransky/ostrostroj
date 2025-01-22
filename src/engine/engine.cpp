@@ -1,5 +1,5 @@
 #include "common.hpp"
-#define SPDLOG_ACTIVE_LEVEL 1
+#define SPDLOG_ACTIVE_LEVEL 2
 #include <spdlog/spdlog.h>
 #include "engine.hpp"
 
@@ -7,12 +7,9 @@ static constexpr uint8_t SOURCE_MIDI_CHANNEL = 7;
 static constexpr size_t MAX_MEM_BYTES = 7L*1024L*1024L*1024L;
 
 bool Engine::handle_midi_event(snd_seq_event_t& midi_event, snd_pcm_state_t state, PcmEvent& result) {
-    uint8_t mul;
-    uint8_t clock_interval_ms;
-
     switch(midi_event.type) {
         case SND_SEQ_EVENT_START: 
-            SPDLOG_INFO("ENGIN MIDI START [state={},d0={},d1={},queue={}]", (int)state, midi_event.data.queue.param.d32[0], midi_event.data.queue.param.d32[1],
+            SPDLOG_DEBUG("ENGIN MIDI START [state={},d0={},d1={},queue={}]", (int)state, midi_event.data.queue.param.d32[0], midi_event.data.queue.param.d32[1],
                 midi_event.data.queue.queue);
             if (state == SND_PCM_STATE_PREPARED) {
                 session.start();
@@ -22,13 +19,13 @@ bool Engine::handle_midi_event(snd_seq_event_t& midi_event, snd_pcm_state_t stat
             }
             return false;
         case SND_SEQ_EVENT_STOP: 
-            SPDLOG_INFO("ENGIN MIDI STOP [d0={},d1={},queue={}]", midi_event.data.queue.param.d32[0], midi_event.data.queue.param.d32[1],
+            SPDLOG_DEBUG("ENGIN MIDI STOP [d0={},d1={},queue={}]", midi_event.data.queue.param.d32[0], midi_event.data.queue.param.d32[1],
                 midi_event.data.queue.queue);
             result = ALSA_PCM_PAUSE;
             session.pause();
             return true;
         case SND_SEQ_EVENT_CONTINUE: 
-            SPDLOG_INFO("ENGIN MIDI CONTINUE [d0={},d1={},queue={}]", midi_event.data.queue.param.d32[0], midi_event.data.queue.param.d32[1],
+            SPDLOG_DEBUG("ENGIN MIDI CONTINUE [d0={},d1={},queue={}]", midi_event.data.queue.param.d32[0], midi_event.data.queue.param.d32[1],
                 midi_event.data.queue.queue);
             if (state == SND_PCM_STATE_PAUSED) {
                 result = ALSA_PCM_RESUME;
@@ -37,8 +34,7 @@ bool Engine::handle_midi_event(snd_seq_event_t& midi_event, snd_pcm_state_t stat
             }
             return false;
         case SND_SEQ_EVENT_PGMCHANGE:
-            SPDLOG_INFO("ENGIN MIDI PROGRAM CHANGE [param={},value={},mul={},clock_interval_ms={}]", midi_event.data.control.param,
-                midi_event.data.control.value, mul, clock_interval_ms);
+            SPDLOG_DEBUG("ENGIN MIDI PROGRAM CHANGE [param={},value={}]", midi_event.data.control.param, midi_event.data.control.value);
             if (change_program(state == SND_PCM_STATE_RUNNING, BankPattern(midi_event.data.control.value + 1))) {
                 result = ALSA_PCM_PROGRAM_CHANGE;
                 return true;
