@@ -1,5 +1,5 @@
 #include "common.hpp"
-#define SPDLOG_ACTIVE_LEVEL 2
+#define SPDLOG_ACTIVE_LEVEL 1
 #include <spdlog/spdlog.h>
 #include "engine.hpp"
 
@@ -12,11 +12,12 @@ bool Engine::handle_midi_event(snd_seq_event_t& midi_event, snd_pcm_state_t stat
 
     switch(midi_event.type) {
         case SND_SEQ_EVENT_START: 
-            SPDLOG_INFO("ENGIN MIDI START [d0={},d1={},queue={}]", midi_event.data.queue.param.d32[0], midi_event.data.queue.param.d32[1],
+            SPDLOG_INFO("ENGIN MIDI START [state={},d0={},d1={},queue={}]", (int)state, midi_event.data.queue.param.d32[0], midi_event.data.queue.param.d32[1],
                 midi_event.data.queue.queue);
             if (state == SND_PCM_STATE_PREPARED) {
                 session.start();
                 result = ALSA_PCM_START;
+                SPDLOG_DEBUG("ENGIN SND_PCM_STATE_PREPARED");
                 return true;
             }
             return false;
@@ -137,7 +138,7 @@ snd_pcm_uframes_t Engine::compute_latency(uint8_t mul, uint8_t clock_interval) {
 }
 
 bool Engine::change_program(bool running, BankPattern bank_pattern) {
-    if (running && session.change_program(bank_pattern)) {
+    if (!running && session.change_program(bank_pattern)) {
         program_change->on_program_changed(running);
         SPDLOG_INFO("ENGIN program set={}", session.get_pattern().get_bank_pattern().get_pattern());    
         return true;
@@ -288,12 +289,12 @@ Engine::Engine(Project& _project, Display& _display, std::atomic_flag& _running_
     midi_flag(ATOMIC_FLAG_INIT),
     stop(false),
     loop_tracks {
-        std::make_unique<Track>(1, 1, alsa_pcm.get_period_size(), alsa_pcm.get_periods(), true),
-        std::make_unique<Track>(2, 1, alsa_pcm.get_period_size(), alsa_pcm.get_periods(), true),
-        std::make_unique<Track>(3, 1, alsa_pcm.get_period_size(), alsa_pcm.get_periods(), true),
-        std::make_unique<Track>(4, 1, alsa_pcm.get_period_size(), alsa_pcm.get_periods(), true),
-        std::make_unique<Track>(5, 1, alsa_pcm.get_period_size(), alsa_pcm.get_periods(), true),
-        std::make_unique<Track>(6, 2, alsa_pcm.get_period_size(), alsa_pcm.get_periods(), true),
+        std::make_unique<Track>(1, 1, alsa_pcm.get_period_size(), alsa_pcm.get_periods()),
+        std::make_unique<Track>(2, 1, alsa_pcm.get_period_size(), alsa_pcm.get_periods()),
+        std::make_unique<Track>(3, 1, alsa_pcm.get_period_size(), alsa_pcm.get_periods()),
+        std::make_unique<Track>(4, 1, alsa_pcm.get_period_size(), alsa_pcm.get_periods()),
+        std::make_unique<Track>(5, 1, alsa_pcm.get_period_size(), alsa_pcm.get_periods()),
+        std::make_unique<Track>(6, 2, alsa_pcm.get_period_size(), alsa_pcm.get_periods()),
     },
     track_fifos(init_track_fifos()),
     worker_sleep_time(std::chrono::microseconds(alsa_pcm.get_period_time()).count() / 2),

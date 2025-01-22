@@ -75,6 +75,7 @@ void ProgramChange::on_fader(float mix) {
         if (mix != 0.0f) {
             return;
         }
+        SPDLOG_DEBUG("PC    fading starting...");
         if ((selected_song.get().get_number() == engine.session.get_song().get_number()) &&
             (selected_pattern.get().get_number() == engine.session.get_pattern().get_number())) {
             return;
@@ -89,26 +90,34 @@ void ProgramChange::on_fader(float mix) {
         SPDLOG_DEBUG("PC    fading started");
         return;
     }
+    if (mix == 0.0f) {
+        // TODO: Cancel        
+    }
     if (mix == 1.0f) {
+        SPDLOG_DEBUG("PC    fading ending...");
+        engine.lock_worker_tracks();
         engine.session.change_program(selected_pattern.get().get_bank_pattern());
         active_clip_players = selected_clip_players;
-        engine.lock_worker_tracks();
         for (ClipPlayer& clip_player : selected_clip_players) {
             engine.remove_clip_player(clip_player.get_clip());
         }
         engine.unlock_worker_tracks();
+        SPDLOG_DEBUG("PC    players removed...");
         selected_clip_players.clear();
-        set_gain(1.0f, active_clip_players);        
+        set_gain(1.0f, active_clip_players);     
         fading = false;
+        update_display();
         SPDLOG_DEBUG("PC    fading done");
         return;
     }
     set_gain(mix, selected_clip_players);
     set_gain(1.0 - mix, active_clip_players);
+    update_display();
     SPDLOG_DEBUG("PC    fading[mix={}]", mix);
 }
 
 void ProgramChange::on_program_changed(bool running) {
+    SPDLOG_DEBUG("PC    on_program_changed[running={}]", running);
     if (running) {
         return;
     }

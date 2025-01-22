@@ -5,7 +5,6 @@
 class ClipPlayer {
     private:
         Clip& clip;
-        const bool loop;
         const int32_t fade_samples;
         int32_t fade;
         std::reference_wrapper<ClipBlock> block;
@@ -19,7 +18,7 @@ class ClipPlayer {
         void fade_out();
         void fade_in();
     public:
-        ClipPlayer(Clip& _clip, bool _loop);
+        ClipPlayer(Clip& _clip);
         virtual ~ClipPlayer();
         inline bool pop(float& sample) {
             if (paused) {
@@ -58,9 +57,6 @@ class ClipPlayer {
             if (block.get().has_next()) {
                 block = std::ref(block.get().get_next());
             } else {
-                if (!loop) {
-                    return false;
-                }
                 block = std::ref(clip.get_head());
                 position = 0;
             }

@@ -35,7 +35,7 @@
 
 - `gdb -ex=run -ex=bt -ex=exit --args /usr/local/bin/ostrostroj /srv/ostrostroj`
 - Remote debugging:
-    - `gdbserver :1234 /usr/local/bin/ostrostroj`
+    - `gdbserver :1234 /usr/local/bin/ostrostroj /srv/ostrostroj`
     - Attach VSCode to `ostrostroj:1234`
 
 

@@ -1,6 +1,6 @@
 #include "common.hpp"
 
-#define SPDLOG_ACTIVE_LEVEL 2
+#define SPDLOG_ACTIVE_LEVEL 1
 #include <spdlog/spdlog.h>
 
 #include "engineworker.hpp"
@@ -60,12 +60,12 @@ EngineWorker::~EngineWorker() {
 
 void EngineWorker::lock_tracks() {
     tracks_lock.lock();
-    SPDLOG_TRACE("EW{}   lock_tracks", worker_index);
+    SPDLOG_DEBUG("EW{}   lock_tracks", worker_index);
 }
 
 void EngineWorker::unlock_tracks() {
     tracks_lock.unlock();
-    SPDLOG_TRACE("EW{}   unlock_tracks", worker_index);
+    SPDLOG_DEBUG("EW{}   unlock_tracks", worker_index);
 }
 
 std::vector<std::reference_wrapper<Track>>& EngineWorker::get_tracks() {

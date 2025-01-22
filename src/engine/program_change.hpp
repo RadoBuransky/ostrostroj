@@ -25,8 +25,4 @@ class ProgramChange {
         void on_fader(float mix);
         void on_program_changed(bool running);
         void on_quarter_note_clock();
-
-        // TODO: transition starts when fading encoder is set to 0 (not pad) - clips are added to tracks
-        // TODO: transition finishes when fading encoder is set to 100% - clips are removed
-        // TODO: how to cancel transition?
 };

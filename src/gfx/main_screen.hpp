@@ -46,6 +46,6 @@ class MainScreen : public Screen {
         void set_selected_pattern_index(uint _pattern_index);
         void set_pattern_fade(float _mix);
         void set_pattern_position(float _pattern_position);
-        void blink_clock();
+        void set_clock(bool _on);
         void set_playing(bool _playing);
 };

@@ -18,7 +18,6 @@ class Track {
         const int channels;
         snd_pcm_uframes_t period_size;
         uint8_t periods;
-        const bool loop;
         std::unique_ptr<InterleavedFifo> fifo;
         std::vector<std::unique_ptr<ClipPlayer>> clip_players; 
         PcmSample_s24_3le sample;
@@ -27,7 +26,7 @@ class Track {
         Saturation saturation;
         bool pop(float& _sample);
     public:
-        Track(int _track_number, int _channels, snd_pcm_uframes_t _period_size, uint8_t _periods, bool _loop);
+        Track(int _track_number, int _channels, snd_pcm_uframes_t _period_size, uint8_t _periods);
         virtual ~Track();        
         void run();
         InterleavedFifo& get_fifo() const;

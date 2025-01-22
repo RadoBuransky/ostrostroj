@@ -27,12 +27,11 @@ bool Track::pop(float& _sample) {
     return true;
 }
 
-Track::Track(int _track_number, int _channels, snd_pcm_uframes_t _period_size, uint8_t _periods, bool _loop):
+Track::Track(int _track_number, int _channels, snd_pcm_uframes_t _period_size, uint8_t _periods):
     track_number(_track_number),
     channels(_channels),
     period_size(_period_size),
     periods(_periods),
-    loop(_loop),
     fifo(std::make_unique<InterleavedFifo>(_period_size * _channels * 2)),
     clip_players(),
     sample(0),
@@ -82,14 +81,10 @@ int Track::get_channels() const {
  * Not thread safe!
 */
 ClipPlayer& Track::add_clip(Clip& clip) {
-    if (loop) {
-        clear(false);
-    }
-    // Magic number measured experimentally. Needs to be updated whenever we change period, period size, ...
-    std::unique_ptr<ClipPlayer>& clip_player = clip_players.emplace_back(std::make_unique<ClipPlayer>(clip, loop));
+    std::unique_ptr<ClipPlayer>& clip_player = clip_players.emplace_back(std::make_unique<ClipPlayer>(clip));
     bool warp_enabled = clip.is_warp_enabled();
     warp.set_bypass(!warp_enabled);
-    SPDLOG_DEBUG("TRAK{} clip added [warp_enabled={}]", track_number, warp_enabled);
+    SPDLOG_DEBUG("TRAK{} clip added [warp_enabled={},addr={}]", track_number, warp_enabled, (long) clip_player.get());
     return *clip_player;
 }
 
@@ -103,9 +98,19 @@ void Track::remove_clip_player(Clip& clip) {
             it++;
         } else {
             it = clip_players.erase(it);
+            SPDLOG_DEBUG("TRAK{} clip player removed [clip={},addr={}]", track_number, clip.get_path().c_str(), (long) (*it).get());
         }
     }
 }
+
+// void Track::set_paused(std::filesystem::path& clip_path, bool paused) {
+//     for (auto& clip_player : clip_players) {
+//         if (clip_player.get()->get_clip().get_path().compare(clip_path) == 0) {
+//             clip_player.get()->set_paused(paused);
+//             return;
+//         }
+//     }
+// }
 
 /**
  * Not thread safe!
@@ -124,15 +129,6 @@ void Track::clear(bool drop) {
     }
 }
 
-void Track::set_saturation(float _saturation) {
-    saturation.set_drive(_saturation);
-    saturation.set_dry_wet(std::min(1.0f, _saturation * 1.5f)); // Reaches 100% wet before 100% saturation
-}
-
-float Track::get_saturation() {
-    return saturation.get_dry_wet();
-}
-
 float Track::get_position(std::filesystem::path& clip_path) {
     if (clip_players.size() == 1) {
         return clip_players.at(0)->get_position();
@@ -143,4 +139,13 @@ float Track::get_position(std::filesystem::path& clip_path) {
         }
     }
     return 0.0;
+}
+
+void Track::set_saturation(float _saturation) {
+    saturation.set_drive(_saturation);
+    saturation.set_dry_wet(std::min(1.0f, _saturation * 1.5f)); // Reaches 100% wet before 100% saturation
+}
+
+float Track::get_saturation() {
+    return saturation.get_dry_wet();
 }

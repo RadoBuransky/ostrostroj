@@ -118,8 +118,8 @@ void MainScreen::set_pattern_position(float _pattern_position) {
     changed = true;
 }
 
-void MainScreen::blink_clock() {
-    clock_on = !clock_on;
+void MainScreen::set_clock(bool _on) {
+    clock_on = _on;
     changed = true;
 }
 

@@ -1,5 +1,5 @@
 #include "common.hpp"
-#define SPDLOG_ACTIVE_LEVEL 2
+#define SPDLOG_ACTIVE_LEVEL 1
 #include <spdlog/spdlog.h>
 #include "clipplayer.hpp"
 
@@ -37,22 +37,23 @@ void ClipPlayer::fade_in() {
     }
 }
 
-ClipPlayer::ClipPlayer(Clip& _clip, bool _loop):
+ClipPlayer::ClipPlayer(Clip& _clip):
     clip(_clip),
-    loop(_loop),
-    fade_samples(_loop ? (FADE_FRAMES * _clip.get_head().get_channels()) : 0),
-    fade(_loop ? fade_samples : 0),
+    fade_samples(FADE_FRAMES * _clip.get_head().get_channels()),
+    fade(fade_samples),
     block(_clip.get_head()),
     current_sample(nullptr),
     end_sample(nullptr),
     position(0),
     draining(false),
-    paused(true),
+    paused(false),
     gain(1.0f) {
     update_pointers(block.get());
+    SPDLOG_DEBUG("CLPPL constructed[addr={}]", (long) this);
 }
 
-ClipPlayer::~ClipPlayer() {    
+ClipPlayer::~ClipPlayer() {
+    SPDLOG_DEBUG("CLPPL destructed[addr={}]", (long) this);
 }
 
 void ClipPlayer::drain() {
@@ -70,6 +71,7 @@ float ClipPlayer::get_position() {
 
 void ClipPlayer::set_paused(bool _paused) {    
     paused = _paused;
+    SPDLOG_INFO("CLPPL paused[value={}]", paused);
 }
 
 bool ClipPlayer::is_paused() {

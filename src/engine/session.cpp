@@ -116,11 +116,10 @@ void Session::pause() {
 
 void Session::on_clock(uint8_t quarter_note_fraction, float pattern_position) {
     MainScreen& main_screen = display.get_main_screen();
-    if (quarter_note_fraction == 0) {
-        main_screen.blink_clock();
-    }
+    main_screen.set_playing(playing);
+    main_screen.set_clock(quarter_note_fraction == 0);
     main_screen.set_pattern_position(pattern_position);
-    display.tick(false);
+    display.tick(true);
 }
 
 size_t Session::get_mem_size_bytes() const {
