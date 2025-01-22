@@ -1,5 +1,5 @@
 #include "common.hpp"
-#define SPDLOG_ACTIVE_LEVEL 1
+#define SPDLOG_ACTIVE_LEVEL 2
 #include <spdlog/spdlog.h>
 #include "clipplayer.hpp"
 
@@ -49,11 +49,11 @@ ClipPlayer::ClipPlayer(Clip& _clip):
     paused(false),
     gain(1.0f) {
     update_pointers(block.get());
-    SPDLOG_DEBUG("CLPPL constructed[addr={}]", (long) this);
+    SPDLOG_TRACE("CLPPL constructed[addr=0x{:x}]", (long) this);
 }
 
 ClipPlayer::~ClipPlayer() {
-    SPDLOG_DEBUG("CLPPL destructed[addr={}]", (long) this);
+    SPDLOG_TRACE("CLPPL destructed[addr=0x{:x}]", (long) this);
 }
 
 void ClipPlayer::drain() {
@@ -71,7 +71,6 @@ float ClipPlayer::get_position() {
 
 void ClipPlayer::set_paused(bool _paused) {    
     paused = _paused;
-    SPDLOG_INFO("CLPPL paused[value={}]", paused);
 }
 
 bool ClipPlayer::is_paused() {

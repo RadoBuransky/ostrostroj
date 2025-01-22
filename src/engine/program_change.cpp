@@ -1,5 +1,5 @@
 #include "common.hpp"
-#define SPDLOG_ACTIVE_LEVEL 1
+#define SPDLOG_ACTIVE_LEVEL 2
 #include <spdlog/spdlog.h>
 #include "program_change.hpp"
 #include "session.hpp"
@@ -75,7 +75,6 @@ void ProgramChange::on_fader(float mix) {
         if (mix != 0.0f) {
             return;
         }
-        SPDLOG_DEBUG("PC    fading starting...");
         if ((selected_song.get().get_number() == engine.session.get_song().get_number()) &&
             (selected_pattern.get().get_number() == engine.session.get_pattern().get_number())) {
             return;
@@ -87,14 +86,12 @@ void ProgramChange::on_fader(float mix) {
         set_gain(0.0, selected_clip_players);
         fading = true;
         resume_selected_clip_players = true;
-        SPDLOG_DEBUG("PC    fading started");
         return;
     }
     if (mix == 0.0f) {
         // TODO: Cancel        
     }
     if (mix == 1.0f) {
-        SPDLOG_DEBUG("PC    fading ending...");
         engine.lock_worker_tracks();
         engine.session.change_program(selected_pattern.get().get_bank_pattern());
         active_clip_players = selected_clip_players;
@@ -102,18 +99,15 @@ void ProgramChange::on_fader(float mix) {
             engine.remove_clip_player(clip_player.get_clip());
         }
         engine.unlock_worker_tracks();
-        SPDLOG_DEBUG("PC    players removed...");
         selected_clip_players.clear();
         set_gain(1.0f, active_clip_players);     
         fading = false;
         update_display();
-        SPDLOG_DEBUG("PC    fading done");
         return;
     }
     set_gain(mix, selected_clip_players);
     set_gain(1.0 - mix, active_clip_players);
     update_display();
-    SPDLOG_DEBUG("PC    fading[mix={}]", mix);
 }
 
 void ProgramChange::on_program_changed(bool running) {

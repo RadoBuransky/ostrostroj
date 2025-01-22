@@ -39,10 +39,12 @@ bool MainScreen::draw() {
     if (song_count > 0 && pattern_count > 0) {
         // Active song/pattern
         canvas.progress(3, song_count, active_song_index, palette_white);
-        canvas.progress(4, pattern_count, active_pattern_index, palette_white);
+        canvas.progress(4, pattern_count, -1, palette_white);
 
         // Selected song/pattern
-        if (selected_song_index != active_song_index) {
+        if (selected_song_index == active_song_index) {
+            canvas.point(canvas.get_progress_point_col(pattern_count, active_pattern_index), 4, palette_white);
+        } else {
             canvas.point(canvas.get_progress_point_col(song_count, selected_song_index), 3, palette_red);
         }
         if (selected_pattern_index != active_pattern_index || selected_song_index != active_song_index) {

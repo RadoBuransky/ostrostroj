@@ -1,6 +1,6 @@
 #include "common.hpp"
 
-#define SPDLOG_ACTIVE_LEVEL 1
+#define SPDLOG_ACTIVE_LEVEL 2
 #include <spdlog/spdlog.h>
 
 #include "track.hpp"
@@ -84,7 +84,7 @@ ClipPlayer& Track::add_clip(Clip& clip) {
     std::unique_ptr<ClipPlayer>& clip_player = clip_players.emplace_back(std::make_unique<ClipPlayer>(clip));
     bool warp_enabled = clip.is_warp_enabled();
     warp.set_bypass(!warp_enabled);
-    SPDLOG_DEBUG("TRAK{} clip added [warp_enabled={},addr={}]", track_number, warp_enabled, (long) clip_player.get());
+    SPDLOG_DEBUG("TRAK{} clip added [warp_enabled={},addr=0x{:x}]", track_number, warp_enabled, (long) clip_player.get());
     return *clip_player;
 }
 
@@ -98,19 +98,10 @@ void Track::remove_clip_player(Clip& clip) {
             it++;
         } else {
             it = clip_players.erase(it);
-            SPDLOG_DEBUG("TRAK{} clip player removed [clip={},addr={}]", track_number, clip.get_path().c_str(), (long) (*it).get());
+            SPDLOG_DEBUG("TRAK{} clip player removed [clip={},addr=0x{:x}]", track_number, clip.get_path().c_str(), (long) (*it).get());
         }
     }
 }
-
-// void Track::set_paused(std::filesystem::path& clip_path, bool paused) {
-//     for (auto& clip_player : clip_players) {
-//         if (clip_player.get()->get_clip().get_path().compare(clip_path) == 0) {
-//             clip_player.get()->set_paused(paused);
-//             return;
-//         }
-//     }
-// }
 
 /**
  * Not thread safe!
