@@ -104,13 +104,14 @@ Clip& Session::get_clip(std::filesystem::path clip_path) {
     return *clips.at(clip_path).get();
 }
 
-void Session::start() {    
-    started_timestamp = std::chrono::steady_clock::now();
+void Session::start() {
+    if (started_timestamp == std::chrono::steady_clock::time_point::min()) {
+        started_timestamp = std::chrono::steady_clock::now();
+    }
     playing = true;
 }
 
 void Session::pause() {
-    started_timestamp = std::chrono::steady_clock::time_point::min();
     playing = false;
 }
 
@@ -119,6 +120,9 @@ void Session::on_clock(uint8_t quarter_note_fraction, float pattern_position) {
     main_screen.set_playing(playing);
     main_screen.set_clock(quarter_note_fraction == 0);
     main_screen.set_pattern_position(pattern_position);
+    if (started_timestamp != std::chrono::steady_clock::time_point::min()) {
+        main_screen.set_playback_duration(std::chrono::steady_clock::now() - started_timestamp);
+    }
     display.tick(true);
 }
 

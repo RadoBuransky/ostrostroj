@@ -6,6 +6,26 @@
 constexpr RGB palette_playing = palette_red;
 constexpr RGB palette_muted = palette_blue;
 
+void MainScreen::draw_clock() {
+    uint8_t hours = std::chrono::duration_cast<std::chrono::hours>(playback_duration).count();
+    uint8_t minutes = std::chrono::duration_cast<std::chrono::minutes>(playback_duration).count() % 60;
+    RGB quarter_color = hours == 0 ? palette_white : palette_red;
+    if (minutes > 15) {
+        canvas.point(1, 0, quarter_color);
+    }
+    if (minutes > 30) {
+        canvas.point(1, 1, quarter_color);
+    }
+    if (minutes > 45) {
+        canvas.point(0, 1, quarter_color);
+    }
+    if (hours > 0) {
+        canvas.point(0, 0, quarter_color);
+    }
+    float quarter_fraction = (float)(minutes % 15) / 15.0;
+    canvas.line(2, std::round(quarter_fraction * (canvas.get_cols() - 2)), 0, palette_blue);
+}
+
 MainScreen::MainScreen(Canvas& _canvas):
     Screen(_canvas),
     changed(true),
@@ -19,7 +39,8 @@ MainScreen::MainScreen(Canvas& _canvas):
     pattern_fade_mix(-1.0),
     pattern_position(0.0),
     clock_on(false),
-    playing(false) {
+    playing(false),
+    playback_duration(std::chrono::steady_clock::duration::zero()) {
     loops.fill({true, 0.0, false});
 }
 
@@ -52,9 +73,14 @@ bool MainScreen::draw() {
         }
     }
 
+    // Pattern fading
     if (pattern_fade_mix >= 0.0) {
         canvas.point(std::round(pattern_fade_mix * canvas.get_cols()), 5, palette_magenta);
     }
+
+    // Clock
+    draw_clock();
+
     return true;
 }
 
@@ -127,5 +153,10 @@ void MainScreen::set_clock(bool _on) {
 
 void MainScreen::set_playing(bool _playing) {
     playing = _playing;
+    changed = true;
+}
+
+void MainScreen::set_playback_duration(std::chrono::steady_clock::duration _playback_duration) {
+    playback_duration = _playback_duration;
     changed = true;
 }

@@ -2,6 +2,7 @@
 
 #include "unicornhatmini.hpp"
 #include "screen.hpp"
+#include <chrono>
 
 struct LoopState {
     bool muted;
@@ -29,6 +30,8 @@ class MainScreen : public Screen {
         uint pattern_position;
         bool clock_on;
         bool playing;
+        std::chrono::steady_clock::duration playback_duration;
+        void draw_clock();
     public:
         MainScreen(Canvas& _canvas);
         virtual ~MainScreen() = default;
@@ -48,4 +51,5 @@ class MainScreen : public Screen {
         void set_pattern_position(float _pattern_position);
         void set_clock(bool _on);
         void set_playing(bool _playing);
+        void set_playback_duration(std::chrono::steady_clock::duration _playback_duration);
 };
