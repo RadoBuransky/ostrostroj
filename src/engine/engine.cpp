@@ -119,7 +119,7 @@ void Engine::update_saturation(ssize_t track_number) {
             MidiEncoder& encoder = loop_encoders.get_encoder(track_number);
             if (encoder.is_grabbed()) {
                 track->set_saturation(encoder.get_percentage());
-                display.get_main_screen().set_loop_state(track_number - 1, true, track->get_saturation());
+                display.get_main_screen().set_loop_state(track_number - 1, false, track->get_saturation());
                 display.get_main_screen().set_loop_grabbed(track_number - 1, true);
                 display.tick(true);
             }

@@ -7,23 +7,37 @@ constexpr RGB palette_playing = palette_red;
 constexpr RGB palette_muted = palette_blue;
 
 void MainScreen::draw_clock() {
-    uint8_t hours = std::chrono::duration_cast<std::chrono::hours>(playback_duration).count();
-    uint8_t minutes = std::chrono::duration_cast<std::chrono::minutes>(playback_duration).count() % 60;
+    if (playback_duration == std::chrono::steady_clock::duration::zero()) {
+        return;
+    }
+    int hours = std::chrono::duration_cast<std::chrono::hours>(playback_duration).count();
+    int minutes_in_hour = std::chrono::duration_cast<std::chrono::minutes>(playback_duration).count() % 60;
+    int seconds = std::chrono::duration_cast<std::chrono::seconds>(playback_duration).count();
     RGB quarter_color = hours == 0 ? palette_white : palette_red;
-    if (minutes > 15) {
+    if (seconds > 0) {
         canvas.point(1, 0, quarter_color);
     }
-    if (minutes > 30) {
+    if (minutes_in_hour >= 15) {
         canvas.point(1, 1, quarter_color);
     }
-    if (minutes > 45) {
+    if (minutes_in_hour >= 30) {
         canvas.point(0, 1, quarter_color);
     }
-    if (hours > 0) {
+    if (minutes_in_hour >= 45) {
         canvas.point(0, 0, quarter_color);
     }
-    float quarter_fraction = (float)(minutes % 15) / 15.0;
-    canvas.line(2, std::round(quarter_fraction * (canvas.get_cols() - 2)), 0, palette_blue);
+    float quarter_fraction = (float)(seconds % 900) / 900.0;
+    uint8_t quarter_cols = std::ceil(quarter_fraction * (canvas.get_cols() - 2));
+    canvas.line(2, 1 + quarter_cols, 0, palette_blue);
+    if (quarter_cols >= 5) {
+        canvas.point(6, 0, palette_red);
+    }
+    if (quarter_cols >= 10) {
+        canvas.point(11, 0, palette_red);
+    }
+    if (quarter_cols >= 15) {
+        canvas.point(16, 0, palette_red);
+    }
 }
 
 void MainScreen::draw_loop(uint8_t col, uint8_t row, LoopState loop_state) {
