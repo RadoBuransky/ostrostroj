@@ -26,6 +26,17 @@ void MainScreen::draw_clock() {
     canvas.line(2, std::round(quarter_fraction * (canvas.get_cols() - 2)), 0, palette_blue);
 }
 
+void MainScreen::draw_loop(uint8_t col, uint8_t row, LoopState loop_state) {
+    RGB color;
+    if (loop_state.muted) {
+        color = palette_muted;
+    } else {
+        float compensated_saturation = std::max(loop_state.saturation, (float)0.1);      
+        color = (loop_state.grabbed ? palette_white : palette_playing) * compensated_saturation;
+    }
+    canvas.point(col, row, color);
+}
+
 MainScreen::MainScreen(Canvas& _canvas):
     Screen(_canvas),
     changed(true),
@@ -80,6 +91,14 @@ bool MainScreen::draw() {
 
     // Clock
     draw_clock();
+
+    // Loops
+    draw_loop(canvas.get_cols() - 4, 1, loops.at(0));
+    draw_loop(canvas.get_cols() - 3, 1, loops.at(1));
+    draw_loop(canvas.get_cols() - 2, 1, loops.at(2));
+    draw_loop(canvas.get_cols() - 1, 1, loops.at(3));
+    draw_loop(canvas.get_cols() - 4, 2, loops.at(4));
+    draw_loop(canvas.get_cols() - 3, 2, loops.at(5));
 
     return true;
 }

@@ -32,6 +32,7 @@ class MainScreen : public Screen {
         bool playing;
         std::chrono::steady_clock::duration playback_duration;
         void draw_clock();
+        void draw_loop(uint8_t col, uint8_t row, LoopState loop_state);
     public:
         MainScreen(Canvas& _canvas);
         virtual ~MainScreen() = default;
