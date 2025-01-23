@@ -71,6 +71,7 @@ float ClipPlayer::get_position() {
 
 void ClipPlayer::set_paused(bool _paused) {    
     paused = _paused;
+    SPDLOG_DEBUG("CLPPL paused[{}]", paused);
 }
 
 bool ClipPlayer::is_paused() {
@@ -79,6 +80,7 @@ bool ClipPlayer::is_paused() {
 
 void ClipPlayer::set_gain(float _gain) {
     gain = std::max(std::min(_gain, 1.0f), 0.0f);
+    SPDLOG_DEBUG("CLPPL gain[{}]", gain);
 }
 
 float ClipPlayer::get_gain() {

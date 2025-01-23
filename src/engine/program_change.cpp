@@ -82,13 +82,18 @@ void ProgramChange::on_fader(float mix) {
             (selected_pattern.get().get_number() == engine.session.get_pattern().get_number())) {
             return;
         }
+        engine.lock_worker_tracks();
         selected_clip_players = engine.add_loop_clips(selected_pattern);
         if (selected_clip_players.empty()) {
             return;
         }
         set_gain(0.0, selected_clip_players);
+        for (ClipPlayer& clip_player : selected_clip_players) {
+            clip_player.set_paused(true);
+        }
         fading = true;
         resume_selected_clip_players = true;
+        engine.unlock_worker_tracks();
         return;
     }
     if (mix == 0.0f) {
@@ -105,15 +110,16 @@ void ProgramChange::on_fader(float mix) {
         SPDLOG_DEBUG("PC    fading cancelled");
     } else if (mix == 1.0f) {
         engine.lock_worker_tracks();
-        engine.session.change_program(selected_pattern.get().get_bank_pattern());
-        active_clip_players = selected_clip_players;
-        for (ClipPlayer& clip_player : selected_clip_players) {
+        for (ClipPlayer& clip_player : active_clip_players) {
             engine.remove_clip_player(clip_player.get_clip());
         }
         engine.unlock_worker_tracks();
+        active_clip_players = selected_clip_players;
         selected_clip_players.clear();
         set_gain(1.0f, active_clip_players);     
         fading = false;
+        engine.session.change_program(selected_pattern.get().get_bank_pattern());
+        SPDLOG_DEBUG("PC    fading done");
     } else {
         set_gain(mix, selected_clip_players);
         set_gain(1.0 - mix, active_clip_players);
