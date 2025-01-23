@@ -5,54 +5,22 @@
 class ClipPlayer {
     private:
         Clip& clip;
-        const int32_t fade_samples;
-        int32_t fade;
         std::reference_wrapper<ClipBlock> block;
         const short* current_sample;
         const short* end_sample;
         uint32_t position;
-        bool draining;
         bool paused;
         float gain;
+        int32_t skip_samples;
         void update_pointers(ClipBlock& _block);
         void fade_out();
         void fade_in();
-    public:
-        ClipPlayer(Clip& _clip);
-        virtual ~ClipPlayer();
-        inline bool pop(float& sample) {
-            if (paused) {
-                sample = 0.0;
-                return true;
-            }
-            if (fade > fade_samples) {
-                // Predelay
-                fade--;
-                sample = 0.0;
-                return true;
-            }
+        inline bool next_frame(float& sample) {
             if (current_sample < end_sample) {
                 sample = gain * ((float)*current_sample / (float)SHRT_MAX);
-                if (fade != 0) {
-                    if (fade > 0) {
-                        // Fade in
-                        sample *= (float)(fade_samples - fade) / (float)fade_samples;
-                        fade--;
-                    } else {
-                        if (fade > -fade_samples) {
-                            // Fade out
-                            sample *= -1.0 * (float)fade / (float)fade_samples;
-                        }
-                        fade++;
-                        if (fade == 0 && draining) {
-                            // Draining done
-                            return false;
-                        }
-                    }                    
-                }
                 current_sample++;
                 position++;
-                return true;        
+                return true;
             }
             if (block.get().has_next()) {
                 block = std::ref(block.get().get_next());
@@ -63,6 +31,22 @@ class ClipPlayer {
             update_pointers(block.get());
             return pop(sample);
         }
+    public:
+        ClipPlayer(Clip& _clip);
+        virtual ~ClipPlayer();
+        inline bool pop(float& sample) {
+            while (skip_samples > 0) {
+                if (!next_frame(sample)) {
+                    return false;
+                }
+                skip_samples--;
+            }
+            if (paused) {
+                sample = 0.0;
+                return true;
+            }
+            return next_frame(sample);
+        }
         void drain();
         Clip& get_clip();
         float get_position();
@@ -70,4 +54,5 @@ class ClipPlayer {
         bool is_paused();
         void set_gain(float _gain);
         float get_gain();
+        void skip(std::chrono::steady_clock::duration period);
 };

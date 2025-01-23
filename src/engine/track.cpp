@@ -117,9 +117,6 @@ void Track::clear(bool drop) {
         clip_players.clear();
         return;
     }
-    for (auto& clip_player: clip_players) {
-        clip_player->drain();
-    }
 }
 
 float Track::get_position(std::filesystem::path& clip_path) {

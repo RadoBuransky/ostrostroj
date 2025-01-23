@@ -5,6 +5,8 @@
 #include "session.hpp"
 #include "engine.hpp"
 
+static constexpr std::chrono::duration<long, std::milli> SKIP_TIME = std::chrono::milliseconds(35);
+
 ProgramChange::ProgramChange(Engine& _engine):
     engine(_engine),
     selected_song(engine.session.get_song()),
@@ -90,6 +92,7 @@ void ProgramChange::on_fader(float mix) {
         set_gain(0.0, selected_clip_players);
         for (ClipPlayer& clip_player : selected_clip_players) {
             clip_player.set_paused(true);
+            clip_player.skip(SKIP_TIME);
         }
         fading = true;
         resume_selected_clip_players = true;
