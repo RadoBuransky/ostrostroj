@@ -119,7 +119,7 @@ void Engine::update_saturation(ssize_t track_number) {
             MidiEncoder& encoder = loop_encoders.get_encoder(track_number);
             if (encoder.is_grabbed()) {
                 track->set_saturation(encoder.get_percentage());
-                display.get_main_screen().set_loop_state(track_number - 1, false, track->get_saturation());
+                display.get_main_screen().set_loop_saturation(track_number - 1, track->get_saturation());
                 display.get_main_screen().set_loop_grabbed(track_number - 1, true);
                 display.tick(true);
             }
@@ -149,11 +149,7 @@ std::vector<std::reference_wrapper<ClipPlayer>> Engine::add_loop_clips(Pattern& 
         if (track_index >= ENGINE_LOOP_TRACKS) {
             throw OstrostrojException(fmt::format("Invalid track index! [track_index={},loop={}]", track_index, pattern_loop.loop.filename().string()));
         }
-        auto& track = loop_tracks.at(track_index);
-        ClipPlayer& clip_player = track->add_clip(session.get_clip(pattern_loop.loop));
-        result.push_back(clip_player);
-        track->set_saturation(0.0);
-        loop_encoders.get_encoder(track->get_track_number()).set_percentage(0.0);
+        result.push_back(loop_tracks.at(track_index)->add_clip(session.get_clip(pattern_loop.loop)));
         SPDLOG_DEBUG("ENGIN clip added [track_index={},loop={}]", track_index, pattern_loop.loop.c_str());
     }
     return result;

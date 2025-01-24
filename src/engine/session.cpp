@@ -15,9 +15,9 @@ void Session::set_pattern(Song& song, Pattern& pattern) {
 
 void Session::update_display() {
     MainScreen& main_screen = display.get_main_screen();
-    main_screen.all_loops_off();
-    for (PatternLoop& loop : active_pattern.get().get_loops()) {        
-        main_screen.set_loop_state(loop.track_number - 1, false, 0.0);
+    main_screen.mute_all_loops();
+    for (PatternLoop& loop : active_pattern.get().get_loops()) {
+        main_screen.set_loop_muted(loop.track_number - 1, false);
     }
     main_screen.set_pattern_position(0);
     main_screen.set_playing(playing);

@@ -1,4 +1,4 @@
-#define SPDLOG_ACTIVE_LEVEL 2
+#define SPDLOG_ACTIVE_LEVEL 1
 
 #include <spdlog/spdlog.h>
 #include "common.hpp"
@@ -9,7 +9,7 @@ MidiEncoder::MidiEncoder(uint8_t _channel, uint _param, int _min_value, int _max
     param(_param),
     min_value(_min_value),
     max_value(_max_value),
-    value(INT_MIN),
+    value(0),
     prev_value(INT_MIN),
     grabbed(false) {
     if (min_value >= max_value) {

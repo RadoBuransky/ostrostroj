@@ -39,9 +39,10 @@ class MainScreen : public Screen {
 
         virtual bool draw();
 
-        void set_loop_state(size_t loop_index, bool muted, float saturation);
+        void set_loop_muted(size_t loop_index, bool muted);
+        void mute_all_loops();
+        void set_loop_saturation(size_t loop_index, float saturation);
         void set_loop_grabbed(size_t loop_index, bool grabbed);
-        void all_loops_off();
         void set_song_count(uint _song_count);
         void set_active_song_index(uint _song_index);
         void set_selected_song_index(uint _song_index);

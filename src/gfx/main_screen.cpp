@@ -3,9 +3,6 @@
 #include <spdlog/spdlog.h>
 #include "main_screen.hpp"
 
-constexpr RGB palette_playing = palette_red;
-constexpr RGB palette_muted = palette_blue;
-
 void MainScreen::draw_clock() {
     if (playback_duration == std::chrono::steady_clock::duration::zero()) {
         return;
@@ -43,10 +40,11 @@ void MainScreen::draw_clock() {
 void MainScreen::draw_loop(uint8_t col, uint8_t row, LoopState loop_state) {
     RGB color;
     if (loop_state.muted) {
-        color = palette_muted;
-    } else {
-        float compensated_saturation = std::max(loop_state.saturation, (float)0.1);      
-        color = (loop_state.grabbed ? palette_white : palette_playing) * compensated_saturation;
+        color = palette_blue;
+    } else if (loop_state.saturation == 0.0) {
+        color = palette_white;
+    } else {        
+        color = palette_red * std::max(0.05f, std::pow(loop_state.saturation * 0.5f, 2.0f));
     }
     canvas.point(col, row, color);
 }
@@ -75,12 +73,12 @@ bool MainScreen::draw() {
     }
     changed = false;
     canvas.clear();
-    
-    // MIDI clock
-    canvas.point(canvas.get_last_col(), canvas.get_last_row(), (clock_on) ? (playing ? palette_red : palette_white) : palette_off);
 
     // Pattern position
     canvas.line(0, pattern_position, canvas.get_last_row(), palette_white);
+    
+    // MIDI clock
+    canvas.point(canvas.get_last_col(), canvas.get_last_row(), (clock_on) ? (playing ? palette_red : palette_white) : palette_off);
 
     if (song_count > 0 && pattern_count > 0) {
         // Active song/pattern
@@ -117,22 +115,33 @@ bool MainScreen::draw() {
     return true;
 }
 
-void MainScreen::set_loop_state(size_t loop_index, bool muted, float saturation) {
-    if (loop_index < loops.size()) {
-        LoopState& loopState = loops.at(loop_index);
-        loopState.muted = muted;
-        loopState.saturation = saturation;
-        changed = true;
+void MainScreen::set_loop_muted(size_t loop_index, bool muted) {
+    if (loop_index >= loops.size()) {
+        return;
     }
+    LoopState& loopState = loops.at(loop_index);
+    loopState.muted = muted;
+    changed = true;
+}
+
+void MainScreen::mute_all_loops() {
+    for (LoopState& loop : loops) {
+        loop.muted = true;
+    }
+}
+
+void MainScreen::set_loop_saturation(size_t loop_index, float saturation) {
+    if (loop_index >= loops.size()) {
+        return;
+    }
+    LoopState& loopState = loops.at(loop_index);
+    loopState.saturation = saturation;
+    changed = true;
 }
 
 void MainScreen::set_loop_grabbed(size_t loop_index, bool grabbed) {
     loops.at(loop_index).grabbed = grabbed;
     changed = true;
-}
-
-void MainScreen::all_loops_off() {
-    loops.fill({true, 0.0, false});
 }
 
 void MainScreen::set_song_count(uint _song_count) {
