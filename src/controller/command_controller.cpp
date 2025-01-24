@@ -1,5 +1,5 @@
 #include "common.hpp"
-#define SPDLOG_ACTIVE_LEVEL 2
+#define SPDLOG_ACTIVE_LEVEL 1
 #include <spdlog/spdlog.h>
 #include "command_controller.hpp"
 #include "midi_note.hpp"
@@ -19,18 +19,21 @@ CommandController::CommandController(uint8_t channel):
 }
 
 Command CommandController::note(uint8_t channel, uint8_t note, bool on, unsigned int clock, bool running) {
-    if (!on) {
-        return NOOP;
-    }
-    if (note == PC_NEXT_NOTE.get_value()) {
+    SPDLOG_DEBUG("CMD   note[channel={},note={},on={}]", channel, note, on);
+    if (on && note == PC_NEXT_NOTE.get_value()) {        
+        SPDLOG_DEBUG("CMD   PC_NEXT");
         return Command::PC_NEXT;
-    } else if (note == PC_PREV_NOTE.get_value()) {
+    }
+    if (on && note == PC_PREV_NOTE.get_value()) {
+        SPDLOG_DEBUG("CMD   PC_PREV");
         return Command::PC_PREV;
     }
     for (CommandSeq& command : commands) {
         if (command.note(channel, note, on, clock, running)) {
+            SPDLOG_DEBUG("CMD   command[command={}]", command.get_context());
             return (Command)command.get_context();
         }
     }
+    SPDLOG_DEBUG("CMD   NOOP");
     return NOOP;
 }

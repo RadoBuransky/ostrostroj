@@ -78,7 +78,9 @@ bool MainScreen::draw() {
     canvas.line(0, pattern_position, canvas.get_last_row(), palette_white);
     
     // MIDI clock
-    canvas.point(canvas.get_last_col(), canvas.get_last_row(), (clock_on) ? (playing ? palette_red : palette_white) : palette_off);
+    if (clock_on) {
+        canvas.point(canvas.get_last_col(), canvas.get_last_row(), playing ? palette_red : palette_white);
+    }
 
     if (song_count > 0 && pattern_count > 0) {
         // Active song/pattern
