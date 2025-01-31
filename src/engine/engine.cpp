@@ -3,7 +3,7 @@
 #include <spdlog/spdlog.h>
 #include "engine.hpp"
 
-static constexpr uint8_t SOURCE_MIDI_CHANNEL = 7;
+static constexpr uint8_t SOURCE_MIDI_CHANNEL = 15;
 static constexpr size_t MAX_MEM_BYTES = 7L*1024L*1024L*1024L;
 
 bool Engine::handle_midi_event(snd_seq_event_t& midi_event, snd_pcm_state_t state, PcmEvent& result) {
