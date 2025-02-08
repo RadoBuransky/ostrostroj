@@ -98,6 +98,9 @@ void AlsaMidi::parse(unsigned char* raw, size_t read_size) {
             return;
         }
         if (consumed_size > 0 && event.type != SND_SEQ_EVENT_NONE) {
+            for (snd_seq_event_t& producedEvent : processor.process(event)) {
+                write(producedEvent);
+            }
             if (process(event)) {
                 write(raw, consumed_size);
             }
@@ -280,7 +283,8 @@ AlsaMidi::AlsaMidi():
     last_clock(std::chrono::steady_clock::now()),
     clock_interval(std::chrono::steady_clock::duration::min()),
     thru_thread(0),
-    callback(0) {
+    callback(0),
+    processor() {
 }
 
 AlsaMidi::~AlsaMidi() {
@@ -343,4 +347,8 @@ void AlsaMidi::shutdown() {
         pthread_join(thru_thread, &status);
         thru_thread = 0;
     }
+}
+
+VolModProcessor& AlsaMidi::get_volmod_processor() {
+    return processor.get_volmod_processor();
 }

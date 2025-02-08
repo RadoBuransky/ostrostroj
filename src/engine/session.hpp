@@ -3,11 +3,13 @@
 #include "project.hpp"
 #include "display.hpp"
 #include "clipplayer.hpp"
+#include "volmod_processor.hpp"
 
 class Session {
     private:
         Project& project;
         Display& display;
+        VolModProcessor& volModProcessor;
         std::map<std::filesystem::path, std::unique_ptr<Clip>> clips;
         std::reference_wrapper<Song> active_song;
         std::reference_wrapper<Pattern> active_pattern;
@@ -20,7 +22,7 @@ class Session {
         size_t load_clip(std::filesystem::path path, int expected_channels);
         size_t load_all_clips(int loop_track_count);
     public:
-        Session(Project& _project, Display& _display, int loop_track_count);
+        Session(Project& _project, Display& _display, VolModProcessor& _volModProcessor, int loop_track_count);
         virtual ~Session() = default;
         bool change_program(BankPattern target_pattern);
         Project& get_project();

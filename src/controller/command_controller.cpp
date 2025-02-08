@@ -4,11 +4,14 @@
 #include "command_controller.hpp"
 #include "midi_note.hpp"
 
-static const std::vector<MidiNote> RESTART_DEVICE_SEQ = {{MidiNote(F, 4), MidiNote(D, 5), MidiNote(G, 4)}};
-static const std::vector<MidiNote> SHUTDOWN_DEVICE_SEQ = {{MidiNote(C_, 5), MidiNote(F_, 4), MidiNote(D_, 5)}};
-static const std::vector<MidiNote> RESTART_SERVICE_SEQ = {{MidiNote(F, 4), MidiNote(F_, 4), MidiNote(G, 4)}};
-static const MidiNote PC_PREV_NOTE = MidiNote(C, 4);
-static const MidiNote PC_NEXT_NOTE = MidiNote(C_, 4);
+static const std::array<MidiNote, 4> ROW2 = {MidiNote(E, 10), MidiNote(F, 10), MidiNote(F_, 10), MidiNote( G, 10)};
+static const std::array<MidiNote, 4> ROW1 = {MidiNote( C, 10), MidiNote( C_, 10), MidiNote(D, 10), MidiNote(D_, 10)};
+
+static const std::vector<MidiNote> SHUTDOWN_DEVICE_SEQ = {{ROW2.at(1), ROW1.at(2), ROW2.at(3)}};
+static const std::vector<MidiNote> RESTART_DEVICE_SEQ  = {{ROW1.at(1), ROW2.at(2), ROW1.at(3)}};
+static const std::vector<MidiNote> RESTART_SERVICE_SEQ = {{ROW1.at(1), ROW1.at(2), ROW1.at(3)}};
+static const MidiNote PC_NEXT_NOTE = ROW2.at(0);
+static const MidiNote PC_PREV_NOTE = ROW1.at(0);
 
 CommandController::CommandController(uint8_t channel):
     commands({

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "alsamidi_processor.hpp"
+
 typedef farbot::fifo<snd_seq_event_t,
             farbot::fifo_options::concurrency::single,
             farbot::fifo_options::concurrency::single,
@@ -20,6 +22,7 @@ class AlsaMidi {
         std::chrono::steady_clock::duration clock_interval;
         pthread_t thru_thread;
         std::function<void(void)> callback;
+        AlsaMidiProcessor processor;
         bool process(snd_seq_event_t& event);
         void write(unsigned char* raw, size_t size);
         void parse(unsigned char* raw, size_t read_size);
@@ -38,4 +41,5 @@ class AlsaMidi {
         void start(std::function<void(void)> _callback);
         void write(snd_seq_event_t event);
         void shutdown();
+        VolModProcessor& get_volmod_processor();
 };

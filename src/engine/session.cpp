@@ -54,9 +54,10 @@ size_t Session::load_all_clips(int loop_track_count) {
     return result;
 }
 
-Session::Session(Project& _project, Display& _display, int loop_track_count):
+Session::Session(Project& _project, Display& _display, VolModProcessor& _volModProcessor, int loop_track_count):
     project(_project),
     display(_display),
+    volModProcessor(_volModProcessor),
     clips(),
     active_song(_project.get_songs().at(0)),
     active_pattern(_project.get_songs().at(0).get_patterns().at(0)),
@@ -123,6 +124,7 @@ void Session::on_clock(uint8_t quarter_note_fraction, float pattern_position) {
     if (started_timestamp != std::chrono::steady_clock::time_point::min()) {
         main_screen.set_playback_duration(std::chrono::steady_clock::now() - started_timestamp);
     }
+    // TODO: Update volmod screen
     display.tick(true);
 }
 
