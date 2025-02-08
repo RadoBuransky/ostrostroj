@@ -2,8 +2,13 @@
 #define SPDLOG_ACTIVE_LEVEL 2
 #include <spdlog/spdlog.h>
 #include "volmod_processor.hpp"
+#include "midi_note.hpp"
 
 static const std::vector<snd_seq_event_t> EMPTY_RESULT = {};
+
+// Selection
+static const std::array<MidiNote, VOLMOD_MOD_COUNT> MOD_ROW   = {MidiNote(G_, 9), MidiNote(A, 9), MidiNote(A_, 9), MidiNote(B, 9)};
+static const std::array<MidiNote, VOLMOD_TRACK_COUNT> TRACK_ROW = {MidiNote(E , 9), MidiNote(F, 9), MidiNote(F_, 9), MidiNote(G, 9)};
 
 // Input
 static const uint8_t CHANNEL = 16;
@@ -26,8 +31,6 @@ static const std::array<uint8_t, VOLMOD_TRACK_COUNT> VOLUME_CONTROL_CC = {
 // Output
 static const uint8_t MW_CC = 1;
 static const uint8_t BC_CC = 2;
-// TODO: Aftertouch command 0xA0
-// TODO: Pitch bend command 0xE0
 static const uint8_t ELEKTRON_TRACK_LEVEL_CC = 95;
 static const std::array<uint8_t, VOLMOD_TRACK_COUNT> ELEKTRON_TRACK_CHANNELS = {1, 2, 3, 4};
 
@@ -78,6 +81,18 @@ snd_seq_event_t VolModProcessor::createEvent(uint8_t mod, uint8_t channel, int v
             result.data.control.param = BC_CC;
             result.data.control.value = value;
             break;
+        case AT_MOD_CONTROL_CC:
+            result.type = SND_SEQ_EVENT_KEYPRESS;
+            result.data.note.channel = channel;
+            result.data.note.velocity = value;
+            break;
+        case PB_MOD_CONTROL_CC:
+            result.type = SND_SEQ_EVENT_PITCHBEND;
+            result.data.control.channel = channel; 
+            result.data.control.value = (16384 * value / 127) - 8192;
+            break;
+        default:
+            throw OstrostrojException(fmt::format("Unsupported mod![{}]", mod));
     }
     return result;
 }
@@ -93,11 +108,22 @@ std::vector<snd_seq_event_t> VolModProcessor::selectedController(std::vector<uin
     return result;
 }
 
-std::vector<snd_seq_event_t> VolModProcessor::note(snd_seq_ev_note_t noteEvent) {
+void VolModProcessor::note(snd_seq_ev_note_t noteEvent) {
     if (noteEvent.channel != CHANNEL) {
-        return EMPTY_RESULT;
+        return;
     }
-    return EMPTY_RESULT;
+    for (uint8_t mod = 0; mod < MOD_ROW.size(); mod++) {
+        if (noteEvent.note == MOD_ROW.at(mod).get_value()) {
+            modSelected.at(mod) = !modSelected.at(mod);
+            return;
+        }
+    }
+    for (uint8_t track = 0; track < TRACK_ROW.size(); track++) {
+        if (noteEvent.note == TRACK_ROW.at(track).get_value()) {
+            trackSelected.at(track) = !trackSelected.at(track);
+            return;
+        }
+    }
 }
 
 std::vector<snd_seq_event_t> VolModProcessor::controller(snd_seq_ev_ctrl_t controllerEvent) {
@@ -128,12 +154,19 @@ VolModProcessor::VolModProcessor():
 std::vector<snd_seq_event_t> VolModProcessor::process(snd_seq_event_t &event) {
     switch (event.type) {
         case SND_SEQ_EVENT_NOTEON:
-            return note(event.data.note);
         case SND_SEQ_EVENT_NOTEOFF:
-            return note(event.data.note);
+            note(event.data.note);
+            break;
         case SND_SEQ_EVENT_CONTROLLER:
             return controller(event.data.control);
-        default:
-            return EMPTY_RESULT;
-    }    
+    }
+    return EMPTY_RESULT;
+}
+
+std::array<bool, VOLMOD_TRACK_COUNT>& VolModProcessor::getTrackSelected() {
+    return trackSelected;
+}
+
+std::array<bool, VOLMOD_MOD_COUNT>& VolModProcessor::getModSelected() {
+    return modSelected;
 }

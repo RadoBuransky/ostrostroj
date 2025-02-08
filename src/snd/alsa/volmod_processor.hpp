@@ -11,10 +11,12 @@ class VolModProcessor {
         std::vector<uint8_t> getSelectedChannels(uint8_t messageMod);
         snd_seq_event_t createEvent(uint8_t mod, uint8_t channel, int value);
         std::vector<snd_seq_event_t> selectedController(std::vector<uint8_t> selectedMods, std::vector<uint8_t> selectedTracks, int value);
-        std::vector<snd_seq_event_t> note(snd_seq_ev_note_t noteEvent);
+        void note(snd_seq_ev_note_t noteEvent);
         std::vector<snd_seq_event_t> controller(snd_seq_ev_ctrl_t controllerEvent);
     public:
         VolModProcessor();
         virtual ~VolModProcessor() = default;
         std::vector<snd_seq_event_t> process(snd_seq_event_t &event);
+        std::array<bool, VOLMOD_TRACK_COUNT>& getTrackSelected();
+        std::array<bool, VOLMOD_MOD_COUNT>& getModSelected();
 };
